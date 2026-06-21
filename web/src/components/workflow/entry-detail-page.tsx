@@ -11,9 +11,11 @@ import {
   deleteEntry,
   getEntry,
   getEntrySummaryMeta,
+  listDefectReasons,
   queueEntrySummaryJob,
   rejectEntry,
   updateEntry,
+  type DefectReason,
   type Entry,
   type EntrySummaryMeta,
 } from "@/lib/entries";
@@ -36,6 +38,11 @@ type EditState = {
   materials_used: string;
   quality_issues: boolean;
   quality_details: string;
+  rejection_qty: number | null;
+  defect_reason_id: number | null;
+  defect_reason_details: string;
+  rework_required: boolean;
+  scrap_qty_entry: number | null;
   notes: string;
 };
 
@@ -50,6 +57,11 @@ function blankEditState(): EditState {
     materials_used: "",
     quality_issues: false,
     quality_details: "",
+    rejection_qty: null,
+    defect_reason_id: null,
+    defect_reason_details: "",
+    rework_required: false,
+    scrap_qty_entry: null,
     notes: "",
   };
 }
@@ -89,6 +101,11 @@ function mapEntryToEditState(entry: Entry): EditState {
     materials_used: entry.materials_used || "",
     quality_issues: Boolean(entry.quality_issues),
     quality_details: entry.quality_details || "",
+    rejection_qty: entry.rejection_qty ?? null,
+    defect_reason_id: entry.defect_reason_id ?? null,
+    defect_reason_details: entry.defect_reason_details || "",
+    rework_required: Boolean(entry.rework_required),
+    scrap_qty_entry: entry.scrap_qty_entry ?? null,
     notes: entry.notes || "",
   };
 }
@@ -108,7 +125,7 @@ function todayLocal() {
 
 function updateIntegerEditField(
   setter: Dispatch<SetStateAction<EditState>>,
-  field: keyof Pick<EditState, "units_target" | "units_produced" | "manpower_present" | "manpower_absent" | "downtime_minutes">,
+  field: keyof Pick<EditState, "units_target" | "units_produced" | "manpower_present" | "manpower_absent" | "downtime_minutes" | "rejection_qty" | "scrap_qty_entry">,
   value: string,
   minValue: number,
 ) {
@@ -130,6 +147,7 @@ export default function EntryDetailPage() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [defectReasons, setDefectReasons] = useState<DefectReason[]>([]);
   const [summaryJobId, setSummaryJobId] = useState<string | null>(null);
 
   const entryId = Number(params?.id);
@@ -163,6 +181,10 @@ export default function EntryDetailPage() {
     }
     setLoading(false);
   }, [entryId]);
+
+  useEffect(() => {
+    listDefectReasons().then(setDefectReasons).catch(() => setDefectReasons([]));
+  }, []);
 
   useEffect(() => {
     if (sessionLoading) return;
@@ -593,6 +615,79 @@ export default function EntryDetailPage() {
                       <Textarea rows={3} value={edit.quality_details} onChange={(event) => setEdit((prev) => ({ ...prev, quality_details: event.target.value }))} />
                     </div>
                   ) : null}
+
+                  {/* ── Phase 1: Structured quality intelligence ────────── */}
+                  <hr className="border-[var(--border)]" />
+                  <div className="text-xs uppercase tracking-prominent text-[var(--accent)]">Structured Quality Data</div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Rejection Qty (units)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="numeric"
+                        value={edit.rejection_qty ?? ""}
+                        onChange={(e) =>
+                          setEdit((prev) => ({
+                            ...prev,
+                            rejection_qty: e.target.value === "" ? null : coerceIntegerInput(e.target.value, 0),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Scrap Qty (units)</label>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={1}
+                        inputMode="numeric"
+                        value={edit.scrap_qty_entry ?? ""}
+                        onChange={(e) =>
+                          setEdit((prev) => ({
+                            ...prev,
+                            scrap_qty_entry: e.target.value === "" ? null : coerceIntegerInput(e.target.value, 0),
+                          }))
+                        }
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Defect Reason</label>
+                      <select
+                        value={edit.defect_reason_id ?? ""}
+                        onChange={(e) =>
+                          setEdit((prev) => ({
+                            ...prev,
+                            defect_reason_id: e.target.value === "" ? null : Number(e.target.value),
+                          }))
+                        }
+                        className="w-full rounded-xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-2.5 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/20"
+                      >
+                        <option value="">None</option>
+                        {defectReasons.map((dr) => (
+                          <option key={dr.id} value={dr.id}>{dr.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="flex items-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={edit.rework_required}
+                          onChange={(e) => setEdit((prev) => ({ ...prev, rework_required: e.target.checked }))}
+                        />
+                        Rework Required
+                      </label>
+                    </div>
+                  </div>
+                  {edit.defect_reason_id ? (
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Defect Details</label>
+                      <Textarea rows={2} value={edit.defect_reason_details} onChange={(e) => setEdit((prev) => ({ ...prev, defect_reason_details: e.target.value }))} />
+                    </div>
+                  ) : null}
+
                   <div>
                     <label className="text-sm text-[var(--muted)]">Notes</label>
                     <Textarea rows={4} value={edit.notes} onChange={(event) => setEdit((prev) => ({ ...prev, notes: event.target.value }))} />
@@ -610,6 +705,11 @@ export default function EntryDetailPage() {
                           materials_used: edit.materials_used || null,
                           quality_issues: edit.quality_issues,
                           quality_details: edit.quality_details || null,
+                          rejection_qty: edit.rejection_qty,
+                          defect_reason_id: edit.defect_reason_id,
+                          defect_reason_details: edit.defect_reason_details || null,
+                          rework_required: edit.rework_required,
+                          scrap_qty_entry: edit.scrap_qty_entry,
                           notes: edit.notes || null,
                         });
                         setEntry(next);

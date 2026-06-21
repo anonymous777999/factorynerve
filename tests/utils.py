@@ -4,7 +4,13 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
+from datetime import datetime, timezone
+
+from datetime import datetime, timezone
+
+from backend.auth_security.passwords import hash_password as auth_hash_password
 from backend.database import SessionLocal, init_db
+from backend.models.auth_user import AuthUser
 from backend.models.organization import Organization
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
@@ -102,6 +108,25 @@ def register_user(
         finally:
             db.close()
 
+    # Ensure an AuthUser record exists for v2 auth endpoints.
+    # Note: AuthUser uses passlib/argon2id hashing, NOT bcrypt (used by legacy User model).
+    init_db()
+    auth_db = SessionLocal()
+    try:
+        existing_auth = auth_db.query(AuthUser).filter(AuthUser.email == normalized_email).first()
+        if not existing_auth:
+            auth_db.add(
+                AuthUser(
+                    email=normalized_email,
+                    password_hash=auth_hash_password(payload["password"]),
+                    is_active=True,
+                    password_changed_at=datetime.now(timezone.utc),
+                )
+            )
+            auth_db.commit()
+    finally:
+        auth_db.close()
+
     # Get the first factory membership for auth context
     init_db()
     db = SessionLocal()
@@ -127,9 +152,14 @@ def register_user(
     )
 
     if use_cookies:
-        client.cookies.set("access_token_cookie", access_token)
-        # Trigger CSRF middleware to set the CSRF cookie
-        client.get("/health")
+        # Log in via v2 to let the server set all cookies (dpr_access, dpr_refresh, dpr_csrf)
+        # through proper Set-Cookie headers. This ensures httpx's cookie jar manages them
+        # correctly and logout's delete_cookie() works reliably.
+        login_resp = client.post(
+            "/auth/v2/login",
+            json={"email": normalized_email, "password": payload["password"]},
+        )
+        assert login_resp.status_code == 200, login_resp.text
 
     return {
         "email": user.email,
@@ -165,6 +195,9 @@ def set_org_plan_for_user_email(email: str, plan: str) -> None:
     init_db()
     db = SessionLocal()
     try:
+        from datetime import datetime, timezone
+        from backend.models.subscription import Subscription
+
         user = db.query(User).filter(User.email == email).first()
         assert user is not None
         org = db.query(Organization).filter(Organization.org_id == user.org_id).first()
@@ -172,6 +205,24 @@ def set_org_plan_for_user_email(email: str, plan: str) -> None:
         org.plan = normalize_plan(plan)
         org.plan_expires_at = None
         db.add(org)
+
+        subscription = (
+            db.query(Subscription)
+            .filter(Subscription.org_id == org.org_id, Subscription.status.in_(("active", "trialing")))
+            .first()
+        )
+        if subscription:
+            subscription.plan = normalize_plan(plan)
+        else:
+            db.add(
+                Subscription(
+                    org_id=org.org_id,
+                    plan=normalize_plan(plan),
+                    status="active",
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
         db.commit()
     finally:
         db.close()

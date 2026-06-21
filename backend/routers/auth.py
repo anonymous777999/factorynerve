@@ -34,6 +34,7 @@ from backend.authorization import PermissionCatalog, ResourceContext
 from backend.authorization.permission_catalog import ScopeLevel
 from backend.models.auth_user import AuthUser
 from backend.schemas.auth import AuthMeResponse, PermissionsSchema
+from backend.auth_security.passwords import hash_password as auth_hash_password
 from backend.security import (
     create_access_token,
     decode_access_token,
@@ -1355,6 +1356,12 @@ def password_reset(
 
     now = datetime.now(timezone.utc)
     user.password_hash = hash_password(payload.new_password)
+    # Sync to AuthUser for v2 auth compatibility (passlib/argon2id hash)
+    auth_user = db.query(AuthUser).filter(AuthUser.email == user.email, AuthUser.is_active.is_(True)).first()
+    if auth_user:
+        auth_user.password_hash = auth_hash_password(payload.new_password)
+        auth_user.password_changed_at = now
+        auth_user.updated_at = now
     record.used_at = now
 
     db.query(RefreshToken).filter(
@@ -1680,6 +1687,12 @@ def change_password(
     try:
         validate_password_strength(payload.new_password)
         current_user.password_hash = hash_password(payload.new_password)
+        # Sync to AuthUser for v2 auth compatibility (passlib/argon2id hash)
+        auth_user = db.query(AuthUser).filter(AuthUser.email == current_user.email, AuthUser.is_active.is_(True)).first()
+        if auth_user:
+            auth_user.password_hash = auth_hash_password(payload.new_password)
+            auth_user.password_changed_at = datetime.now(timezone.utc)
+            auth_user.updated_at = datetime.now(timezone.utc)
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
         return {"message": "Password changed successfully."}

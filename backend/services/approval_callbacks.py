@@ -27,6 +27,7 @@ from backend.models.steel_stock_reconciliation import SteelStockReconciliation
 from backend.models.steel_inventory_transaction import SteelInventoryTransaction
 from backend.models.steel_customer import SteelCustomer
 from backend.models.steel_dispatch import SteelDispatch
+from backend.models.attendance_record import AttendanceRecord
 
 logger = logging.getLogger(__name__)
 
@@ -278,6 +279,37 @@ def _on_entry_completed(db: Session, instance: dict[str, Any]) -> None:
 # ── Fallback Logger ───────────────────────────────────────────────────────
 
 
+def _on_attendance_review_completed(db: Session, instance: dict[str, Any]) -> None:
+    """Update attendance record review_status when approval completes."""
+    resource_id = instance.get("resource_id")
+    new_status_terminal = instance.get("status")  # "approved" or "rejected"
+    if not resource_id or not new_status_terminal:
+        return
+    try:
+        record_id = int(resource_id)
+    except (ValueError, TypeError):
+        return
+    record = db.query(AttendanceRecord).filter(AttendanceRecord.id == record_id).first()
+    if not record:
+        logger.warning("on_attendance_review_completed: record %s not found", record_id)
+        return
+    record.review_status = new_status_terminal
+    if new_status_terminal == "approved":
+        record.approved_by_user_id = (
+            instance.get("approved_by_user_id") or instance.get("actor_user_id")
+        )
+        record.approved_at = datetime.now(timezone.utc)
+    _write_audit(
+        db,
+        user_id=instance.get("approved_by_user_id") or instance.get("actor_user_id"),
+        org_id=instance.get("org_id"),
+        factory_id=instance.get("factory_id"),
+        action=f"ATTENDANCE_REVIEW_{new_status_terminal.upper()}",
+        details=f"attendance_id={record.id} status={new_status_terminal}",
+    )
+    db.flush()
+
+
 def _on_generic_completed(db: Session, instance: dict[str, Any]) -> None:
     """Fallback callback for workflow keys without a specific handler."""
     workflow_key = instance.get("workflow_key", "unknown")
@@ -314,9 +346,9 @@ APPROVAL_CALLBACKS: dict[str, Any] = {
     "payment.record.create": _on_generic_completed,
     "payment.record.reallocate": _on_generic_completed,
     "payment.record.reverse": _on_generic_completed,
-    # Attendance
-    "attendance.review.approve": _on_generic_completed,
-    "attendance.review.reject": _on_generic_completed,
+    # Attendance — update record.review_status on completion
+    "attendance.review.approve": _on_attendance_review_completed,
+    "attendance.review.reject": _on_attendance_review_completed,
     # OCR
     "ocr.verification.approve": _on_generic_completed,
     "ocr.verification.reject": _on_generic_completed,

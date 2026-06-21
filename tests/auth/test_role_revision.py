@@ -2,6 +2,31 @@ from types import SimpleNamespace
 
 from backend.models.user import UserRole
 from backend.routers import settings as settings_router
+from backend.authorization import PDP
+from backend.services.approval_service import approval_service, ApprovalDecision
+
+
+def _patch_deps(monkeypatch, target):
+    """Shared monkeypatches for the new PDP + ApprovalService code path."""
+    monkeypatch.setattr(PDP, "require_permission", lambda self, **kwargs: None)
+    monkeypatch.setattr(
+        approval_service,
+        "initiate_approval",
+        lambda *args, **kwargs: ApprovalDecision(result="no_approval_required", instance_id=None),
+    )
+    monkeypatch.setattr(approval_service, "complete_approval", lambda *args, **kwargs: None)
+    monkeypatch.setattr(settings_router, "resolve_org_id", lambda current_user: "org-1")
+    monkeypatch.setattr(settings_router, "resolve_factory_id", lambda db, current_user: "factory-1")
+    monkeypatch.setattr(
+        settings_router,
+        "_scoped_users_query",
+        lambda db, current_user: SimpleNamespace(
+            filter=lambda *args, **kwargs: SimpleNamespace(first=lambda: target)
+        ),
+    )
+    monkeypatch.setattr(settings_router, "_assert_role_update_allowed", lambda *args, **kwargs: None)
+    monkeypatch.setattr(settings_router, "_has_other_privileged_user", lambda *args, **kwargs: True)
+    monkeypatch.setattr(settings_router, "_write_admin_audit", lambda *args, **kwargs: None)
 
 
 def test_role_change_increments_role_revision(monkeypatch):
@@ -29,17 +54,7 @@ def test_role_change_increments_role_revision(monkeypatch):
         def commit(self):
             self.committed = True
 
-    monkeypatch.setattr(settings_router, "require_role", lambda current_user, role: None)
-    monkeypatch.setattr(settings_router, "resolve_org_id", lambda current_user: "org-1")
-    monkeypatch.setattr(settings_router, "resolve_factory_id", lambda db, current_user: "factory-1")
-    monkeypatch.setattr(
-        settings_router,
-        "_scoped_users_query",
-        lambda db, current_user: SimpleNamespace(filter=lambda *args, **kwargs: SimpleNamespace(first=lambda: target)),
-    )
-    monkeypatch.setattr(settings_router, "_assert_role_update_allowed", lambda *args, **kwargs: None)
-    monkeypatch.setattr(settings_router, "_has_other_privileged_user", lambda *args, **kwargs: True)
-    monkeypatch.setattr(settings_router, "_write_admin_audit", lambda *args, **kwargs: None)
+    _patch_deps(monkeypatch, target)
 
     db = DbStub()
     response = settings_router.update_user_role(
@@ -98,17 +113,12 @@ def test_role_change_creates_audit_entry_with_correct_previous_state_and_new_sta
         def commit(self):
             return None
 
-    monkeypatch.setattr(settings_router, "require_role", lambda current_user, role: None)
-    monkeypatch.setattr(settings_router, "resolve_org_id", lambda current_user: "org-1")
-    monkeypatch.setattr(settings_router, "resolve_factory_id", lambda db, current_user: "factory-1")
+    _patch_deps(monkeypatch, target)
     monkeypatch.setattr(
         settings_router,
-        "_scoped_users_query",
-        lambda db, current_user: SimpleNamespace(filter=lambda *args, **kwargs: SimpleNamespace(first=lambda: target)),
+        "_write_admin_audit",
+        lambda *args, **kwargs: audit_calls.append(kwargs),
     )
-    monkeypatch.setattr(settings_router, "_assert_role_update_allowed", lambda *args, **kwargs: None)
-    monkeypatch.setattr(settings_router, "_has_other_privileged_user", lambda *args, **kwargs: True)
-    monkeypatch.setattr(settings_router, "_write_admin_audit", lambda *args, **kwargs: audit_calls.append(kwargs))
 
     settings_router.update_user_role(
         2,
@@ -144,17 +154,12 @@ def test_previous_state_is_never_none_for_role_updated_events(monkeypatch):
         def commit(self):
             return None
 
-    monkeypatch.setattr(settings_router, "require_role", lambda current_user, role: None)
-    monkeypatch.setattr(settings_router, "resolve_org_id", lambda current_user: "org-1")
-    monkeypatch.setattr(settings_router, "resolve_factory_id", lambda db, current_user: "factory-1")
+    _patch_deps(monkeypatch, target)
     monkeypatch.setattr(
         settings_router,
-        "_scoped_users_query",
-        lambda db, current_user: SimpleNamespace(filter=lambda *args, **kwargs: SimpleNamespace(first=lambda: target)),
+        "_write_admin_audit",
+        lambda *args, **kwargs: audit_calls.append(kwargs),
     )
-    monkeypatch.setattr(settings_router, "_assert_role_update_allowed", lambda *args, **kwargs: None)
-    monkeypatch.setattr(settings_router, "_has_other_privileged_user", lambda *args, **kwargs: True)
-    monkeypatch.setattr(settings_router, "_write_admin_audit", lambda *args, **kwargs: audit_calls.append(kwargs))
 
     settings_router.update_user_role(
         2,
@@ -187,17 +192,12 @@ def test_audit_entry_for_role_updated_includes_actor_user_id(monkeypatch):
         def commit(self):
             return None
 
-    monkeypatch.setattr(settings_router, "require_role", lambda current_user, role: None)
-    monkeypatch.setattr(settings_router, "resolve_org_id", lambda current_user: "org-1")
-    monkeypatch.setattr(settings_router, "resolve_factory_id", lambda db, current_user: "factory-1")
+    _patch_deps(monkeypatch, target)
     monkeypatch.setattr(
         settings_router,
-        "_scoped_users_query",
-        lambda db, current_user: SimpleNamespace(filter=lambda *args, **kwargs: SimpleNamespace(first=lambda: target)),
+        "_write_admin_audit",
+        lambda *args, **kwargs: audit_calls.append(kwargs),
     )
-    monkeypatch.setattr(settings_router, "_assert_role_update_allowed", lambda *args, **kwargs: None)
-    monkeypatch.setattr(settings_router, "_has_other_privileged_user", lambda *args, **kwargs: True)
-    monkeypatch.setattr(settings_router, "_write_admin_audit", lambda *args, **kwargs: audit_calls.append(kwargs))
 
     settings_router.update_user_role(
         2,

@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
+from sqlalchemy.exc import IntegrityError
+
 from backend.database import get_db, hash_ip_address
 from backend.models.attendance_event import AttendanceEvent
 from backend.models.attendance_record import AttendanceRecord
@@ -841,6 +843,30 @@ def punch_attendance(
             factory_id=factory.factory_id,
             shift_name=shift_value,
         )
+        # Use INSERT with unique constraint guard to prevent duplicate attendance
+        # records under concurrent punch-in (e.g. 500 workers clocking in simultaneously).
+        # The UNIQUE INDEX on (user_id, factory_id, attendance_date) and the
+        # preceding read check (today_record) are insufficient under concurrency
+        # because two requests can both pass the read check before either inserts.
+        # We catch the IntegrityError and return the existing record instead.
+        existing_row = _record_for_local_day(
+            db,
+            user_id=current_user.id,
+            factory_id=factory.factory_id,
+            attendance_date=current_date,
+        )
+        if existing_row:
+            if existing_row.punch_out_at is not None:
+                raise HTTPException(status_code=409, detail="Attendance is already closed for today.")
+            return _serialize_today_response(
+                db=db,
+                factory=factory,
+                user_id=current_user.id,
+                attendance_date=current_date,
+                record=existing_row,
+                inferred_shift=existing_row.shift or shift_value,
+            )
+
         punch_time = datetime.now(timezone.utc)
         record = AttendanceRecord(
             org_id=org_id,
@@ -864,7 +890,43 @@ def punch_attendance(
             overtime_minutes=0,
         )
         db.add(record)
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError:  # Unique constraint violation under race condition
+            db.rollback()
+            existing = _record_for_local_day(
+                db,
+                user_id=current_user.id,
+                factory_id=factory.factory_id,
+                attendance_date=current_date,
+            )
+            if existing:
+                if existing.punch_out_at is not None:
+                    raise HTTPException(status_code=409, detail="Attendance is already closed for today.")
+                db.add(
+                    AttendanceEvent(
+                        org_id=org_id,
+                        factory_id=factory.factory_id,
+                        user_id=current_user.id,
+                        attendance_record_id=existing.id,
+                        attendance_date=current_date,
+                        shift=shift_value,
+                        event_type="in",
+                        event_time=punch_time,
+                        source="self-service",
+                        note=note,
+                    )
+                )
+                db.commit()
+                return _serialize_today_response(
+                    db=db,
+                    factory=factory,
+                    user_id=current_user.id,
+                    attendance_date=current_date,
+                    record=existing,
+                    inferred_shift=shift_value,
+                )
+            raise
         db.add(
             AttendanceEvent(
                 org_id=org_id,
@@ -930,7 +992,7 @@ def punch_attendance(
             db=db,
             factory=factory,
             user_id=current_user.id,
-            attendance_date=current_date,
+            attendance_date=record.attendance_date,
             record=record,
             inferred_shift=record.shift or _infer_shift(db, factory_id=factory.factory_id, local_now=local_now),
         )
@@ -975,7 +1037,7 @@ def punch_attendance(
         db=db,
         factory=factory,
         user_id=current_user.id,
-        attendance_date=current_date,
+        attendance_date=record.attendance_date,
         record=record,
         inferred_shift=record.shift or _infer_shift(db, factory_id=factory.factory_id, local_now=local_now),
     )
@@ -1197,6 +1259,23 @@ def upsert_attendance_employee_profile(
     if payload.reporting_manager_id is not None:
         if int(payload.reporting_manager_id) == int(payload.user_id):
             raise HTTPException(status_code=422, detail="Reporting manager cannot be the same employee.")
+        # Prevent indirect reporting loops (A -> B -> ... -> A).
+        # Walk the reporting chain to detect cycles (Bug #38).
+        visited: set[int] = {int(payload.user_id)}
+        current_id: int | None = int(payload.reporting_manager_id)
+        while current_id is not None:
+            if current_id in visited:
+                raise HTTPException(
+                    status_code=422,
+                    detail="This assignment would create a circular reporting chain.",
+                )
+            visited.add(current_id)
+            mgr_profile = db.query(EmployeeProfile).filter(
+                EmployeeProfile.org_id == org_id,
+                EmployeeProfile.factory_id == factory.factory_id,
+                EmployeeProfile.user_id == current_id,
+            ).first()
+            current_id = mgr_profile.reporting_manager_id if mgr_profile else None
         reporting_manager = (
             db.query(User)
             .join(UserFactoryRole, UserFactoryRole.user_id == User.id)

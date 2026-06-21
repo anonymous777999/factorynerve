@@ -367,7 +367,7 @@ def _activate_paid_order(
                 .first()
             )
         if not existing_invoice:
-            amount_value = float(amount_paise or 0) / 100.0
+            amount_value = round(float(amount_paise or 0) / 100.0, 2)
             record_invoice(
                 db,
                 user_id=user_id,

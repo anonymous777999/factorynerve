@@ -38,7 +38,10 @@ from backend.authorization import PDP, ResourceContext
 from backend.authorization.pdp import build_request_context
 from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.plans import normalize_plan, plan_rank, get_org_plan
+from backend.feature_limits import check_and_record_org_feature_usage
 from backend.ai_rate_limit import check_rate_limit, RateLimitError
+from backend.models.defect_reason import DefectReason
+from backend.security import get_current_user
 from backend.utils import (
     LOW_CONFIDENCE_THRESHOLD,
     check_entry_alerts,
@@ -71,6 +74,10 @@ SMART_INPUT_SCHEMA = {
         "materials_used": {"type": "string"},
         "quality_issues": {"type": "boolean"},
         "quality_details": {"type": "string"},
+        "rejection_qty": {"type": "integer", "minimum": 0},
+        "defect_reason_id": {"type": "integer"},
+        "rework_required": {"type": "boolean"},
+        "scrap_qty_entry": {"type": "integer", "minimum": 0},
         "notes": {"type": "string"},
     },
     "required": [
@@ -112,6 +119,12 @@ class EntryCreateRequest(BaseModel):
     materials_used: str | None = None
     quality_issues: bool = False
     quality_details: str | None = None
+    # ── Phase 1: Structured quality intelligence ───────────────────────────
+    rejection_qty: int | None = Field(default=None, ge=0)
+    defect_reason_id: int | None = Field(default=None)
+    defect_reason_details: str | None = Field(default=None, max_length=300)
+    rework_required: bool = False
+    scrap_qty_entry: int | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=1000)
 
     @field_validator("date")
@@ -133,6 +146,12 @@ class EntryUpdateRequest(BaseModel):
     materials_used: str | None = None
     quality_issues: bool | None = None
     quality_details: str | None = None
+    # ── Phase 1: Structured quality intelligence ───────────────────────────
+    rejection_qty: int | None = Field(default=None, ge=0)
+    defect_reason_id: int | None = Field(default=None)
+    defect_reason_details: str | None = Field(default=None, max_length=300)
+    rework_required: bool | None = None
+    scrap_qty_entry: int | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=1000)
 
 
@@ -153,6 +172,12 @@ class EntryResponse(BaseModel):
     materials_used: str | None
     quality_issues: bool
     quality_details: str | None
+    # ── Phase 1: Structured quality intelligence ───────────────────────────
+    rejection_qty: int | None = None
+    defect_reason_id: int | None = None
+    defect_reason_details: str | None = None
+    rework_required: bool = False
+    scrap_qty_entry: int | None = None
     notes: str | None
     ai_summary: str | None
     summary_job_id: str | None = None
@@ -342,7 +367,7 @@ def _queue_entry_summary_job(
             "entry_id": entry_id,
             "owner_id": owner_id,
             "org_id": org_id,
-            "consume_quota": False,
+            "consume_quota": consume_quota,  # Match initial call to avoid double-charge on retry (Bug #47)
         },
     )
     start_job(
@@ -389,6 +414,11 @@ def _summary_payload(entry: Entry) -> dict[str, Any]:
         "materials_used": entry.materials_used,
         "quality_issues": entry.quality_issues,
         "quality_details": entry.quality_details,
+        "rejection_qty": entry.rejection_qty,
+        "defect_reason_id": entry.defect_reason_id,
+        "defect_reason_details": entry.defect_reason_details,
+        "rework_required": entry.rework_required,
+        "scrap_qty_entry": entry.scrap_qty_entry,
         "notes": entry.notes,
     }
 
@@ -558,10 +588,11 @@ def create_entry(
     request.state.org_id = org_id
     request.state.factory_id = factory_id
     if payload.client_request_id:
+        # Scope dedup to org/factory level, not just current user — another
+        # operator may have already recorded the same shift (Bug #41).
         existing_by_request = (
             db.query(Entry)
             .filter(
-                Entry.user_id == current_user.id,
                 Entry.client_request_id == payload.client_request_id,
                 Entry.is_active.is_(True),
             )
@@ -570,6 +601,8 @@ def create_entry(
             existing_by_request = existing_by_request.filter(Entry.factory_id == factory_id)
         elif org_id:
             existing_by_request = existing_by_request.filter(Entry.org_id == org_id)
+        else:
+            existing_by_request = existing_by_request.filter(Entry.user_id == current_user.id)
         existing_by_request = existing_by_request.first()
         if existing_by_request:
             response.status_code = status.HTTP_200_OK
@@ -602,6 +635,7 @@ def create_entry(
         data["department"] = department_value
         data["materials_used"] = sanitize_text(data.get("materials_used"), max_length=1000)
         data["quality_details"] = sanitize_text(data.get("quality_details"), max_length=1000)
+        data["defect_reason_details"] = sanitize_text(data.get("defect_reason_details"), max_length=300)
         data["notes"] = sanitize_text(data.get("notes"), max_length=1000)
         entry = Entry(
             user_id=current_user.id,
@@ -752,6 +786,24 @@ def list_entries(
     offset = (page - 1) * page_size
     items = query.order_by(order_clause, Entry.created_at.desc()).offset(offset).limit(page_size).all()
     return EntryListResponse(items=items, total=total, page=page, page_size=page_size)
+
+
+@router.get("/defect-reasons")
+def list_defect_reasons(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    """List active defect reasons for the entry form dropdown."""
+    reasons = db.query(DefectReason).filter(DefectReason.is_active.is_(True)).order_by(DefectReason.code).all()
+    return [
+        {
+            "id": r.id,
+            "code": r.code,
+            "label": r.label,
+            "description": r.description,
+        }
+        for r in reasons
+    ]
 
 
 @router.post("/{entry_id}/approve", response_model=EntryResponse)
@@ -973,10 +1025,15 @@ def queue_entry_summary(
             status_code=403,
             detail=f"AI summaries are not available on the {plan.title()} plan. Upgrade to {_summary_min_plan().title()} or higher to unlock this.",
         )
+    # Check quota availability BEFORE queuing so the caller gets immediate
+    # feedback instead of a silent background failure (Bug #47).
+    if org_id:
+        consume_ai_quota(db, org_id=org_id, feature="summary")
     return _queue_entry_summary_job(
         entry_id=entry.id,
         owner_id=current_user.id,
         org_id=entry.org_id,
+        consume_quota=False,  # Already consumed above; don't double-charge
     )
 
 
@@ -1069,6 +1126,8 @@ def update_entry(
         updates["materials_used"] = sanitize_text(updates.get("materials_used"), max_length=1000)
     if "quality_details" in updates:
         updates["quality_details"] = sanitize_text(updates.get("quality_details"), max_length=1000)
+    if "defect_reason_details" in updates:
+        updates["defect_reason_details"] = sanitize_text(updates.get("defect_reason_details"), max_length=300)
     if "notes" in updates:
         updates["notes"] = sanitize_text(updates.get("notes"), max_length=1000)
     for key, value in updates.items():

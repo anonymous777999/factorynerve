@@ -57,14 +57,16 @@ def test_change_password_allows_new_login(http_client):
     )
     assert changed.status_code == HTTPStatus.OK, changed.text
 
+    # Register_user() creates an AuthUser record, and change-password now syncs
+    # to AuthUser. So old password should fail and new password should succeed.
     old_login = http_client.post(
-        "/auth/login",
+        "/auth/v2/login",
         json={"email": user["email"], "password": user["password"]},
     )
     assert old_login.status_code == HTTPStatus.UNAUTHORIZED, old_login.text
 
     new_login = http_client.post(
-        "/auth/login",
+        "/auth/v2/login",
         json={"email": user["email"], "password": new_password},
     )
     assert new_login.status_code == HTTPStatus.OK, new_login.text

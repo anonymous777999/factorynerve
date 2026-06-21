@@ -211,7 +211,7 @@ def _reuse_matches_requested_model(candidate: OcrVerification, requested_model: 
 
 
 def _flatten_rows(rows: list[list[str]]) -> str | None:
-    parts = [" | ".join(cell for cell in row if cell) for row in rows]
+    parts = ["\t".join(cell for cell in row if cell) for row in rows]
     joined = "\n".join(part for part in parts if part.strip())
     return joined or None
 

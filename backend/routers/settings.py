@@ -6,7 +6,7 @@ import os
 import secrets
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -37,6 +37,7 @@ from backend.email_service import send_email
 from backend.models.user import role_rank
 from backend.authorization import PDP, ResourceContext
 from backend.authorization.pdp import build_request_context
+from backend.models.defect_reason import DefectReason
 from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.plans import (
     ALLOWED_PLANS,
@@ -1452,6 +1453,8 @@ def deactivate_user(
     if approval_decision.result not in ("approved", "no_approval_required"):
         raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
 
+    old_profile_picture = user.profile_picture
+    user.profile_picture = None
     user.is_active = False
     _write_admin_audit(
         db,
@@ -1463,6 +1466,9 @@ def deactivate_user(
         request=request,
     )
     db.commit()
+
+    # Clean up profile photo on deactivation (after commit succeeds, Bug #35 fix)
+    _delete_local_profile_photo(old_profile_picture)
 
     # Step 3: Notify approval system of completion
     if approval_decision.instance_id:
@@ -1692,3 +1698,163 @@ def load_demo_data(request: Request, db: Session = Depends(get_db), current_user
             "days": 7,
         },
     }
+
+
+# ── Defect Reasons CRUD ──────────────────────────────────────────────────────
+
+
+class DefectReasonCreateRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=60)
+    label: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class DefectReasonUpdateRequest(BaseModel):
+    code: str | None = Field(default=None, min_length=1, max_length=60)
+    label: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+@router.get("/defect-reasons")
+def list_defect_reasons(
+    include_inactive: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """List defect reasons. Optionally include inactive ones."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.master_data.manage")
+    query = db.query(DefectReason)
+    if not include_inactive:
+        query = query.filter(DefectReason.is_active.is_(True))
+    reasons = query.order_by(DefectReason.code.asc()).all()
+    return [
+        {
+            "id": r.id,
+            "code": r.code,
+            "label": r.label,
+            "description": r.description,
+            "is_active": r.is_active,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in reasons
+    ]
+
+
+@router.post("/defect-reasons", status_code=status.HTTP_201_CREATED)
+def create_defect_reason(
+    payload: DefectReasonCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Create a new defect reason."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.master_data.manage")
+    existing = db.query(DefectReason).filter(
+        func.lower(DefectReason.code) == payload.code.strip().lower()
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="A defect reason with this code already exists.")
+    reason = DefectReason(
+        code=sanitize_text(payload.code, max_length=60, preserve_newlines=False) or payload.code.strip(),
+        label=sanitize_text(payload.label, max_length=120, preserve_newlines=False) or payload.label.strip(),
+        description=sanitize_text(payload.description, max_length=1000) if payload.description else None,
+    )
+    db.add(reason)
+    _write_admin_audit(
+        db,
+        actor_id=current_user.id,
+        org_id=resolve_org_id(current_user),
+        factory_id=resolve_factory_id(db, current_user),
+        action="DEFECT_REASON_CREATED",
+        details=f"code={payload.code} label={payload.label}",
+        request=request,
+    )
+    db.commit()
+    db.refresh(reason)
+    return {
+        "message": "Defect reason created.",
+        "id": reason.id,
+        "code": reason.code,
+        "label": reason.label,
+        "description": reason.description,
+        "is_active": reason.is_active,
+        "created_at": reason.created_at.isoformat() if reason.created_at else None,
+    }
+
+
+@router.put("/defect-reasons/{reason_id}")
+def update_defect_reason(
+    reason_id: int,
+    payload: DefectReasonUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Update a defect reason's code, label, or description."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.master_data.manage")
+    reason = db.query(DefectReason).filter(DefectReason.id == reason_id).first()
+    if not reason:
+        raise HTTPException(status_code=404, detail="Defect reason not found.")
+    if payload.code is not None:
+        code_trimmed = payload.code.strip()
+        existing = db.query(DefectReason).filter(
+            func.lower(DefectReason.code) == code_trimmed.lower(),
+            DefectReason.id != reason_id,
+        ).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="Another defect reason with this code already exists.")
+        reason.code = sanitize_text(code_trimmed, max_length=60, preserve_newlines=False) or code_trimmed
+    if payload.label is not None:
+        reason.label = sanitize_text(payload.label, max_length=120, preserve_newlines=False) or payload.label.strip()
+    if payload.description is not None:
+        reason.description = sanitize_text(payload.description, max_length=1000) or None
+    _write_admin_audit(
+        db,
+        actor_id=current_user.id,
+        org_id=resolve_org_id(current_user),
+        factory_id=resolve_factory_id(db, current_user),
+        action="DEFECT_REASON_UPDATED",
+        details=f"id={reason_id} code={reason.code}",
+        request=request,
+    )
+    db.commit()
+    db.refresh(reason)
+    return {
+        "message": "Defect reason updated.",
+        "id": reason.id,
+        "code": reason.code,
+        "label": reason.label,
+        "description": reason.description,
+        "is_active": reason.is_active,
+    }
+
+
+@router.delete("/defect-reasons/{reason_id}")
+def deactivate_defect_reason(
+    reason_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Deactivate a defect reason (soft delete — sets is_active = False).
+
+    Entries referencing this reason are preserved — the FK is not cascade-deleted.
+    """
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.master_data.manage")
+    reason = db.query(DefectReason).filter(DefectReason.id == reason_id).first()
+    if not reason:
+        raise HTTPException(status_code=404, detail="Defect reason not found.")
+    if not reason.is_active:
+        raise HTTPException(status_code=400, detail="Defect reason is already inactive.")
+    reason.is_active = False
+    _write_admin_audit(
+        db,
+        actor_id=current_user.id,
+        org_id=resolve_org_id(current_user),
+        factory_id=resolve_factory_id(db, current_user),
+        action="DEFECT_REASON_DEACTIVATED",
+        details=f"id={reason_id} code={reason.code}",
+        request=request,
+    )
+    db.commit()
+    return {"message": "Defect reason deactivated."}

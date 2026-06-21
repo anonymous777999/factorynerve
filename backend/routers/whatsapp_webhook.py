@@ -20,6 +20,10 @@ from backend.phone_utils import mask_phone_number
 from backend.services.ops_alerts.service import apply_whatsapp_delivery_update
 
 
+class _WebhookIntegrityError(Exception):
+    """Raised when a database integrity error prevents processing a webhook event."""
+
+
 router = APIRouter(tags=["WhatsApp Webhooks"])
 logger = logging.getLogger(__name__)
 
@@ -163,7 +167,8 @@ def _process_webhook_payload(payload: dict[str, Any]) -> dict[str, int]:
 
         recipient_phone = _normalize_recipient_phone(status_item.get("recipient_id"))
         error_code, error_title, failure_reason = _extract_failure_details(status_item)
-        result = apply_whatsapp_delivery_update(
+        try:
+            result = apply_whatsapp_delivery_update(
             provider_message_id=raw_provider_message_id,
             delivery_status=_STATUS_MAP[raw_status],
             status_timestamp=_coerce_status_timestamp(status_item.get("timestamp")),
@@ -173,6 +178,15 @@ def _process_webhook_payload(payload: dict[str, Any]) -> dict[str, int]:
             failure_reason=failure_reason,
             payload_excerpt=_payload_excerpt(status_item),
         )
+        except Exception:
+            # IntegrityError or other DB failure — remember the event to prevent
+            # double-activation on retry, since the in-memory dedup cache is the
+            # only reliable guard when the DB transaction rolls back.
+            logger.warning("whatsapp_webhook_db_error event_key=%s", event_key)
+            if event_key:
+                _remember_event(event_key)
+            ignored += 1
+            continue
         processed += int(result.get("updated", 0))
         ignored += int(result.get("ignored", 0)) if result.get("reason") != "stale" else 0
         stale += int(result.get("ignored", 0)) if result.get("reason") == "stale" else 0

@@ -22,6 +22,7 @@ import {
   type TemplateFieldMap,
 } from "@/lib/offline-entries";
 import { coerceIntegerInput } from "@/lib/validation";
+import { listDefectReasons, type DefectReason } from "@/lib/entries";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 import { EntryPageSkeleton } from "@/components/shared/page-skeletons";
 import { Button } from "@/components/ui/button";
@@ -39,13 +40,16 @@ type NumericFieldKey =
   | "units_produced"
   | "manpower_present"
   | "manpower_absent"
-  | "downtime_minutes";
+  | "downtime_minutes"
+  | "rejection_qty"
+  | "scrap_qty_entry";
 type TextFieldKey =
   | "date"
   | "department"
   | "downtime_reason"
   | "materials_used"
   | "quality_details"
+  | "defect_reason_details"
   | "notes";
 type TemplateInputType = "text" | "number" | "boolean" | "textarea" | "select";
 
@@ -148,6 +152,11 @@ function blankDraft(role?: string): EntryDraft {
     materials_used: "",
     quality_issues: false,
     quality_details: "",
+    rejection_qty: null,
+    defect_reason_id: null,
+    defect_reason_details: "",
+    rework_required: false,
+    scrap_qty_entry: null,
     notes: "",
     template_fields: defaultTemplateFields(),
   };
@@ -289,6 +298,7 @@ export default function EntryPage() {
   const [shiftMap, setShiftMap] = useState<Record<string, number>>({});
   const [queueCount, setQueueCount] = useState(0);
   const [attendanceToday, setAttendanceToday] = useState<Awaited<ReturnType<typeof getMyAttendanceToday>> | null>(null);
+  const [defectReasons, setDefectReasons] = useState<DefectReason[]>([]);
   const [showIssues, setShowIssues] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [online, setOnline] = useState(true);
@@ -488,6 +498,10 @@ export default function EntryPage() {
     loadShiftMap(form.date).then(setShiftMap).catch(() => setShiftMap({}));
   }, [form.date, loadShiftMap, user]);
 
+  useEffect(() => {
+    listDefectReasons().then(setDefectReasons).catch(() => setDefectReasons([]));
+  }, []);
+
   const templateSections = useMemo(
     () => templateContext?.template?.sections || [],
     [templateContext],
@@ -590,6 +604,11 @@ export default function EntryPage() {
       materials_used: draft.materials_used || null,
       quality_issues: Boolean(draft.quality_issues),
       quality_details: draft.quality_details || null,
+      rejection_qty: draft.rejection_qty ?? null,
+      defect_reason_id: draft.defect_reason_id ?? null,
+      defect_reason_details: draft.defect_reason_details || null,
+      rework_required: Boolean(draft.rework_required),
+      scrap_qty_entry: draft.scrap_qty_entry ?? null,
       notes: buildTemplateNotes(draft, templateContext) || null,
     }),
     [templateContext, user?.role],
@@ -1174,6 +1193,88 @@ export default function EntryPage() {
                             value={form.quality_details || ""}
                             onChange={updateText("quality_details")}
                             placeholder="Add a short note about the quality issue"
+                          />
+                        </div>
+                      ) : null}
+
+                      {/* ── Phase 1: Structured quality intelligence ─────────── */}
+                      <hr className="border-white/10" />
+                      <div className="text-xs uppercase tracking-caption text-cyan-200">Structured Quality Data</div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <label className="text-sm text-slate-300">Rejection Qty (units)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={1}
+                            inputMode="numeric"
+                            value={form.rejection_qty ?? ""}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                rejection_qty: e.target.value === "" ? null : coerceIntegerInput(e.target.value, 0),
+                              }))
+                            }
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-slate-300">Scrap Qty (units)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={1}
+                            inputMode="numeric"
+                            value={form.scrap_qty_entry ?? ""}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                scrap_qty_entry: e.target.value === "" ? null : coerceIntegerInput(e.target.value, 0),
+                              }))
+                            }
+                            placeholder="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm text-slate-300">Defect Reason</label>
+                          <select
+                            value={form.defect_reason_id ?? ""}
+                            onChange={(e) =>
+                              setForm((prev) => ({
+                                ...prev,
+                                defect_reason_id: e.target.value === "" ? null : Number(e.target.value),
+                              }))
+                            }
+                            className="w-full rounded-[20px] border border-white/10 bg-[#0E1524]/80 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none focus:ring-1 focus:ring-cyan-300/20"
+                          >
+                            <option value="">None</option>
+                            {defectReasons.map((dr) => (
+                              <option key={dr.id} value={dr.id}>
+                                {dr.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="flex items-center gap-3 text-sm">
+                            <input
+                              type="checkbox"
+                              checked={form.rework_required}
+                              onChange={(e) => setForm((prev) => ({ ...prev, rework_required: e.target.checked }))}
+                              className="accent-cyan-400"
+                            />
+                            Rework Required
+                          </label>
+                        </div>
+                      </div>
+                      {form.defect_reason_id ? (
+                        <div>
+                          <label className="text-sm text-slate-300">Defect Details</label>
+                          <Textarea
+                            rows={2}
+                            value={form.defect_reason_details || ""}
+                            onChange={updateText("defect_reason_details")}
+                            placeholder="Optional details about the defect"
                           />
                         </div>
                       ) : null}

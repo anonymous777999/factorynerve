@@ -1,4 +1,4 @@
-"""Helpers for steel inventory trust, batch variance, and owner overview."""
+"""Helpers for steel inventory trust, batch variance, owner overview, inventory intelligence, quality tracking, anomaly detection, and owner dashboard."""
 
 from __future__ import annotations
 
@@ -6,9 +6,12 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 import re
 
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
 from backend.models.factory import Factory
+from backend.models.steel_customer import SteelCustomer
+from backend.models.steel_customer_payment import SteelCustomerPayment
 from backend.models.steel_dispatch import SteelDispatch
 from backend.models.steel_dispatch_line import SteelDispatchLine
 from backend.models.steel_inventory_item import SteelInventoryItem
@@ -73,15 +76,35 @@ def normalize_transaction_type(value: str | None) -> str:
 
 
 def stock_balances_for_factory(db: Session, factory_id: str) -> dict[int, float]:
-    balances: dict[int, float] = defaultdict(float)
     rows = (
-        db.query(SteelInventoryTransaction.item_id, SteelInventoryTransaction.quantity_kg)
+        db.query(
+            SteelInventoryTransaction.item_id,
+            func.sum(SteelInventoryTransaction.quantity_kg).label("balance"),
+        )
         .filter(SteelInventoryTransaction.factory_id == factory_id)
+        .group_by(SteelInventoryTransaction.item_id)
         .all()
     )
-    for item_id, quantity_kg in rows:
-        balances[int(item_id)] += float(quantity_kg or 0.0)
-    return dict(balances)
+    return {int(row.item_id): float(row.balance or 0.0) for row in rows}
+
+
+def locked_stock_balance_for_item(db: Session, factory_id: str, item_id: int) -> float:
+    """Return the current stock balance for a single item with a pessimistic row lock.
+
+    Uses ``SELECT ... FOR UPDATE`` to prevent concurrent transactions from reading
+    a stale balance (race condition).  Call within a transaction before any
+    write that depends on an accurate balance.
+    """
+    rows = (
+        db.query(SteelInventoryTransaction.quantity_kg)
+        .filter(
+            SteelInventoryTransaction.factory_id == factory_id,
+            SteelInventoryTransaction.item_id == item_id,
+        )
+        .with_for_update()
+        .all()
+    )
+    return sum(float(row[0] or 0.0) for row in rows)
 
 
 def latest_reconciliations_for_factory(db: Session, factory_id: str) -> dict[int, SteelStockReconciliation]:
@@ -303,6 +326,9 @@ def serialize_stock_row(
         "base_unit": item.base_unit,
         "display_unit": item.display_unit,
         "current_rate_per_kg": item.current_rate_per_kg if can_view_financials else None,
+        "reorder_point_kg": item.reorder_point_kg,
+        "safety_stock_kg": item.safety_stock_kg,
+        "lead_time_days": item.lead_time_days,
         "stock_balance_kg": round(float(balance_kg or 0.0), 3),
         "stock_balance_ton": round(float(balance_kg or 0.0) / 1000.0, 3),
         "confidence_status": confidence_status,
@@ -375,6 +401,10 @@ def serialize_batch(
         "profit_per_kg_inr": round(profit_per_kg_inr, 2) if can_view_financials else None,
         "anomaly_score": round(anomaly_score, 2),
         "variance_reason": variance_reason(severity, variance_percent),
+        "rejection_qty_kg": round(float(batch.rejection_qty_kg or 0.0), 3) if batch.rejection_qty_kg is not None else None,
+        "scrap_qty_kg": round(float(batch.scrap_qty_kg or 0.0), 3) if batch.scrap_qty_kg is not None else None,
+        "line_id": batch.line_id,
+        "machine_id": batch.machine_id,
         "status": batch.status,
         "notes": batch.notes,
         "created_at": created_at.isoformat(),

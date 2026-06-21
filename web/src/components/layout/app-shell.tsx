@@ -160,7 +160,7 @@ const navSections: NavSection[] = [
         href: "/steel/inventory",
         description: "Live stock balance, material master, and yard control",
         industryTypes: ["steel"],
-        match: (pathname) => pathname === "/steel/inventory" || (pathname.startsWith("/steel/inventory") && !pathname.includes("/transactions")),
+        match: (pathname) => pathname === "/steel/inventory" || (pathname.startsWith("/steel/inventory") && !pathname.includes("/transactions") && !pathname.includes("/intelligence")),
       },
       {
         label: "Inventory Transactions",
@@ -177,6 +177,13 @@ const navSections: NavSection[] = [
         match: (pathname) => pathname === "/steel/production/record" || pathname.startsWith("/steel/production/record"),
       },
       {
+        label: "Machines",
+        href: "/steel/production/machines",
+        description: "Machine registry, downtime tracking, maintenance scheduling, and OEE readiness",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/production/machines" || pathname.startsWith("/steel/production/machines"),
+      },
+      {
         label: "Steel Batches",
         href: "/steel/batches",
         description: "Traceability list for production batches and output signals",
@@ -189,6 +196,69 @@ const navSections: NavSection[] = [
         description: "Chart-first board for stock, production, dispatch, and revenue movement",
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/charts" || pathname.startsWith("/steel/charts/"),
+      },
+      {
+        label: "Inventory Intelligence",
+        href: "/steel/inventory-intelligence",
+        description: "Low-stock alerts, dead stock detection, and turnover analysis",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/inventory-intelligence" || pathname.startsWith("/steel/inventory-intelligence/"),
+      },
+      {
+        label: "Production Intelligence",
+        href: "/steel/production-intelligence",
+        description: "Shift throughput, batch quality, and operator performance",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/production-intelligence" || pathname.startsWith("/steel/production-intelligence/"),
+      },
+      {
+        label: "Machine Alerts",
+        href: "/steel/machine-alerts",
+        description: "Filterable machine health alerts: low MTBF, overdue maintenance, and upcoming tasks",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/machine-alerts" || pathname.startsWith("/steel/machine-alerts/"),
+      },
+      {
+        label: "Quality Tracking",
+        href: "/steel/quality",
+        description: "Batch quality score, severity distribution, and operator performance",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/quality" || pathname.startsWith("/steel/quality/"),
+      },
+      {
+        label: "Anomaly Detection",
+        href: "/steel/anomalies",
+        description: "Financial, inventory, and dispatch fraud anomaly alerts",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/anomalies" || pathname.startsWith("/steel/anomalies/"),
+      },
+      {
+        label: "Sales Intelligence",
+        href: "/steel/sales-intelligence",
+        description: "Sales trends, customer analytics, and fulfillment funnel",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/sales-intelligence" || pathname.startsWith("/steel/sales-intelligence/"),
+      },
+      {
+        label: "Financial Intelligence",
+        href: "/steel/financial-intelligence",
+        description: "Revenue, margins, receivables, payables, and expenses",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/financial-intelligence" || pathname.startsWith("/steel/financial-intelligence/"),
+      },
+      {
+        label: "Vendors",
+        href: "/steel/vendors",
+        description: "Vendor master, bills, and accounts payable",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/vendors" || pathname.startsWith("/steel/vendors/"),
+      },
+      {
+        label: "Expenses",
+        href: "/steel/expenses",
+        description: "Operational expenses and cost tracking",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/expenses" || pathname.startsWith("/steel/expenses/"),
       },
       {
         label: "Customers",
@@ -291,6 +361,12 @@ const navSections: NavSection[] = [
         href: "/email-summary",
         description: "Automated summaries for managers and owners",
         match: (pathname) => pathname === "/email-summary" || pathname.startsWith("/email-summary/"),
+      },
+      {
+        label: "Workforce Intelligence",
+        href: "/workforce",
+        description: "Attendance KPIs, worker rankings, shift comparison, and labour cost analytics",
+        match: (pathname) => pathname === "/workforce" || pathname.startsWith("/workforce/"),
       },
       {
         label: "AI Insights",
@@ -457,6 +533,46 @@ const ITEM_TRANSLATION_KEY: Record<string, { label: string; description: string 
     label: "nav.steel_charts.label",
     description: "nav.steel_charts.description",
   },
+  "/steel/inventory-intelligence": {
+    label: "nav.steel_inventory_intelligence.label",
+    description: "nav.steel_inventory_intelligence.description",
+  },
+  "/steel/production/machines": {
+    label: "nav.steel_machines.label",
+    description: "nav.steel_machines.description",
+  },
+  "/steel/production-intelligence": {
+    label: "nav.steel_production_intelligence.label",
+    description: "nav.steel_production_intelligence.description",
+  },
+  "/steel/machine-alerts": {
+    label: "nav.steel_machine_alerts.label",
+    description: "nav.steel_machine_alerts.description",
+  },
+  "/steel/quality": {
+    label: "nav.steel_quality.label",
+    description: "nav.steel_quality.description",
+  },
+  "/steel/anomalies": {
+    label: "nav.steel_anomalies.label",
+    description: "nav.steel_anomalies.description",
+  },
+  "/steel/sales-intelligence": {
+    label: "nav.steel_sales_intelligence.label",
+    description: "nav.steel_sales_intelligence.description",
+  },
+  "/steel/financial-intelligence": {
+    label: "nav.steel_financial_intelligence.label",
+    description: "nav.steel_financial_intelligence.description",
+  },
+  "/steel/vendors": {
+    label: "nav.steel_vendors.label",
+    description: "nav.steel_vendors.description",
+  },
+  "/steel/expenses": {
+    label: "nav.steel_expenses.label",
+    description: "nav.steel_expenses.description",
+  },
   "/steel/customers": {
     label: "nav.customers.label",
     description: "nav.customers.description",
@@ -512,6 +628,10 @@ const ITEM_TRANSLATION_KEY: Record<string, { label: string; description: string 
   "/email-summary": {
     label: "nav.scheduled_updates.label",
     description: "nav.scheduled_updates.description",
+  },
+  "/workforce": {
+    label: "nav.workforce_intelligence.label",
+    description: "nav.workforce_intelligence.description",
   },
   "/ai": {
     label: "nav.ai_insights.label",
@@ -708,8 +828,28 @@ function getNavIconName(href: string): NavIconName {
       return "docs";
     case "/steel":
       return "steel";
+    case "/steel/production/machines":
+      return "steel";
     case "/steel/charts":
       return "performance";
+    case "/steel/inventory-intelligence":
+      return "stock";
+    case "/steel/production-intelligence":
+      return "performance";
+    case "/steel/quality":
+      return "performance";
+    case "/steel/anomalies":
+      return "owner";
+    case "/steel/machine-alerts":
+      return "performance";
+    case "/steel/sales-intelligence":
+      return "performance";
+    case "/steel/financial-intelligence":
+      return "performance";
+    case "/steel/vendors":
+      return "customers";
+    case "/steel/expenses":
+      return "billing";
     case "/steel/customers":
       return "customers";
     case "/steel/invoices":
@@ -736,6 +876,8 @@ function getNavIconName(href: string): NavIconName {
       return "network";
     case "/email-summary":
       return "updates";
+    case "/workforce":
+      return "performance";
     case "/ai":
       return "ai";
     case "/settings":

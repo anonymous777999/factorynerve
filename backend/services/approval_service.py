@@ -76,6 +76,22 @@ HIGH_VALUE_THRESHOLD_KG = 5000.0
 HIGH_VARIANCE_THRESHOLD_PERCENT = 5.0
 
 # Workflow → TTL mapping (in hours)
+
+def _env_int(key: str, default: int) -> int:
+    import os as _os
+    raw = _os.getenv(key)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+# Purge threshold: instances whose terminal state was reached more than this
+# many days ago are eligible for hard-deletion from the table.
+_OLD_INSTANCE_RETENTION_DAYS: int = _env_int("APPROVAL_RETENTION_DAYS", 90)
+
 WORKFLOW_TTL_HOURS: dict[str, int] = {
     "production.entry.approve": 72,
     "production.entry.delete": 72,
@@ -118,6 +134,8 @@ AUTO_REJECT_WORKFLOWS: set[str] = {
     "billing.plan.downgrade",
     "billing.plan.change",
 }
+
+
 
 
 class ApprovalPattern(str, Enum):
@@ -502,6 +520,7 @@ class ApprovalService:
         instance = (
             db.query(ApprovalInstance)
             .filter(ApprovalInstance.instance_id == instance_id)
+            .with_for_update()
             .first()
         )
         if instance is None:
@@ -509,10 +528,13 @@ class ApprovalService:
 
         instance.status = outcome or "completed"
         instance.completed_at = datetime.now(timezone.utc)
+        # Commit state change BEFORE firing callback so callback failures
+        # don't roll back the completion (Bug #39 fix).
+        db.commit()
         # Fire the completion callback (Phase P3) so registered business logic
         # runs even for bypassed IP-2 workflows.
         self._fire_callback(db, instance)
-        db.flush()
+        db.commit()
 
     def advance_approval(
         self,
@@ -540,6 +562,7 @@ class ApprovalService:
         instance = (
             db.query(ApprovalInstance)
             .filter(ApprovalInstance.instance_id == instance_id)
+            .with_for_update()
             .first()
         )
         if instance is None:
@@ -583,10 +606,13 @@ class ApprovalService:
             instance.rejected_by_user_id = actor_user_id
             instance.rejection_reason = reason
             instance.completed_at = datetime.now(timezone.utc)
-            db.flush()
-            # Fire completion callback (Phase P3)
+            # Commit state change BEFORE firing callback so that a failure in the
+            # callback (or a subsequent IntegrityError) does not roll back the
+            # approval state transition (Bug #39 fix).
+            db.commit()
+            # Fire completion callback (Phase P3) in a separate transaction so
+            # callback side effects survive if the callback itself fails.
             self._fire_callback(db, instance)
-            # Commit to persist the callback business logic (status updates, audit logs, etc.)
             db.commit()
             return ApprovalDecision(
                 result="approved",  # Rejection completes the workflow
@@ -600,10 +626,13 @@ class ApprovalService:
             instance.status = "approved"
             instance.approved_by_user_id = actor_user_id
             instance.completed_at = datetime.now(timezone.utc)
-            db.flush()
-            # Fire completion callback (Phase P3)
+            # Commit state change BEFORE firing callback so that a failure in the
+            # callback (or a subsequent IntegrityError) does not roll back the
+            # approval state transition (Bug #39 fix).
+            db.commit()
+            # Fire completion callback (Phase P3) in a separate transaction so
+            # callback side effects survive if the callback itself fails.
             self._fire_callback(db, instance)
-            # Commit to persist the callback business logic (status updates, audit logs, etc.)
             db.commit()
             return ApprovalDecision(
                 result="approved",
@@ -647,6 +676,8 @@ class ApprovalService:
         self,
         db: Session,
         user_id: int,
+        *,
+        org_id: str | None = None,
     ) -> list[dict[str, Any]]:
         """List pending approval instances visible to a user.
 
@@ -657,24 +688,24 @@ class ApprovalService:
         Args:
             db: Active database session.
             user_id: The user ID to find pending instances for.
+            org_id: Optional org scope filter (Bug #48) to prevent
+                cross-org exposure for platform admins.
 
         Returns:
             List of instance dicts, newest first.
         """
         now = datetime.now(timezone.utc)
-        rows = (
-            db.query(ApprovalInstance)
-            .filter(
-                ApprovalInstance.status.in_(["pending_l1", "pending_l2"]),
-                ApprovalInstance.actor_user_id != user_id,
-                or_(
-                    ApprovalInstance.expires_at.is_(None),
-                    ApprovalInstance.expires_at > now,
-                ),
-            )
-            .order_by(ApprovalInstance.created_at.desc())
-            .all()
+        query = db.query(ApprovalInstance).filter(
+            ApprovalInstance.status.in_(["pending_l1", "pending_l2"]),
+            ApprovalInstance.actor_user_id != user_id,
+            or_(
+                ApprovalInstance.expires_at.is_(None),
+                ApprovalInstance.expires_at > now,
+            ),
         )
+        if org_id:
+            query = query.filter(ApprovalInstance.org_id == org_id)
+        rows = query.order_by(ApprovalInstance.created_at.desc()).all()
         return [row.to_dict() for row in rows]
 
     def list_pending_for_org(
@@ -765,14 +796,58 @@ class ApprovalService:
             updated += 1
 
         if updated:
-            db.flush()
-            # Fire callbacks for terminal-state instances
+            # Commit state changes BEFORE firing callbacks so callback failures
+            # don't roll back the expiry transitions (Bug #39 fix).
+            db.commit()
+            # Fire callbacks for terminal-state instances in a separate transaction
             for instance in terminal_instances:
                 self._fire_callback(db, instance)
-            # Commit to persist both status changes and callback business logic
+            # Commit callback side effects
             db.commit()
 
         return updated
+
+    def purge_old_instances(
+        self,
+        db: Session,
+        *,
+        retention_days: int | None = None,
+    ) -> int:
+        """Hard-delete completed approval instances older than the retention period.
+
+        Prevents unbounded table bloat from expired, abandoned, or completed
+        instances that are no longer needed for audit purposes.
+
+        Args:
+            db: Active database session.
+            retention_days: Override the default retention period.
+
+        Returns:
+            Number of instances deleted.
+        """
+        cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days or _OLD_INSTANCE_RETENTION_DAYS)
+        rows = (
+            db.query(ApprovalInstance)
+            .filter(
+                ApprovalInstance.status.in_(["abandoned", "escalated", "rejected", "completed", "no_approval_required"]),
+                ApprovalInstance.completed_at.isnot(None),
+                ApprovalInstance.completed_at < cutoff,
+            )
+            .all()
+        )
+        if not rows:
+            return 0
+        ids = [row.id for row in rows]
+        deleted = (
+            db.query(ApprovalInstance)
+            .filter(ApprovalInstance.id.in_(ids))
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        if deleted:
+            logger = __import__("logging").getLogger(__name__)
+            logger.info("Purged %d old approval instances (retention=%d days).", deleted, retention_days or _OLD_INSTANCE_RETENTION_DAYS)
+        return deleted
 
     # ── Internal Helpers ──────────────────────────────────────────────────
 
@@ -825,7 +900,10 @@ class ApprovalService:
         )
         db.add(instance)
         db.flush()
-        # Commit pending instances immediately so they survive the router's early return
+        # Commit pending instances immediately so they survive the router's early return.
+        # IMPORTANT: Any audit log added to *this* session before initiate_approval()
+        # will also be committed here. To avoid phantom audit logs, router handlers
+        # should write audit logs AFTER the call to initiate_approval() — never before.
         if status in ("pending_l1", "pending_l2"):
             db.commit()
         return instance

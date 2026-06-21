@@ -40,12 +40,14 @@ type SettingsShellProps = {
   activeTab: SettingsTabKey;
   canManageAlerts: boolean;
   canManageFeedback: boolean;
+  canManageDefectReasons: boolean;
   tabLabels: {
     factory: string;
     users: string;
     usage: string;
     alerts: string;
     feedback: string;
+    defectReasons: string;
   };
   onTabChange: (tab: SettingsTabKey) => void;
   children: ReactNode;
@@ -63,6 +65,7 @@ export function SettingsShell({
   activeTab,
   canManageAlerts,
   canManageFeedback,
+  canManageDefectReasons,
   tabLabels,
   onTabChange,
   children,
@@ -141,6 +144,7 @@ export function SettingsShell({
             activeTab={activeTab}
             canManageAlerts={canManageAlerts}
             canManageFeedback={canManageFeedback}
+            canManageDefectReasons={canManageDefectReasons}
             labels={tabLabels}
             onTabChange={onTabChange}
           />

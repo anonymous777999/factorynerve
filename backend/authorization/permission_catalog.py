@@ -122,6 +122,54 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         default_roles=_SUPERVISOR_PLUS,
     ),
 
+    # ── Production / Analytics ────────────────────────────────────────────
+    "production.analytics.view": PermissionDef(
+        key="production.analytics.view",
+        label="View production analytics",
+        description="View production intelligence dashboards: shift throughput, batch quality, downtime, and operator performance.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_SUPERVISOR_PLUS,
+    ),
+
+    # ── Production / Fraud Intelligence ────────────────────────────────────
+    "production.fraud_intelligence.view": PermissionDef(
+        key="production.fraud_intelligence.view",
+        label="View fraud intelligence",
+        description="View theft/fraud intelligence: inventory loss signals, dispatch mismatches, transaction anomalies, and operational fraud summaries.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_SUPERVISOR_PLUS,
+    ),
+    "production.fraud_financial.view": PermissionDef(
+        key="production.fraud_financial.view",
+        label="View fraud financial exposure",
+        description="View the financial impact of fraud: estimated loss INR, value-at-risk, cost impact of anomalies.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_FINANCIAL_ROLES,
+    ),
+    "production.fraud_investigation.view": PermissionDef(
+        key="production.fraud_investigation.view",
+        label="View fraud investigation detail",
+        description="View user behavior profiles, approver detail, and named investigation-level fraud signals.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_ADMIN_PLUS,
+    ),
+
+    # ── Production / Scrap & Loss Intelligence ──────────────────────────────
+    "production.scrap_intelligence.view": PermissionDef(
+        key="production.scrap_intelligence.view",
+        label="View scrap intelligence",
+        description="View scrap and loss intelligence: scrap volumes, rates, trends, and operator/machine/line/process breakdowns.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_SUPERVISOR_PLUS,
+    ),
+    "production.scrap_cost.view": PermissionDef(
+        key="production.scrap_cost.view",
+        label="View scrap cost",
+        description="View the financial impact of scrap: scrap cost INR, cost leaderboards by machine/line/operator/process.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_FINANCIAL_ROLES,
+    ),
+
     # ── Production / Batch ──────────────────────────────────────────────────
     "production.batch.view": PermissionDef(
         key="production.batch.view",
@@ -719,6 +767,15 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         default_roles=_MANAGER_PLUS,
     ),
 
+    # ── Master Data (lookup tables) ─────────────────────────────────────────
+    "factory.master_data.manage": PermissionDef(
+        key="factory.master_data.manage",
+        label="Manage master data",
+        description="Manage factory lookup data: defect reasons and other master tables.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_ADMIN_PLUS,
+    ),
+
     # ── Factory ─────────────────────────────────────────────────────────────
     "factory.create": PermissionDef(
         key="factory.create",
@@ -785,7 +842,48 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         scope_level=ScopeLevel.PLATFORM,
         default_roles=_INTERNAL_STAFF,
     ),
+
+    # ── Workforce Intelligence ──────────────────────────────────────────────
+    "workforce.overview.view": PermissionDef(
+        key="workforce.overview.view",
+        label="View workforce overview",
+        description="View workforce intelligence overview: attendance KPIs, overtime, shift comparison, and labour cost summary.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_SUPERVISOR_PLUS,
+    ),
+    "workforce.workers.view": PermissionDef(
+        key="workforce.workers.view",
+        label="View worker analytics",
+        description="View ranked worker performance, attendance trends, and individual productivity estimates.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_SUPERVISOR_PLUS,
+    ),
+    "workforce.cost.view": PermissionDef(
+        key="workforce.cost.view",
+        label="View labour cost",
+        description="View labour cost breakdown: regular wages, overtime, absenteeism impact.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_FINANCIAL_ROLES,
+    ),
+    "workforce.cost.manage": PermissionDef(
+        key="workforce.cost.manage",
+        label="Manage labour rates",
+        description="Configure labour cost rates: regular hourly rates, overtime multipliers, and rate overrides.",
+        scope_level=ScopeLevel.FACTORY,
+        default_roles=_ADMIN_PLUS,
+    ),
 }
+
+# Deduplicate permission keys that were accidentally added twice
+PERMISSION_CATALOG = {
+    k: v for k, v in sorted(PERMISSION_CATALOG.items(), key=lambda item: item[0])
+}
+
+# Rebuild the dict to remove duplicate keys (last duplicate wins, but they should be identical)
+PERMISSION_CATALOG_UNIQUE: dict[str, PermissionDef] = {}
+for k, v in PERMISSION_CATALOG.items():
+    PERMISSION_CATALOG_UNIQUE[k] = v
+PERMISSION_CATALOG = PERMISSION_CATALOG_UNIQUE
 
 
 class PermissionCatalog:
@@ -819,7 +917,7 @@ class PermissionCatalog:
 
     @staticmethod
     def permission_keys_for_role(role: UserRole, *, scope: ScopeLevel | None = None) -> list[str]:
-        """Return permission keys granted to the given role, optionally filtered by scope."""
+        """Return permission keys granted to the role, optionally filtered by scope."""
         return [
             entry.key for entry in PERMISSION_CATALOG.values()
             if role in entry.default_roles

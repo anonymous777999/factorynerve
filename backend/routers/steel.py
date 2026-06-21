@@ -159,6 +159,8 @@ class SteelBatchCreateRequest(BaseModel):
     input_quantity_kg: float = Field(gt=0)
     expected_output_kg: float = Field(gt=0)
     actual_output_kg: float = Field(gt=0)
+    scrap_qty_kg: float | None = Field(default=None, ge=0)
+    rejection_qty_kg: float | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=500)
 
     @field_validator("batch_code")
@@ -4511,6 +4513,8 @@ def create_steel_batch(
         actual_output_kg=float(payload.actual_output_kg),
         loss_kg=loss_kg,
         loss_percent=loss_percent,
+        scrap_qty_kg=payload.scrap_qty_kg,
+        rejection_qty_kg=payload.rejection_qty_kg,
         variance_kg=variance_kg,
         variance_percent=variance_percent,
         variance_value_inr=variance_value_inr,
@@ -4569,3 +4573,394 @@ def create_steel_batch(
             can_view_financials=_can_view_steel_financials(current_user),
         )
     }
+
+
+# ── Machine Update Endpoints ─────────────────────────────────────────────
+
+
+class SteelMachineUpdateRequest(BaseModel):
+    line_id: int | None = Field(default=None)
+    machine_code: str | None = Field(default=None, min_length=1, max_length=24)
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    machine_type: str | None = Field(default=None, max_length=60)
+    description: str | None = Field(default=None, max_length=300)
+    rated_capacity_per_hour: float | None = Field(default=None, ge=0)
+    planned_runtime_minutes: float | None = Field(default=None, ge=0)
+    operating_runtime_minutes: float | None = Field(default=None, ge=0)
+
+
+@router.patch("/production/machines/{machine_id}")
+def update_steel_machine(
+    machine_id: int,
+    payload: SteelMachineUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+
+    machine = (
+        db.query(SteelMachine)
+        .filter(
+            SteelMachine.id == machine_id,
+            SteelMachine.factory_id == factory.factory_id,
+        )
+        .first()
+    )
+    if not machine:
+        raise HTTPException(status_code=404, detail="Machine not found.")
+
+    if payload.line_id is not None:
+        machine.line_id = payload.line_id
+    if payload.machine_code is not None:
+        machine.machine_code = payload.machine_code
+    if payload.name is not None:
+        machine.name = payload.name
+    if payload.machine_type is not None:
+        machine.machine_type = payload.machine_type
+    if payload.description is not None:
+        machine.description = payload.description
+    if payload.rated_capacity_per_hour is not None:
+        machine.rated_capacity_per_hour = payload.rated_capacity_per_hour
+    if payload.planned_runtime_minutes is not None:
+        machine.planned_runtime_minutes = payload.planned_runtime_minutes
+    if payload.operating_runtime_minutes is not None:
+        machine.operating_runtime_minutes = payload.operating_runtime_minutes
+
+    db.flush()
+    db.commit()
+    db.refresh(machine)
+
+    return {
+        "machine": {
+            "id": machine.id,
+            "line_id": machine.line_id,
+            "machine_code": machine.machine_code,
+            "name": machine.name,
+            "machine_type": machine.machine_type,
+            "description": machine.description,
+            "rated_capacity_per_hour": machine.rated_capacity_per_hour,
+            "planned_runtime_minutes": machine.planned_runtime_minutes,
+            "operating_runtime_minutes": machine.operating_runtime_minutes,
+            "is_active": machine.is_active,
+        }
+    }
+
+
+@router.delete("/production/machines/{machine_id}")
+def delete_steel_machine(
+    machine_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+
+    machine = (
+        db.query(SteelMachine)
+        .filter(
+            SteelMachine.id == machine_id,
+            SteelMachine.factory_id == factory.factory_id,
+        )
+        .first()
+    )
+    if not machine:
+        raise HTTPException(status_code=404, detail="Machine not found.")
+
+    machine.is_active = False
+    db.flush()
+    db.commit()
+    return {"message": "Machine deactivated."}
+
+
+# ── Downtime Event Update/Delete ─────────────────────────────────────────
+
+
+class SteelDowntimeEventUpdateRequest(BaseModel):
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    duration_minutes: float | None = Field(default=None, ge=0)
+    reason_category: str | None = Field(default=None, max_length=60)
+    reason_detail: str | None = Field(default=None, max_length=500)
+    shift: str | None = Field(default=None, max_length=16)
+    operator_user_id: int | None = None
+    notes: str | None = None
+
+
+@router.patch("/production/machines/downtime-events/{event_id}")
+def update_steel_downtime_event(
+    event_id: int,
+    payload: SteelDowntimeEventUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+
+    from backend.services.steel_machine_intelligence import update_downtime_event as _update_event
+    result = _update_event(
+        db,
+        event_id=event_id,
+        factory_id=factory.factory_id,
+        started_at=payload.started_at,
+        ended_at=payload.ended_at,
+        duration_minutes=payload.duration_minutes,
+        reason_category=payload.reason_category,
+        reason_detail=payload.reason_detail,
+        shift=payload.shift,
+        operator_user_id=payload.operator_user_id,
+        notes=payload.notes,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Downtime event not found.")
+    db.commit()
+    return {"event": result}
+
+
+@router.delete("/production/machines/downtime-events/{event_id}")
+def delete_steel_downtime_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+
+    from backend.services.steel_machine_intelligence import delete_downtime_event as _delete_event
+    deleted = _delete_event(db, event_id=event_id, factory_id=factory.factory_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Downtime event not found.")
+    db.commit()
+    return {"message": "Downtime event deleted."}
+
+
+# ── Maintenance Task Update/Delete ────────────────────────────────────────
+
+
+class SteelMaintenanceTaskUpdateRequest(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = None
+    maintenance_type: str | None = Field(default=None, max_length=20)
+    priority: str | None = Field(default=None, max_length=12)
+    scheduled_date: datetime | None = None
+    assigned_to_user_id: int | None = None
+    notes: str | None = None
+
+
+@router.patch("/production/machines/maintenance-tasks/{task_id}")
+def update_steel_maintenance_task(
+    task_id: int,
+    payload: SteelMaintenanceTaskUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+
+    from backend.services.steel_machine_intelligence import update_maintenance_task as _update_task
+    result = _update_task(
+        db,
+        task_id=task_id,
+        factory_id=factory.factory_id,
+        title=payload.title,
+        description=payload.description,
+        maintenance_type=payload.maintenance_type,
+        priority=payload.priority,
+        scheduled_date=payload.scheduled_date,
+        assigned_to_user_id=payload.assigned_to_user_id,
+        notes=payload.notes,
+    )
+    if result is None:
+        raise HTTPException(status_code=404, detail="Maintenance task not found.")
+    db.commit()
+    return {"task": result}
+
+
+@router.delete("/production/machines/maintenance-tasks/{task_id}")
+def delete_steel_maintenance_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+
+    from backend.services.steel_machine_intelligence import delete_maintenance_task as _delete_task
+    deleted = _delete_task(db, task_id=task_id, factory_id=factory.factory_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Maintenance task not found.")
+    db.commit()
+    return {"message": "Maintenance task deleted."}
+
+
+# ── Machine Analytics Endpoint ──────────────────────────────────────────────
+
+
+@router.get("/production/machines/{machine_id}/analytics")
+def get_steel_machine_analytics(
+    machine_id: int,
+    days: int = Query(default=90, ge=7, le=365),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+
+    from backend.services.steel_machine_analytics import build_machine_analytics
+    result = build_machine_analytics(
+        db,
+        factory_id=factory.factory_id,
+        machine_id=machine_id,
+        days=days,
+    )
+    return result
+
+
+# ── Machine Alerts Endpoint ───────────────────────────────────────────────────
+
+
+class MachineAlertResponse(BaseModel):
+    machine_id: int
+    machine_code: str
+    machine_name: str
+    machine_type: str | None = None
+    alert_type: str
+    severity: str
+    message: str
+    mtbf_hours: float | None = None
+    failure_count: int = 0
+    overdue_count: int = 0
+    downtime_minutes: float = 0.0
+
+
+class ListMachineAlertsResponse(BaseModel):
+    items: list[MachineAlertResponse]
+    total: int
+    filter_severity: str | None = None
+    filter_type: str | None = None
+
+
+@router.get("/production/machine-alerts", response_model=ListMachineAlertsResponse)
+def list_machine_alerts(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    severity: str | None = Query(default=None, description="Filter by severity: critical, high, warning"),
+    alert_type: str | None = Query(default=None, description="Filter by type: mtbf_low, overdue_maintenance, maintenance_due_soon"),
+    limit: int = Query(default=50, le=200),
+    offset: int = Query(default=0, ge=0),
+):
+    """Return a flat, filterable, sortable list of all machine alerts."""
+    organization = getattr(current_user, "organization", None)
+    org_id = getattr(organization, "id", None) or getattr(current_user, "org_id", None)
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organization context required.")
+
+    # Resolve factory
+    from backend.routers.steel import require_active_steel_factory
+    factory = require_active_steel_factory(db, current_user)
+    factory_id = factory.factory_id
+
+    # Check PDP permission
+    from backend.authorization import PDP, ResourceContext
+    pdp = PDP()
+    context = ResourceContext(
+        org_id=org_id,
+        factory_id=factory_id,
+        resource_type="steel",
+        action="production.machine_intelligence.view",
+    )
+    if not pdp.is_allowed(current_user, context):
+        raise HTTPException(status_code=403, detail="Permission denied: production.machine_intelligence.view")
+
+    # Build intelligence and flatten alerts
+    from backend.services.steel_machine_intelligence import build_machine_intelligence, MTBF_THRESHOLD_HOURS
+    intelligence = build_machine_intelligence(db, factory_id, days=30)
+
+    raw_alerts: list[dict] = []
+    for mach in intelligence.get("machines", []):
+        for alert in mach.get("alerts", []):
+            raw_alerts.append({
+                "machine_id": mach["machine_id"],
+                "machine_code": mach["machine_code"],
+                "machine_name": mach["machine_name"],
+                "machine_type": mach.get("machine_type"),
+                "alert_type": alert["type"],
+                "severity": alert["severity"],
+                "message": alert["message"],
+                "mtbf_hours": mach.get("mtbf_hours"),
+                "failure_count": mach.get("failure_count", 0),
+                "overdue_count": mach.get("overdue_maintenance_count", 0),
+                "downtime_minutes": mach.get("downtime_minutes", 0.0),
+            })
+
+    # Apply filters
+    if severity:
+        raw_alerts = [a for a in raw_alerts if a["severity"] == severity]
+    if alert_type:
+        raw_alerts = [a for a in raw_alerts if a["alert_type"] == alert_type]
+
+    # Sort: critical first, then high, then warning, then by machine name
+    severity_rank = {"critical": 0, "high": 1, "warning": 2}
+    raw_alerts.sort(key=lambda a: (severity_rank.get(a["severity"], 99), a["machine_name"]))
+
+    total = len(raw_alerts)
+    paged = raw_alerts[offset:offset + limit]
+
+    return ListMachineAlertsResponse(
+        items=[MachineAlertResponse(**a) for a in paged],
+        total=total,
+        filter_severity=severity,
+        filter_type=alert_type,
+    )

@@ -18,6 +18,7 @@ export { default as ReportInsightsBoard } from "./report-insights-board";
 export { default as ReportsPage } from "./reports-page";
 export { default as SettingsAlertsTab } from "./settings-alerts-tab";
 export { default as SettingsAttendancePage } from "./settings-attendance-page";
+export { default as SettingsDefectReasonsTab } from "./settings-defect-reasons-tab";
 export { SettingsFactoryTab } from "./settings-factory-tab";
 export { default as SettingsFeedbackTab } from "./settings-feedback-tab";
 export { default as SettingsPage } from "./settings-page";

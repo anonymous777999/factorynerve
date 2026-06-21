@@ -26,11 +26,25 @@ export { SteelInvoiceDetailPage } from "./steel-invoice-detail-page";
 export { SteelInvoicesPage } from "./steel-invoices-page";
 export { SteelProductionRecordPage } from "./steel-production-record-page";
 export { SteelReconciliationsPage } from "./steel-reconciliations-page";
+export { SteelAnomaliesPage } from "./steel-anomalies-page";
+export { SteelInventoryIntelligencePage } from "./steel-inventory-intelligence-page";
+export { SteelQualityPage } from "./steel-quality-page";
+export { SteelSalesIntelligencePage } from "./steel-sales-intelligence-page";
+export { SteelFinancialIntelligencePage } from "./steel-financial-intelligence-page";
+export { SteelFraudIntelligencePage } from "./steel-fraud-intelligence-page";
+export { SteelMachinesPage } from "./steel-machines-page";
+export { SteelProductionLinesPage } from "./steel-production-lines-page";
+export { SteelProductionIntelligencePage } from "./steel-production-intelligence-page";
+export { SteelScrapLossIntelligencePage } from "./steel-scrap-loss-intelligence-page";
+export { SteelVendorsPage } from "./steel-vendors-page";
+export { SteelExpensesPage } from "./steel-expenses-page";
+export { SteelMachineAlertsPage } from "./steel-machine-alerts-page";
 export {
   SteelConfidenceBadge,
   SteelQuickActionRow,
   SteelStatusStrip,
   SteelTopPriorityCard,
 } from "./steel-summary-primitives";
+export { WorkforceIntelligencePage } from "../workforce/workforce-intelligence-page";
 export { default as WorkQueuePage } from "./work-queue-page";
 export { WorkflowReminderStrip } from "./workflow-reminder-strip";

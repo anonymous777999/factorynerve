@@ -53,6 +53,30 @@ def webhook_ip_key(request: Request) -> str:
     return extract_client_ip(request)
 
 
+# Environment-variable-backed rate limits, resolved per-request so that
+# configuration changes take effect without a server restart.
+_ENV_LIMIT_CACHE: dict[str, str] = {}
+_ENV_LIMIT_LOCK = threading.Lock()
+
+
+def resolve_rate_limit(env_var: str, default: str) -> str:
+    """Read a rate-limit string from an env var, cached per var name."""
+    with _ENV_LIMIT_LOCK:
+        cached = _ENV_LIMIT_CACHE.get(env_var)
+        if cached is not None:
+            return cached
+        import os as _os
+        value = (_os.getenv(env_var) or default).strip()
+        _ENV_LIMIT_CACHE[env_var] = value
+        return value
+
+
+def invalidate_rate_limit_cache() -> None:
+    """Force re-read of env vars on next resolve_rate_limit call."""
+    with _ENV_LIMIT_LOCK:
+        _ENV_LIMIT_CACHE.clear()
+
+
 limiter = Limiter(key_func=authenticated_user_key, headers_enabled=True) if Limiter else None
 
 

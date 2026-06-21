@@ -63,14 +63,28 @@ import backend.models.steel_dispatch_line  # noqa: F401
 import backend.models.steel_inventory_item  # noqa: F401
 import backend.models.steel_inventory_transaction  # noqa: F401
 import backend.models.steel_production_batch  # noqa: F401
+import backend.models.steel_production_line  # noqa: F401
+import backend.models.steel_machine  # noqa: F401
 import backend.models.steel_sales_invoice  # noqa: F401
 import backend.models.steel_sales_invoice_line  # noqa: F401
 import backend.models.steel_stock_reconciliation  # noqa: F401
+import backend.models.steel_machine_downtime_event  # noqa: F401
+import backend.models.steel_maintenance_task  # noqa: F401
+import backend.models.steel_vendor  # noqa: F401
+import backend.models.steel_vendor_bill  # noqa: F401
+import backend.models.steel_vendor_bill_line  # noqa: F401
+import backend.models.steel_vendor_payment  # noqa: F401
+import backend.models.steel_vendor_payment_allocation  # noqa: F401
+import backend.models.steel_expense  # noqa: F401
+import backend.models.steel_cash_account  # noqa: F401
+import backend.models.steel_cash_ledger_entry  # noqa: F401
 import backend.models.auth_audit_log  # noqa: F401
 import backend.models.auth_password_reset  # noqa: F401
 import backend.models.auth_session  # noqa: F401
 import backend.models.auth_user  # noqa: F401
 import backend.models.approval_instance  # noqa: F401
+import backend.models.workforce_cost_rate  # noqa: F401
+import backend.models.defect_reason  # noqa: F401
 
 config = context.config
 

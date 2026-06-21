@@ -2,9 +2,10 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
-
 from backend.models.user import UserRole
 from backend.routers import settings as settings_router
+from backend.authorization import PDP
+from backend.services.approval_service import approval_service, ApprovalDecision
 
 
 class QueryStub:
@@ -30,13 +31,18 @@ class DbStub:
         self.committed = True
 
 
+
 def invoke_update(monkeypatch, *, actor_role, target_role, new_role):
     actor = SimpleNamespace(id=1, role=actor_role)
     target = SimpleNamespace(id=2, role=target_role, role_revision=0, user_code=2001, name="Target")
     memberships = [SimpleNamespace(role=target_role)]
     db = DbStub(memberships)
 
-    monkeypatch.setattr(settings_router, "require_role", lambda current_user, role: None)
+    # Monkeypatch PDP.require_permission (replaces old settings_router.require_role)
+    monkeypatch.setattr(PDP, "require_permission", lambda self, **kwargs: None)
+    # Monkeypatch ApprovalService to skip workflow (return no_approval_required)
+    monkeypatch.setattr(approval_service, "initiate_approval", lambda *args, **kwargs: ApprovalDecision(result="no_approval_required", instance_id=None))
+    monkeypatch.setattr(approval_service, "complete_approval", lambda *args, **kwargs: None)
     monkeypatch.setattr(settings_router, "resolve_org_id", lambda current_user: "org-1")
     monkeypatch.setattr(settings_router, "resolve_factory_id", lambda db, current_user: "factory-1")
     monkeypatch.setattr(

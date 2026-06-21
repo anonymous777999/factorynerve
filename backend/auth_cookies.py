@@ -18,7 +18,6 @@ CSRF_HEADER = os.getenv("JWT_CSRF_HEADER", "X-CSRF-Token")
 
 COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Lax")
 COOKIE_DOMAIN = os.getenv("JWT_COOKIE_DOMAIN") or None
-COOKIE_PATH = os.getenv("JWT_COOKIE_PATH", "/")
 
 REFRESH_TOKEN_DAYS = int(os.getenv("REFRESH_TOKEN_DAYS", "30"))
 
@@ -49,7 +48,7 @@ def _cookie_kwargs(
         "httponly": httponly,
         "secure": _should_use_secure_cookie(request),
         "samesite": COOKIE_SAMESITE,
-        "path": COOKIE_PATH,
+        "path": "/",
     }
     if COOKIE_DOMAIN:
         payload["domain"] = COOKIE_DOMAIN
@@ -127,9 +126,9 @@ def set_auth_cookies(
 
 
 def clear_auth_cookies(*, response) -> None:
-    response.delete_cookie(ACCESS_COOKIE, path=COOKIE_PATH, domain=COOKIE_DOMAIN)
-    response.delete_cookie(REFRESH_COOKIE, path=COOKIE_PATH, domain=COOKIE_DOMAIN)
-    response.delete_cookie(CSRF_COOKIE, path=COOKIE_PATH, domain=COOKIE_DOMAIN)
+    response.delete_cookie(ACCESS_COOKIE, path="/", domain=COOKIE_DOMAIN)
+    response.delete_cookie(REFRESH_COOKIE, path="/", domain=COOKIE_DOMAIN)
+    response.delete_cookie(CSRF_COOKIE, path="/", domain=COOKIE_DOMAIN)
 
 
 def get_access_cookie(request: Request) -> str | None:

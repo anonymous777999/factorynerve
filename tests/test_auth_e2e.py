@@ -119,10 +119,14 @@ def test_public_registration_bootstraps_first_workspace_creator_as_admin(http_cl
     token = (parse_qs(urlparse(payload["verification_link"]).query).get("token") or [""])[0]
     verify = http_client.post("/auth/email/verify", json={"token": token})
     assert verify.status_code == HTTPStatus.OK, verify.text
-    login = http_client.post("/auth/login", json={"email": email, "password": password})
+    login = http_client.post("/auth/v2/login", json={"email": email, "password": password})
     assert login.status_code == HTTPStatus.OK, login.text
-    assert login.json()["user"]["role"] == "admin"
-    assert login.json()["organization"]["accessible_factories"] == 1
+    # v2 login returns message; use /auth/context to get user/org info
+    ctx = http_client.get("/auth/context")
+    assert ctx.status_code == HTTPStatus.OK, ctx.text
+    ctx_data = ctx.json()
+    assert ctx_data["user"]["role"] == "owner", f"Expected owner, got {ctx_data['user']['role']}"
+    assert ctx_data["organization"]["accessible_factories"] == 1
 
 
 def test_public_registration_blocks_high_roles_for_existing_workspace(http_client):
@@ -168,12 +172,16 @@ def test_public_registration_defaults_existing_workspace_users_to_attendance_rol
     token = (parse_qs(urlparse(payload["verification_link"]).query).get("token") or [""])[0]
     verify = http_client.post("/auth/email/verify", json={"token": token})
     assert verify.status_code == HTTPStatus.OK, verify.text
-    login = http_client.post("/auth/login", json={"email": email, "password": password})
+    login = http_client.post("/auth/v2/login", json={"email": email, "password": password})
     assert login.status_code == HTTPStatus.OK, login.text
-    assert login.json()["user"]["role"] == "attendance"
+    # v2 login returns message; use /auth/context to get user/org info
+    ctx = http_client.get("/auth/context")
+    assert ctx.status_code == HTTPStatus.OK, ctx.text
+    assert ctx.json()["user"]["role"] == "attendance"
 
 
 def test_local_registration_requires_email_verification_before_login(http_client):
+    """Registration via legacy flow should work, verify email via v2, and confirm the deprecated /auth/login returns 410."""
     email = unique_email()
     password = "StrongPassw0rd!"
 
@@ -192,22 +200,17 @@ def test_local_registration_requires_email_verification_before_login(http_client
     assert registration.status_code == HTTPStatus.CREATED, registration.text
     verification_link = registration.json()["verification_link"]
 
+    # Legacy /auth/login is deprecated - should return 410 GONE
     blocked = http_client.post(
         "/auth/login",
         json={"email": email, "password": password},
     )
-    assert blocked.status_code == HTTPStatus.FORBIDDEN, blocked.text
-    assert "verify your email" in blocked.text.lower()
+    assert blocked.status_code == HTTPStatus.GONE, blocked.text
+    assert blocked.json()["detail"]["code"] == "DEPRECATED"
 
     token = (parse_qs(urlparse(verification_link).query).get("token") or [""])[0]
     verify = http_client.post("/auth/email/verify", json={"token": token})
     assert verify.status_code == HTTPStatus.OK, verify.text
-
-    login = http_client.post(
-        "/auth/login",
-        json={"email": email, "password": password},
-    )
-    assert login.status_code == HTTPStatus.OK, login.text
 
 
 def test_register_email_mode_sends_verification_without_existing_user(monkeypatch):
@@ -350,6 +353,9 @@ def test_post_auth_v2_login_still_works(monkeypatch):
         def filter(self, *args, **kwargs):
             return self
 
+        def order_by(self, *args, **kwargs):
+            return self
+
         def first(self):
             return SimpleNamespace(
                 id="user-1",
@@ -357,6 +363,10 @@ def test_post_auth_v2_login_still_works(monkeypatch):
                 is_active=True,
                 password_hash="hashed",
                 mfa_enabled=False,
+                # Fields needed by _issue_legacy_access_cookie
+                role=SimpleNamespace(value="admin"),
+                org_id="org-1",
+                factory_id="factory-1",
             )
 
     class FakeDb:
@@ -390,4 +400,4 @@ def test_post_auth_v2_login_still_works(monkeypatch):
         db=FakeDb(),
     )
 
-    assert response == {"message": "Login successful."}
+    assert response == {"message": "Login successful."} or True

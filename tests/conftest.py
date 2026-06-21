@@ -27,26 +27,26 @@ else:
     _TEST_DATABASE_URL = f"sqlite:///{_TEST_DB_PATH.as_posix()}"
 
 os.environ["DATABASE_URL"] = _TEST_DATABASE_URL
-os.environ.setdefault("GROQ_API_KEY", "test")
-os.environ.setdefault("ANTHROPIC_API_KEY", "test")
-os.environ.setdefault("GEMINI_API_KEY", "test")
-os.environ.setdefault("AI_PROVIDER", "groq")
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
-os.environ.setdefault("JWT_EXPIRE_HOURS", "24")
-os.environ.setdefault("APP_NAME", "DPR.ai")
-os.environ.setdefault("LOG_LEVEL", "INFO")
-os.environ.setdefault("DATA_ENCRYPTION_KEY", Fernet.generate_key().decode("utf-8"))
-os.environ.setdefault("AI_PROVIDER_TIMEOUT_SECONDS", "1")
-os.environ.setdefault("AI_PROVIDER_RETRY_ATTEMPTS", "1")
-os.environ.setdefault("AI_PROVIDER_RETRY_BACKOFF_SECONDS", "0")
+os.environ["GROQ_API_KEY"] = "test"
+os.environ["ANTHROPIC_API_KEY"] = "test"
+os.environ["GEMINI_API_KEY"] = "test"
+os.environ["AI_PROVIDER"] = "groq"
+os.environ["JWT_SECRET_KEY"] = "test-secret"
+os.environ["JWT_EXPIRE_HOURS"] = "24"
+os.environ["APP_NAME"] = "DPR.ai"
+os.environ["LOG_LEVEL"] = "INFO"
+os.environ["DATA_ENCRYPTION_KEY"] = Fernet.generate_key().decode("utf-8")
+os.environ["AI_PROVIDER_TIMEOUT_SECONDS"] = "1"
+os.environ["AI_PROVIDER_RETRY_ATTEMPTS"] = "1"
+os.environ["AI_PROVIDER_RETRY_BACKOFF_SECONDS"] = "0"
 # Force high rate limits for tests — setdefault won't work if shell has lower values
 os.environ["RATE_LIMIT_MAX_REQUESTS"] = "100000"
 os.environ["RATE_LIMIT_WINDOW_SECONDS"] = "1"
 os.environ["AUTH_RATE_LIMIT_MAX_ATTEMPTS"] = "100000"
 os.environ["OCR_RATE_LIMIT_MAX_REQUESTS"] = "100000"
-os.environ.setdefault("EMAIL_VERIFICATION_EXPOSE_LINK", "1")
-os.environ.setdefault("PASSWORD_RESET_EXPOSE_LINK", "1")
-os.environ.setdefault("SMTP_DRY_RUN", "1")
+os.environ["EMAIL_VERIFICATION_EXPOSE_LINK"] = "1"
+os.environ["PASSWORD_RESET_EXPOSE_LINK"] = "1"
+os.environ["SMTP_DRY_RUN"] = "1"
 
 from backend.database import init_db
 

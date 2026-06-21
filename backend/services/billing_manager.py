@@ -16,7 +16,7 @@ from backend.models.report import AuditLog
 from backend.models.subscription import Subscription
 from backend.models.user import User
 from backend.models.user_plan import UserPlan
-from backend.plans import get_addon, normalize_addon_quantities, normalize_plan
+from backend.plans import get_addon, normalize_addon_quantities, normalize_plan, plan_rank, MIN_ZERO_COST_PLAN
 from backend.services.billing_logger import log_billing_event
 from backend.services.plan_resolver import get_effective_plan
 from backend.tenancy import resolve_factory_id, resolve_org_id
@@ -198,7 +198,52 @@ def detect_orphaned_subscriptions(db: Session) -> list[int]:
             orphaned_ids.append(int(row[0]))
         else:
             orphaned_ids.append(int(getattr(row, "id", row)))
+    # Also find subscriptions whose org_id references a deleted org
+    # (these may not have a User join match if user_id is None).
+    extra_rows = (
+        db.query(Subscription.id)
+        .outerjoin(Organization, Organization.org_id == Subscription.org_id)
+        .filter(Organization.org_id.is_(None))
+        .all()
+    )
+    for row in extra_rows:
+        sid = int(row[0]) if isinstance(row, tuple) else int(getattr(row, "id", row))
+        if sid not in orphaned_ids:
+            orphaned_ids.append(sid)
     return orphaned_ids
+
+
+def cleanup_orphaned_subscriptions(db: Session) -> int:
+    """Mark subscriptions for which the parent org no longer exists as cancelled.
+
+    Returns the number of subscriptions cleaned up.
+    """
+    orphaned_ids = detect_orphaned_subscriptions(db)
+    if not orphaned_ids:
+        return 0
+    now = datetime.now(timezone.utc)
+    count = (
+        db.query(Subscription)
+        .filter(Subscription.id.in_(orphaned_ids), Subscription.status.in_(["active", "trialing", "past_due", "suspended"]))
+        .update(
+            {
+                "status": "cancelled",
+                "updated_at": now,
+            },
+            synchronize_session=False,
+        )
+    )
+    db.commit()
+    if count:
+        logger.warning("Cleaned up %d orphaned subscriptions after org deletion", count)
+        log_billing_event(
+            "subscription.cleanup",
+            None,
+            "success",
+            cleaned_up_count=count,
+            orphaned_ids=orphaned_ids,
+        )
+    return count
 
 
 def apply_plan_change(
@@ -211,7 +256,21 @@ def apply_plan_change(
     current_period_end_at: datetime | None = None,
     audit_details: str | None = None,
     audit_action: str = "PLAN_UPDATED",
+    skip_min_plan_check: bool = False,
 ) -> None:
+    # Prevent downgrade below zero-cost plan unless explicitly allowed
+    if not skip_min_plan_check:
+        resolved_org_id = _resolve_subscription_org_id(db, org_id=org_id, user_id=user_id)
+        current_sub = get_canonical_subscription(db, resolved_org_id)
+        if current_sub is not None:
+            current_rank = plan_rank(current_sub.plan)
+            new_rank = plan_rank(normalize_plan(plan))
+            if new_rank < current_rank:
+                min_rank = plan_rank(MIN_ZERO_COST_PLAN)
+                if new_rank < min_rank:
+                    raise ValueError(
+                        f"Cannot downgrade below the minimum plan ({MIN_ZERO_COST_PLAN})."
+                    )
     normalized = normalize_plan(plan)
     if not normalized:
         return

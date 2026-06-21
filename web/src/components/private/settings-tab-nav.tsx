@@ -3,18 +3,20 @@
 import { Button } from "@/components/ui/button";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 
-export type SettingsTabKey = "factory" | "users" | "usage" | "alerts" | "feedback";
+export type SettingsTabKey = "factory" | "users" | "usage" | "alerts" | "feedback" | "defect-reasons";
 
 type SettingsTabNavProps = {
   activeTab: SettingsTabKey;
   canManageAlerts: boolean;
   canManageFeedback: boolean;
+  canManageDefectReasons: boolean;
   labels: {
     factory: string;
     users: string;
     usage: string;
     alerts: string;
     feedback: string;
+    defectReasons: string;
   };
   onTabChange: (tab: SettingsTabKey) => void;
 };
@@ -23,6 +25,7 @@ export function SettingsTabNav({
   activeTab,
   canManageAlerts,
   canManageFeedback,
+  canManageDefectReasons,
   labels,
   onTabChange,
 }: SettingsTabNavProps) {
@@ -70,6 +73,15 @@ export function SettingsTabNav({
             onClick={() => onTabChange("feedback")}
           >
             {labels.feedback}
+          </Button>
+        ) : null}
+        {canManageDefectReasons ? (
+          <Button
+            className="whitespace-nowrap"
+            variant={activeTab === "defect-reasons" ? "primary" : "outline"}
+            onClick={() => onTabChange("defect-reasons")}
+          >
+            {labels.defectReasons}
           </Button>
         ) : null}
       </div>

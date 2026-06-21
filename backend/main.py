@@ -44,6 +44,10 @@ from backend.routers.admin_billing import router as admin_billing_router
 from backend.routers.admin_ai import router as admin_ai_router
 from backend.routers.premium import router as premium_router
 from backend.routers.steel import router as steel_router
+from backend.routers.steel_intelligence import router as steel_intelligence_router
+from backend.routers.steel_finance import router as steel_finance_router
+from backend.routers.coil_theft import router as coil_theft_router
+from backend.routers.workforce_intelligence import router as workforce_intelligence_router
 from backend.utils import get_config, setup_logging
 from backend.metrics import (
     record_exception,
@@ -176,6 +180,9 @@ app.include_router(admin_billing_router)
 app.include_router(admin_ai_router)
 app.include_router(premium_router, prefix="/premium")
 app.include_router(steel_router, prefix="/steel")
+app.include_router(steel_intelligence_router, prefix="/steel")
+app.include_router(steel_finance_router, prefix="/steel")
+app.include_router(workforce_intelligence_router, prefix="/intelligence")
 
 apply_security(app)
 apply_response_envelope(app)

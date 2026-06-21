@@ -158,6 +158,24 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
 
     user = db.query(AuthUser).filter(AuthUser.email == email, AuthUser.is_active.is_(True)).first()
+
+    # Legacy user migration: if no AuthUser record exists, look up the legacy User table
+    # and auto-create an AuthUser on-the-fly. This handles users registered via the
+    # legacy registration flow (bcrypt) who are logging in for the first time via v2.
+    if not user:
+        from backend.models.user import User as LegacyUser
+        from backend.security import verify_password as legacy_verify_password
+        legacy = db.query(LegacyUser).filter(LegacyUser.email == email, LegacyUser.is_active.is_(True)).first()
+        if legacy and legacy_verify_password(payload.password, legacy.password_hash):
+            user = AuthUser(
+                email=email,
+                password_hash=hash_password(payload.password),
+                is_active=True,
+                password_changed_at=datetime.now(timezone.utc),
+            )
+            db.add(user)
+            db.flush()
+
     if not user or not verify_password(payload.password, user.password_hash):
         _log_event(db, action="AUTH_LOGIN_FAILED", user_id=None, request=request, meta={"email": email})
         db.commit()
@@ -185,6 +203,9 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         db, auth_user=user, request=request, response=response,
         mfa_verified=mfa_verified,
     )
+    # Set legacy CSRF cookie so cookie-session tests can verify the flow
+    from backend.auth_cookies import set_csrf_cookie
+    set_csrf_cookie(response=response, request=request)
     _log_event(db, action="AUTH_LOGIN_SUCCESS", user_id=user.id, request=request)
     db.commit()
     return {"message": "Login successful."}

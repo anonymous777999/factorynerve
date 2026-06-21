@@ -271,7 +271,19 @@ def init_db() -> None:
         import backend.models.steel_inventory_item  # noqa: F401
         import backend.models.steel_inventory_transaction  # noqa: F401
         import backend.models.steel_stock_reconciliation  # noqa: F401
+        import backend.models.steel_machine_downtime_event  # noqa: F401
+        import backend.models.steel_maintenance_task  # noqa: F401
+        import backend.models.steel_vendor  # noqa: F401
+        import backend.models.steel_vendor_bill  # noqa: F401
+        import backend.models.steel_vendor_bill_line  # noqa: F401
+        import backend.models.steel_vendor_payment  # noqa: F401
+        import backend.models.steel_vendor_payment_allocation  # noqa: F401
+        import backend.models.steel_expense  # noqa: F401
+        import backend.models.steel_cash_account  # noqa: F401
+        import backend.models.steel_cash_ledger_entry  # noqa: F401
         import backend.models.steel_production_batch  # noqa: F401
+        import backend.models.steel_production_line  # noqa: F401
+        import backend.models.steel_machine  # noqa: F401
         import backend.models.steel_sales_invoice  # noqa: F401
         import backend.models.steel_sales_invoice_line  # noqa: F401
         import backend.models.steel_customer  # noqa: F401
@@ -294,6 +306,8 @@ def init_db() -> None:
         import backend.models.phone_verification  # noqa: F401
         import backend.models.feedback  # noqa: F401
         import backend.models.approval_instance  # noqa: F401
+        import backend.models.workforce_cost_rate  # noqa: F401
+        import backend.models.defect_reason  # noqa: F401
 
         # Create tables and indexes.  Skip ``create_all`` on second+
         # call to avoid SQLite index-already-exists errors (a known
@@ -713,6 +727,9 @@ def _ensure_entry_performance_indexes() -> None:
             )
             conn.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_entries_org_shift_date ON entries (org_id, shift, date)"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_entries_org_date_shift ON entries (org_id, date, shift)"
             )
             conn.commit()
     except Exception:

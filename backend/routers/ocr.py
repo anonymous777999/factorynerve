@@ -63,6 +63,7 @@ from backend.utils import (
     normalize_confidence,
     sanitize_text,
 )
+from backend.ai.prompt_sanitizer import sanitize_prompt_input
 from backend.ocr_limits import check_rate_limit, check_and_record_usage, check_and_record_org_usage, get_org_plan_for_usage
 from backend.plans import has_plan_feature, min_plan_for_feature, org_has_ocr_access
 from backend.services.background_jobs import (
@@ -524,23 +525,25 @@ def _table_preview_title(doc_type_hint: str | None, template: OcrTemplate | None
 
 
 def _flatten_preview_rows(rows: list[list[str]]) -> str | None:
-    parts = [" | ".join(cell for cell in row if cell) for row in rows]
+    parts = ["\t".join(cell for cell in row if cell) for row in rows]
     joined = "\n".join(part for part in parts if part.strip())
     return joined or None
 
 
 def _table_excel_prompt_text(system_prompt: str | None, user_message: str | None) -> str:
     extras: list[str] = []
-    if system_prompt:
-        extras.append(f"Additional caller context: {system_prompt.strip()}")
-    if user_message:
-        extras.append(f"Additional caller request: {user_message.strip()}")
+    safe_system = sanitize_prompt_input(system_prompt, max_length=2000)
+    safe_user = sanitize_prompt_input(user_message, max_length=2000)
+    if safe_system:
+        extras.append(f"Additional caller context: {safe_system}")
+    if safe_user:
+        extras.append(f"Additional caller request: {safe_user}")
     if not extras:
         return _TABLE_EXCEL_PROMPT
     return f"{_TABLE_EXCEL_PROMPT}\n\n" + "\n".join(extras)
 
 
-def _validate_table_excel_json(data: dict | None) -> list[str]:
+def _validate_table_excel_json(data: object | None) -> list[str]:
     if not isinstance(data, dict):
         return ["AI response is not a valid JSON object."]
     
@@ -556,11 +559,17 @@ def _validate_table_excel_json(data: dict | None) -> list[str]:
             errors.append("Table 'headers' is missing or empty.")
         if not isinstance(rows, list):
             errors.append("Table 'rows' is missing.")
-        elif headers:
-            header_len = len(headers)
-            for i, row in enumerate(rows):
-                if not isinstance(row, list) or len(row) != header_len:
-                    errors.append(f"Row {i+1} length mismatch (expected {header_len} columns).")
+        else:
+            # Determine expected column count from headers when available,
+            # otherwise fall back to the first row's length.
+            first_row = next((r for r in rows if isinstance(r, list)), None)
+            expected_len = len(headers) if (isinstance(headers, list) and headers) else (len(first_row) if first_row else 0)
+            if expected_len > 0:
+                for i, row in enumerate(rows):
+                    if not isinstance(row, list):
+                        errors.append(f"Row {i+1} is not a list (expected {expected_len} columns).")
+                    elif len(row) != expected_len:
+                        errors.append(f"Row {i+1} length mismatch (expected {expected_len} columns, got {len(row)}).")
     
     elif extracted_type == "form":
         fields = data.get("fields")
@@ -635,6 +644,9 @@ def _call_table_excel_anthropic(
         if isinstance(image_base64, str)
         else base64.b64encode(image_base64).decode("utf-8")
     )
+    # Sanitise user-provided text to prevent prompt injection
+    safe_user_message = sanitize_prompt_input(user_message, max_length=2000)
+
     explicit_model = _normalize_requested_model(requested_model)
     model_candidates = [selected_model] if explicit_model else _table_excel_model_candidates(selected_model)
     logger.info(
@@ -677,7 +689,7 @@ def _call_table_excel_anthropic(
                         },
                         {
                             "type": "text",
-                            "text": user_message or "Extract the structured data from this image and return ONLY valid JSON.",
+                            "text": safe_user_message or "Extract the structured data from this image and return ONLY valid JSON.",
                         },
                     ],
                 }
@@ -1263,7 +1275,11 @@ def _run_table_preview_pipeline(
     logger.info("[OCR] Flow: upload -> /ocr/logbook -> _run_table_preview_pipeline")
     inspection = _inspect_table_excel_image(image_bytes, content_type=content_type, filename=filename)
     image_quality_score = int(inspection["image_quality_score"])
-    if image_quality_score < 10:
+    # Reject near-empty images to avoid wasteful AI calls. The threshold
+    # matches the table-excel pipeline for consistency. Images smaller than
+    # ~2 KB score 5 (truly invalid) and those under ~20 KB with small
+    # dimensions score 10–20, which are too vague for reliable extraction.
+    if image_quality_score < 30:
         raise _table_excel_error(
             400,
             "Image too vague or low quality to process",
@@ -1770,11 +1786,19 @@ def _get_verification_or_404(db: Session, verification_id: int, current_user: Us
 
 def _verification_export_rows(verification: OcrVerification) -> list[list[str | dict[str, Any]]]:
     rows = verification.reviewed_rows or verification.original_rows or []
-    return _normalize_rows(rows, field_name="verification_export_rows") or []
+    normalized = _normalize_rows(rows, field_name="verification_export_rows") or []
+    # Strip the last column in each row when raw_column_added is True
+    # to prevent the raw OCR column from corrupting export alignment (Bug #36).
+    if verification.raw_column_added and normalized:
+        export_columns = verification.columns or (len(normalized[0]) - 1 if normalized else 0)
+        normalized = [row[:export_columns] for row in normalized]
+    return normalized
 
 
 def _verification_export_headers(verification: OcrVerification, rows: list[list[str | dict[str, Any]]]) -> list[str]:
-    column_count = max((len(row) for row in rows), default=0, )
+    # Use verification.columns as the authoritative count when raw_column_added,
+    # since rows may have been truncated in _verification_export_rows (Bug #36).
+    column_count = verification.columns if verification.raw_column_added and verification.columns else max((len(row) for row in rows), default=0)
     column_count = max(column_count, verification.columns or 0, 1)
     normalized_headers = _normalize_string_list(verification.headers or [], field_name="verification_headers") or []
     if len(normalized_headers) < column_count:

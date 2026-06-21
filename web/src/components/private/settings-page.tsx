@@ -37,6 +37,7 @@ import {
 import { useSession } from "@/lib/use-session";
 import { coerceIntegerInput, digitsOnly } from "@/lib/validation";
 import SettingsAlertsTab from "@/components/private/settings-alerts-tab";
+import SettingsDefectReasonsTab from "@/components/private/settings-defect-reasons-tab";
 import { SettingsFactoryTab } from "@/components/private/settings-factory-tab";
 import SettingsFeedbackTab from "@/components/private/settings-feedback-tab";
 import { SettingsShell } from "@/components/private/settings-shell";
@@ -47,7 +48,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const USER_ROLES = ["attendance", "operator", "supervisor", "accountant", "manager", "admin", "owner"];
-const SETTINGS_TABS: SettingsTabKey[] = ["factory", "users", "usage", "alerts", "feedback"];
+const SETTINGS_TABS: SettingsTabKey[] = ["factory", "users", "usage", "alerts", "feedback", "defect-reasons"];
 
 function emptyFactorySettings(): FactorySettings {
   return {
@@ -91,11 +92,13 @@ function normalizeSettingsTab({
   canManage,
   canManageAlerts,
   canManageFeedback,
+  canManageDefectReasons,
   rawTab,
 }: {
   canManage: boolean;
   canManageAlerts: boolean;
   canManageFeedback: boolean;
+  canManageDefectReasons: boolean;
   rawTab: string | null;
 }): SettingsTabKey {
   const fallback = getDefaultSettingsTab({ canManage, canManageFeedback });
@@ -106,6 +109,9 @@ function normalizeSettingsTab({
     return fallback;
   }
   if (rawTab === "feedback" && !canManageFeedback) {
+    return fallback;
+  }
+  if (rawTab === "defect-reasons" && !canManageDefectReasons) {
     return fallback;
   }
   if ((rawTab === "factory" || rawTab === "users" || rawTab === "usage") && !canManage) {
@@ -158,6 +164,7 @@ export default function SettingsPage() {
   const canViewBilling = user?.role === "admin" || user?.role === "owner";
   const canManageAlerts = user?.role === "admin" || user?.role === "owner";
   const canManageFeedback = user?.is_platform_admin === true;
+  const canManageDefectReasons = user?.role === "admin" || user?.role === "owner";
   const canOpenSettings = canManage || canManageFeedback;
   const requestedTab = searchParams.get("tab");
   const activeTab = useMemo(
@@ -166,9 +173,10 @@ export default function SettingsPage() {
         canManage,
         canManageAlerts,
         canManageFeedback,
+        canManageDefectReasons,
         rawTab: requestedTab,
       }),
-    [canManage, canManageAlerts, canManageFeedback, requestedTab],
+    [canManage, canManageAlerts, canManageDefectReasons, canManageFeedback, requestedTab],
   );
   const assignableRoles = useMemo(
     () =>
@@ -246,13 +254,14 @@ export default function SettingsPage() {
         canManage,
         canManageAlerts,
         canManageFeedback,
+        canManageDefectReasons,
         rawTab: nextTab,
       });
       const params = new URLSearchParams(searchParams.toString());
       params.set("tab", normalizedTab);
       router.push(`${pathname}?${params.toString()}`);
     },
-    [canManage, canManageAlerts, canManageFeedback, pathname, router, searchParams],
+    [canManage, canManageAlerts, canManageDefectReasons, canManageFeedback, pathname, router, searchParams],
   );
 
   useEffect(() => {
@@ -542,12 +551,14 @@ export default function SettingsPage() {
           activeTab={activeTab}
           canManageAlerts={canManageAlerts}
           canManageFeedback={canManageFeedback}
+          canManageDefectReasons={canManageDefectReasons}
           tabLabels={{
             factory: t("settings.tabs.factory", "Factory"),
             users: t("settings.tabs.users", "Users"),
             usage: t("settings.tabs.usage", "Usage"),
             alerts: t("settings.tabs.alerts", "Alerts"),
             feedback: t("settings.tabs.feedback", "Feedback"),
+            defectReasons: t("settings.tabs.defect_reasons", "Defect Reasons"),
           }}
           onTabChange={navigateTab}
         >
@@ -710,6 +721,9 @@ export default function SettingsPage() {
           ) : null}
           {activeTab === "feedback" && canManageFeedback ? (
             <SettingsFeedbackTab active={activeTab === "feedback"} />
+          ) : null}
+          {activeTab === "defect-reasons" && canManageDefectReasons ? (
+            <SettingsDefectReasonsTab active={activeTab === "defect-reasons"} />
           ) : null}
         </SettingsShell>
 

@@ -61,17 +61,52 @@ export type AnomalyResponse = {
   items: AnomalyItem[];
 };
 
+export type ActionItem = {
+  priority: number;
+  action: string;
+  reason: string;
+  estimated_impact_inr?: number | null;
+  deadline?: string | null;
+};
+
 export type NaturalLanguageQueryResponse = {
   question: string;
+  domain: string;
+  language: string;
   plan: string;
   min_plan: string;
   quota_feature: string;
   provider: string;
   ai_used: boolean;
+  degraded?: boolean;
+  is_fallback?: boolean;
   generated_at: string;
   structured_query: Record<string, unknown>;
   answer: string;
   data_points: Array<{ group: string; value: number }>;
+  action_items?: ActionItem[];
+  health_score?: number | null;
+  health_label?: string | null;
+};
+
+export type HealthTrendPoint = {
+  date: string;
+  score: number;
+  label: string;
+  performance: number;
+  downtime_min: number;
+  absenteeism: number;
+  quality_issues: number;
+};
+
+export type HealthTrendResponse = {
+  days: number;
+  current_score: number;
+  current_label: string;
+  trend: HealthTrendPoint[];
+  avg_score: number;
+  min_score: number;
+  max_score: number;
 };
 
 export type ExecutiveSummaryResponse = {
@@ -122,6 +157,10 @@ export async function getAnomalies(days = 14) {
 
 export async function getAnomalyPreview(days = 14) {
   return apiFetch<AnomalyResponse>(`/ai/anomalies/preview?days=${days}`, {}, { cacheTtlMs: 15_000 });
+}
+
+export async function getHealthTrend(days = 14) {
+  return apiFetch<HealthTrendResponse>(`/ai/health-trend?days=${days}`, {}, { cacheTtlMs: 60_000 });
 }
 
 export async function askNaturalLanguageQuery(question: string) {

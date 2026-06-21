@@ -246,7 +246,8 @@ def test_suspended_blocks_all_routes(http_client):
 def test_rate_limit_5_per_minute_on_order_creation(http_client):
     _fallback_hits.clear()
     user = _create_authenticated_user()
-    headers = _headers(str(user["access_token"]))        payload = {"plan": "operator", "billing_cycle": "monthly", "currency": "INR"}
+    headers = _headers(str(user["access_token"]))
+    payload = {"plan": "operator", "billing_cycle": "monthly", "currency": "INR"}
 
     responses = [
         http_client.post("/billing/orders", headers=headers, json=payload)

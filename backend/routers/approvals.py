@@ -23,6 +23,7 @@ from backend.database import get_db
 from backend.models.user import User
 from backend.security import get_current_user
 from backend.services.approval_service import approval_service as APPROVAL_SERVICE
+from backend.tenancy import resolve_org_id
 
 
 router = APIRouter(prefix="/approvals", tags=["Approvals"])
@@ -143,7 +144,8 @@ def get_my_approval_queue(
 
     The frontend caches this response and polls every 30s.
     """
-    all_items = APPROVAL_SERVICE.list_pending_for_user(db, user_id=current_user.id)
+    org_id = resolve_org_id(current_user)
+    all_items = APPROVAL_SERVICE.list_pending_for_user(db, user_id=current_user.id, org_id=org_id)
     total = len(all_items)
 
     # Paginate

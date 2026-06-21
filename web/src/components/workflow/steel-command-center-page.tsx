@@ -14,6 +14,7 @@ import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { buildSteelDashboardData, type IndustrialDashboardData } from "@/lib/industrial-dashboard";
 import { deriveDataConfidence, deriveOverallStatusSummary, deriveSteelTopPriority } from "@/lib/steel-decision";
 import {
+  getSteelFraudAlertsCount,
   getSteelOverview,
   getSteelOwnerDailyPdfUrl,
   listSteelBatches,
@@ -87,6 +88,7 @@ export function SteelCommandCenterPage() {
   const [stock, setStock] = useState<SteelStockItem[]>([]);
   const [batches, setBatches] = useState<SteelBatch[]>([]);
   const [steelDashboardData, setSteelDashboardData] = useState<Partial<Record<"today" | "7d" | "30d", IndustrialDashboardData>> | undefined>(undefined);
+  const [fraudAlertCount, setFraudAlertCount] = useState(0);
   const [pageLoading, setPageLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -128,13 +130,15 @@ export function SteelCommandCenterPage() {
         setSteelDashboardData(undefined);
         setError("");
       } else {
-        const [nextOverview, nextStock, nextBatches, nextInvoices, nextDispatches] = await Promise.all([
+        const [nextOverview, nextStock, nextBatches, nextInvoices, nextDispatches, nextAlertCount] = await Promise.all([
           getSteelOverview(),
           listSteelStock(),
           listSteelBatches(60),
           listSteelInvoices(60),
           listSteelDispatches(60),
+          getSteelFraudAlertsCount().catch(() => ({ active_count: 0 })),
         ]);
+        setFraudAlertCount(nextAlertCount.active_count);
         setOverview(nextOverview);
         setStock(nextStock.items || []);
         setBatches(nextBatches.items || []);
@@ -207,6 +211,12 @@ export function SteelCommandCenterPage() {
     { href: "/steel/inventory", label: "Inventory Desk", variant: "secondary" as const },
     { href: "/steel/invoices", label: "Invoices", variant: "secondary" as const },
     { href: "/steel/dispatches", label: "Dispatches", variant: "secondary" as const },
+    { href: "/steel/inventory-intelligence", label: "Stock Intelligence", variant: "secondary" as const },
+    { href: "/steel/production-intelligence", label: "Production Intelligence", variant: "secondary" as const },
+    { href: "/steel/scrap-loss-intelligence", label: "Scrap & Loss", variant: "secondary" as const },
+    { href: "/steel/quality", label: "Quality", variant: "secondary" as const },
+    { href: "/steel/anomalies", label: "Anomalies", variant: "secondary" as const },
+    { href: "/steel/fraud-intelligence", label: `Fraud Intelligence${fraudAlertCount > 0 ? ` (${fraudAlertCount})` : ""}`, variant: "secondary" as const },
   ];
   const steelHubSections = useMemo(
     () => [

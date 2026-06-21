@@ -44,6 +44,9 @@ def normalize_plan(plan: str | None) -> str:
     return key if key in ALLOWED_PLANS else "pilot"
 
 
+# Minimum zero-cost plan — never allow a manual downgrade below this level.
+MIN_ZERO_COST_PLAN: str = "pilot"
+
 def plan_rank(plan: str | None) -> int:
     return PLAN_ORDER.get(normalize_plan(plan), 0)
 

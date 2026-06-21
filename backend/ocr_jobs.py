@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+import io
 
 from backend.ledger_scan import (
     build_excel_bytes as ledger_build_excel_bytes,
@@ -121,6 +122,35 @@ def _log_job_success(job: OcrJob) -> None:
         db.commit()
 
 
+def _split_pdf_to_single_image(pdf_bytes: bytes) -> bytes:
+    """Convert a multi-page PDF to a single composite image.
+
+    Uses pdf2image when available; falls back to returning the first page.
+    """
+    try:
+        from pdf2image import convert_from_bytes
+        images = convert_from_bytes(pdf_bytes, fmt="jpeg", grayscale=False, size=(2000, None))
+        if len(images) == 1:
+            buf = io.BytesIO()
+            images[0].save(buf, format="JPEG", quality=88)
+            return buf.getvalue()
+        # Stack pages vertically into a single composite image
+        from PIL import Image
+        total_height = sum(img.height for img in images)
+        max_width = max(img.width for img in images)
+        composite = Image.new("RGB", (max_width, total_height), (255, 255, 255))
+        y_offset = 0
+        for img in images:
+            composite.paste(img, (0, y_offset))
+            y_offset += img.height
+        buf = io.BytesIO()
+        composite.save(buf, format="JPEG", quality=88)
+        return buf.getvalue()
+    except ImportError:
+        # pdf2image not available — return first page bytes as-is
+        return pdf_bytes
+
+
 def _process_ledger(job: OcrJob) -> None:
     params = job.params
     image_bytes = _load_bytes(Path(job.input_path)) if job.input_path else b""
@@ -146,6 +176,12 @@ def _process_ledger(job: OcrJob) -> None:
 def _process_table(job: OcrJob) -> None:
     params = job.params
     image_bytes = _load_bytes(Path(job.input_path)) if job.input_path else b""
+    # Multi-page PDF support: check for PDF header and attempt to split pages
+    if image_bytes[:4] == b"%PDF":
+        try:
+            image_bytes = _split_pdf_to_single_image(image_bytes)
+        except Exception:
+            logger.warning("PDF splitting failed; processing as single image (page 1 only).")
     table = table_extract_table_from_image(
         image_bytes,
         system_prompt=params.get("system_prompt"),
