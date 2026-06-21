@@ -337,6 +337,7 @@ def init_db() -> None:
         _ensure_attendance_columns()
         _ensure_phone_and_alerting_columns()
         _ensure_feedback_columns()
+        _ensure_workforce_tables()
         _ensure_billing_schema_columns()
         _verify_messaging_schema_or_raise()
         logger.info("Database initialization complete.")
@@ -1489,6 +1490,64 @@ def _ensure_phone_and_alerting_columns() -> None:
             conn.commit()
     except Exception:
         logger.exception("Failed to ensure phone verification and alerting columns.")
+
+
+def _ensure_workforce_tables() -> None:
+    """Create workforce and master-data tables that may have been missed on first deploy."""
+    try:
+        inspector = inspect(engine)
+        table_names = set(inspector.get_table_names())
+        with engine.connect() as conn:
+            if "workforce_cost_rates" not in table_names:
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE workforce_cost_rates (
+                        id SERIAL PRIMARY KEY,
+                        org_id VARCHAR(36) NOT NULL REFERENCES organizations(org_id),
+                        factory_id VARCHAR(36) NOT NULL REFERENCES factories(factory_id),
+                        user_id INTEGER REFERENCES users(id),
+                        role VARCHAR(32),
+                        department VARCHAR(120),
+                        effective_from DATE NOT NULL,
+                        effective_to DATE,
+                        regular_hourly_rate_inr NUMERIC(10, 2) NOT NULL DEFAULT 0,
+                        overtime_multiplier NUMERIC(4, 2) NOT NULL DEFAULT 1.5,
+                        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                        notes VARCHAR(300),
+                        created_by_user_id INTEGER REFERENCES users(id),
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+                    )
+                    """
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_wc_rates_factory_effective ON workforce_cost_rates (factory_id, effective_from)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_wc_rates_user_effective ON workforce_cost_rates (user_id, effective_from)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_workforce_cost_rates_org_id ON workforce_cost_rates (org_id)"
+                )
+                logger.info("Created missing table: workforce_cost_rates")
+
+            if "defect_reason" not in table_names:
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE defect_reason (
+                        id SERIAL PRIMARY KEY,
+                        code VARCHAR(60) NOT NULL UNIQUE,
+                        label VARCHAR(120) NOT NULL,
+                        description TEXT,
+                        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL
+                    )
+                    """
+                )
+                logger.info("Created missing table: defect_reason")
+            conn.commit()
+    except Exception:
+        logger.exception("Failed to ensure workforce/master-data tables.")
 
 
 def _ensure_feedback_columns() -> None:
