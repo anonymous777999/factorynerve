@@ -1007,6 +1007,32 @@ def _ensure_steel_columns() -> None:
             conn.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_steel_stock_reconciliations_status ON steel_stock_reconciliations (status)"
             )
+
+            # Production batch columns (coil theft detection + Phase 2)
+            batch_columns = {column["name"] for column in inspector.get_columns("steel_production_batches")}
+            if "coil_expected_weight_kg" not in batch_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_production_batches ADD COLUMN coil_expected_weight_kg FLOAT")
+            if "coil_weight_variance_kg" not in batch_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_production_batches ADD COLUMN coil_weight_variance_kg FLOAT")
+            if "coil_weight_variance_percent" not in batch_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_production_batches ADD COLUMN coil_weight_variance_percent FLOAT")
+            if "is_coil_theft_suspected" not in batch_columns:
+                dialect = conn.dialect.name
+                if dialect == "postgresql":
+                    conn.exec_driver_sql("ALTER TABLE steel_production_batches ADD COLUMN is_coil_theft_suspected BOOLEAN NOT NULL DEFAULT FALSE")
+                else:
+                    conn.exec_driver_sql("ALTER TABLE steel_production_batches ADD COLUMN is_coil_theft_suspected BOOLEAN NOT NULL DEFAULT 0")
+            if "rejection_qty_kg" not in batch_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_production_batches ADD COLUMN rejection_qty_kg FLOAT")
+            if "scrap_qty_kg" not in batch_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_production_batches ADD COLUMN scrap_qty_kg FLOAT")
+            if "line_id" not in batch_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_production_batches ADD COLUMN line_id INTEGER")
+            if "machine_id" not in batch_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_production_batches ADD COLUMN machine_id INTEGER")
+            conn.exec_driver_sql(
+                "UPDATE steel_production_batches SET is_coil_theft_suspected = FALSE WHERE is_coil_theft_suspected IS NULL"
+            )
             conn.commit()
     except Exception:
         logger.exception("Failed to ensure steel extension columns.")
