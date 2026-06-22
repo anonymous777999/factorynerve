@@ -174,10 +174,11 @@ def _audit_writes(session: Session, _flush_context: Any, _instances: Any) -> Non
     from backend.models.org_feature_usage import OrgFeatureUsage
     from backend.models.ocr_usage import OcrUsage
     from backend.models.org_ocr_usage import OrgOcrUsage
+    from backend.models.org_whatsapp_usage import OrgWhatsAppUsage
     from backend.models.ops_alert_event import OpsAlertEvent
     from backend.models.refresh_token import RefreshToken
 
-    excluded = (AuditLog, FeatureUsage, OrgFeatureUsage, OcrUsage, OrgOcrUsage, OpsAlertEvent, RefreshToken)
+    excluded = (AuditLog, FeatureUsage, OrgFeatureUsage, OcrUsage, OrgOcrUsage, OrgWhatsAppUsage, OpsAlertEvent, RefreshToken)
     tracked_new = [obj for obj in session.new if not isinstance(obj, excluded)]
     tracked_dirty = [
         obj for obj in session.dirty if session.is_modified(obj) and not isinstance(obj, excluded)
@@ -263,6 +264,7 @@ def init_db() -> None:
         import backend.models.webhook_event  # noqa: F401
         import backend.models.refresh_token  # noqa: F401
         import backend.models.org_ocr_usage  # noqa: F401
+        import backend.models.org_whatsapp_usage  # noqa: F401
         import backend.models.payment_order  # noqa: F401
         import backend.models.intelligence_request  # noqa: F401
         import backend.models.intelligence_stage_usage  # noqa: F401
@@ -415,6 +417,46 @@ def _ensure_billing_schema_columns() -> None:
                     conn.exec_driver_sql("ALTER TABLE org_ocr_usage ADD COLUMN period_end TIMESTAMP")
                 if "ix_org_ocr_usage_org_id" not in org_ocr_indexes:
                     conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_org_ocr_usage_org_id ON org_ocr_usage (org_id)")
+
+            if "org_whatsapp_usage" in inspect(conn).get_table_names():
+                if dialect == "sqlite":
+                    org_wa_columns = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(org_whatsapp_usage)").fetchall()}
+                    org_wa_indexes = {
+                        row[1] for row in conn.exec_driver_sql("PRAGMA index_list('org_whatsapp_usage')").fetchall()
+                    }
+                else:
+                    org_wa_columns = {
+                        str(row[0])
+                        for row in conn.execute(
+                            text(
+                                """
+                                SELECT column_name
+                                FROM information_schema.columns
+                                WHERE table_name = 'org_whatsapp_usage'
+                                """
+                            )
+                        ).fetchall()
+                    }
+                    org_wa_indexes = {
+                        str(row[0])
+                        for row in conn.execute(
+                            text(
+                                """
+                                SELECT indexname
+                                FROM pg_indexes
+                                WHERE tablename = 'org_whatsapp_usage'
+                                """
+                            )
+                        ).fetchall()
+                    }
+                if "message_limit" not in org_wa_columns:
+                    conn.exec_driver_sql("ALTER TABLE org_whatsapp_usage ADD COLUMN message_limit INTEGER NOT NULL DEFAULT 0")
+                if "period_start" not in org_wa_columns:
+                    conn.exec_driver_sql("ALTER TABLE org_whatsapp_usage ADD COLUMN period_start TIMESTAMP")
+                if "period_end" not in org_wa_columns:
+                    conn.exec_driver_sql("ALTER TABLE org_whatsapp_usage ADD COLUMN period_end TIMESTAMP")
+                if "ix_org_whatsapp_usage_org_id" not in org_wa_indexes:
+                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_org_whatsapp_usage_org_id ON org_whatsapp_usage (org_id)")
 
             if "payment_orders" in inspect(conn).get_table_names():
                 if dialect == "sqlite":

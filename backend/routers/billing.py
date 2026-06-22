@@ -354,6 +354,18 @@ def _activate_paid_order(
             period_start=datetime.now(timezone.utc),
             period_end=period_end,
         )
+        # Calculate total WhatsApp message allowance from active packs and reset quota
+        from backend.plans import get_org_whatsapp_message_allowance
+
+        whatsapp_message_limit = get_org_whatsapp_message_allowance(db, org_id=org_id)
+        if whatsapp_message_limit > 0:
+            _reset_org_whatsapp_quota_period(
+                db,
+                org_id=org_id,
+                message_limit=whatsapp_message_limit,
+                period_start=datetime.now(timezone.utc),
+                period_end=period_end,
+            )
     try:
         existing_invoice = None
         if provider_order_id:
@@ -420,6 +432,43 @@ def _reset_org_ocr_quota_period(
             "org_id": org_id,
             "period": period,
             "ocr_limit": ocr_limit,
+            "period_start": period_start,
+            "period_end": period_end,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        },
+    )
+
+
+def _reset_org_whatsapp_quota_period(
+    db: Session,
+    *,
+    org_id: str,
+    message_limit: int,
+    period_start: datetime,
+    period_end: datetime,
+) -> None:
+    """Create or reset the WhatsApp usage quota row for an org after a pack purchase."""
+    period = period_start.strftime("%Y-%m")
+    timestamp = datetime.now(timezone.utc)
+    db.execute(
+        text(
+            """
+            INSERT INTO org_whatsapp_usage(org_id, period, message_limit, message_count, period_start, period_end, created_at, updated_at)
+            VALUES (:org_id, :period, :message_limit, 0, :period_start, :period_end, :created_at, :updated_at)
+            ON CONFLICT (org_id, period) DO UPDATE
+              SET message_count = 0,
+                  period = EXCLUDED.period,
+                  period_start = EXCLUDED.period_start,
+                  period_end = EXCLUDED.period_end,
+                  message_limit = EXCLUDED.message_limit,
+                  updated_at = EXCLUDED.updated_at
+            """
+        ),
+        {
+            "org_id": org_id,
+            "period": period,
+            "message_limit": message_limit,
             "period_start": period_start,
             "period_end": period_end,
             "created_at": timestamp,

@@ -12,10 +12,12 @@ from sqlalchemy.orm import Session
 
 from backend.models.feature_usage import FeatureUsage
 from backend.models.ocr_usage import OcrUsage
-from backend.models.org_feature_usage import OrgFeatureUsage
 from backend.models.org_ocr_usage import OrgOcrUsage
+from backend.models.org_whatsapp_usage import OrgWhatsAppUsage
 from backend.models.report import AuditLog
 from backend.models.user import User
+from backend.models.ops_alert_event import OpsAlertEvent
+from backend.models.org_feature_usage import OrgFeatureUsage
 
 
 SUMMARY_ACTIONS = {"ENTRY_SUMMARY_GENERATED", "ENTRY_SUMMARY_REGENERATED"}
@@ -27,6 +29,7 @@ OCR_ACTIONS = {
     "OCR_LEDGER_EXCEL_ASYNC",
     "OCR_TABLE_EXCEL_ASYNC",
 }
+WHATSAPP_DELIVERY_STATUSES = {"dispatching", "dispatched", "delivered", "read"}
 
 
 def _period_key(now: datetime | None = None) -> str:
@@ -387,6 +390,85 @@ def _apply_org_ocr_usage(
     return {"updated": changes, "created": created, "total": len(existing_map) + created}
 
 
+def _count_whatsapp_by_org(
+    db: Session,
+    start: datetime,
+    end: datetime,
+) -> tuple[dict[str, int], dict[str, datetime]]:
+    """Count WhatsApp messages sent per org from OpsAlertEvent within a date range."""
+    counts: dict[str, int] = {}
+    last_seen: dict[str, datetime] = {}
+    rows = (
+        db.query(
+            OpsAlertEvent.org_id,
+            func.count(OpsAlertEvent.id),
+            func.max(OpsAlertEvent.created_at),
+        )
+        .filter(
+            OpsAlertEvent.delivery_status.in_(WHATSAPP_DELIVERY_STATUSES),
+            OpsAlertEvent.created_at >= start,
+            OpsAlertEvent.created_at < end,
+            OpsAlertEvent.org_id.isnot(None),
+        )
+        .group_by(OpsAlertEvent.org_id)
+        .all()
+    )
+    for org_id, total, last in rows:
+        if not org_id:
+            continue
+        org_key = str(org_id)
+        counts[org_key] = int(total or 0)
+        if last:
+            last_seen[org_key] = last
+    return counts, last_seen
+
+
+def _apply_org_whatsapp_usage(
+    db: Session,
+    *,
+    period: str,
+    counts: dict[str, int],
+    last_seen: dict[str, datetime],
+    allow_decrease: bool,
+    dry_run: bool,
+) -> dict[str, Any]:
+    """Apply WhatsApp message counts to OrgWhatsAppUsage rows for reconciliation."""
+    changes = 0
+    created = 0
+    existing = db.query(OrgWhatsAppUsage).filter(OrgWhatsAppUsage.period == period).all()
+    existing_map = {row.org_id: row for row in existing}
+    for org_id, new_count in counts.items():
+        row = existing_map.get(org_id)
+        if row:
+            final_count = new_count if allow_decrease else max(row.message_count, new_count)
+            if row.message_count != final_count:
+                changes += 1
+                if not dry_run:
+                    row.message_count = final_count
+                    row.last_request_at = last_seen.get(org_id)
+            elif last_seen.get(org_id) and not dry_run:
+                row.last_request_at = last_seen.get(org_id)
+        else:
+            created += 1
+            if not dry_run:
+                db.add(
+                    OrgWhatsAppUsage(
+                        org_id=org_id,
+                        period=period,
+                        message_count=new_count,
+                        last_request_at=last_seen.get(org_id),
+                    )
+                )
+    if allow_decrease:
+        for org_id, row in existing_map.items():
+            if org_id not in counts and row.message_count != 0:
+                changes += 1
+                if not dry_run:
+                    row.message_count = 0
+                    row.last_request_at = None
+    return {"updated": changes, "created": created, "total": len(existing_map) + created}
+
+
 def reconcile_usage(
     db: Session,
     *,
@@ -525,6 +607,9 @@ def seed_org_usage_from_user_usage(
     summary_counts, summary_last = _aggregate_feature_usage_by_org(db, period=target_period, feature="summary")
     email_counts, email_last = _aggregate_feature_usage_by_org(db, period=target_period, feature="email")
     smart_counts, smart_last = _aggregate_feature_usage_by_org(db, period=target_period, feature="smart")
+    start, end = _period_bounds(target_period)
+    whatsapp_counts, whatsapp_last = _count_whatsapp_by_org(db, start, end)
+
     ocr_counts, ocr_credits, ocr_last = _aggregate_ocr_usage_by_org(db, period=target_period)
 
     results = {
@@ -534,6 +619,7 @@ def seed_org_usage_from_user_usage(
         "source": "user_usage",
         "features": {},
         "ocr": {},
+        "whatsapp": {},
     }
 
     results["features"]["summary"] = _apply_org_feature_usage(
@@ -569,6 +655,14 @@ def seed_org_usage_from_user_usage(
         requests=ocr_counts,
         credits=ocr_credits,
         last_seen=ocr_last,
+        allow_decrease=allow_decrease,
+        dry_run=dry_run,
+    )
+    results["whatsapp"] = _apply_org_whatsapp_usage(
+        db,
+        period=target_period,
+        counts=whatsapp_counts,
+        last_seen=whatsapp_last,
         allow_decrease=allow_decrease,
         dry_run=dry_run,
     )
@@ -601,6 +695,7 @@ def reconcile_org_usage(
     email_counts, email_last = _count_actions_by_org(db, EMAIL_ACTIONS, start, end)
     smart_counts, smart_last = _count_actions_by_org(db, SMART_ACTIONS, start, end)
     ocr_counts, ocr_credits, ocr_last = _count_ocr_by_org(db, start, end)
+    whatsapp_counts, whatsapp_last = _count_whatsapp_by_org(db, start, end)
 
     results = {
         "period": target_period,
@@ -609,6 +704,7 @@ def reconcile_org_usage(
         "source": "audit_logs",
         "features": {},
         "ocr": {},
+        "whatsapp": {},
     }
 
     results["features"]["summary"] = _apply_org_feature_usage(
@@ -644,6 +740,14 @@ def reconcile_org_usage(
         requests=ocr_counts,
         credits=ocr_credits,
         last_seen=ocr_last,
+        allow_decrease=allow_decrease,
+        dry_run=dry_run,
+    )
+    results["whatsapp"] = _apply_org_whatsapp_usage(
+        db,
+        period=target_period,
+        counts=whatsapp_counts,
+        last_seen=whatsapp_last,
         allow_decrease=allow_decrease,
         dry_run=dry_run,
     )

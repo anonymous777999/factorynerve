@@ -14,6 +14,9 @@ from typing import Any
 
 import httpx
 
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
 from backend.database import SessionLocal
 from backend.models.ops_alert_event import OpsAlertEvent
 from backend.phone_utils import mask_phone_number, normalize_phone_e164
@@ -84,6 +87,56 @@ def sender_provider_name() -> str:
     if mode == "meta":
         return _META_PROVIDER_NAME
     return mode
+
+
+def _refund_whatsapp_quota_if_needed(org_id: str | int | None) -> None:
+    """Helper to conditionally refund WhatsApp quota if org_id is set."""
+    if org_id is not None:
+        with SessionLocal() as quota_db:
+            refund_whatsapp_usage(quota_db, org_id=str(org_id))
+
+
+def check_and_record_whatsapp_usage(db: Session, *, org_id: str) -> bool:
+    """Atomically check and increment WhatsApp message quota for an org.
+
+    Returns True if the message was allowed (quota available), False if quota exhausted.
+    This is a standalone function designed to be called from background threads
+    (dispatcher workers), not from FastAPI request handlers.
+    Uses NOW() for timestamps to stay consistent with the DB server clock.
+    """
+    result = db.execute(
+        text(
+            """
+            UPDATE org_whatsapp_usage
+            SET message_count = message_count + 1,
+                last_request_at = NOW(),
+                updated_at = NOW()
+            WHERE org_id = :org_id
+              AND message_count < message_limit
+              AND period_end > NOW()
+            """
+        ),
+        {"org_id": org_id},
+    )
+    db.commit()
+    return result.rowcount > 0
+
+
+def refund_whatsapp_usage(db: Session, *, org_id: str) -> None:
+    """Refund one WhatsApp message quota on send failure."""
+    db.execute(
+        text(
+            """
+            UPDATE org_whatsapp_usage
+            SET message_count = CASE WHEN message_count > 0 THEN message_count - 1 ELSE 0 END,
+                updated_at = NOW()
+            WHERE org_id = :org_id
+              AND period_end > NOW()
+            """
+        ),
+        {"org_id": org_id},
+    )
+    db.commit()
 
 
 def _load_config() -> tuple[SenderConfig, list[str]]:
@@ -539,6 +592,20 @@ async def _perform_send(
             provider_response={"provider": sender_provider_name(), "reason": "daily_cap_exceeded"},
         )
 
+    # Check and record WhatsApp quota before sending
+    if org_id is not None:
+        with SessionLocal() as quota_db:
+            if not check_and_record_whatsapp_usage(quota_db, org_id=str(org_id)):
+                return _refused_result(
+                    provider_mode=provider_mode,
+                    template_name=template_name,
+                    org_id=org_id,
+                    masked_phone=masked_phone,
+                    status="suppressed",
+                    reason="WhatsApp message quota exhausted. Add a WhatsApp pack in Billing.",
+                    provider_response={"provider": sender_provider_name(), "reason": "quota_exhausted"},
+                )
+
     if provider_mode == "mock":
         provider_message_id = f"mock-{int(time.time() * 1000)}"
         provider_response = {
@@ -572,6 +639,8 @@ async def _perform_send(
         try:
             response = await client.post(url, headers=headers, json=payload)
         except httpx.TimeoutException as error:
+            # Refund quota on send failure so messages are not wasted
+            _refund_whatsapp_quota_if_needed(org_id)
             return _failed_result(
                 provider_mode=provider_mode,
                 template_name=template_name,
@@ -582,6 +651,8 @@ async def _perform_send(
                 attempt_count=attempt_count,
             )
         except httpx.HTTPError as error:
+            # Refund quota on transport error
+            _refund_whatsapp_quota_if_needed(org_id)
             return _failed_result(
                 provider_mode=provider_mode,
                 template_name=template_name,
@@ -625,6 +696,8 @@ async def _perform_send(
                 error_message,
             )
             continue
+        # Refund quota on non-retryable failure (4xx, 5xx after retry)
+        _refund_whatsapp_quota_if_needed(org_id)
         return _failed_result(
             provider_mode=provider_mode,
             template_name=template_name,
@@ -635,6 +708,8 @@ async def _perform_send(
             attempt_count=attempt_count,
         )
 
+    # Refund quota if we exit the retry loop without sending
+    _refund_whatsapp_quota_if_needed(org_id)
     return _failed_result(
         provider_mode=provider_mode,
         template_name=template_name,

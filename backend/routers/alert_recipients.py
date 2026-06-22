@@ -44,6 +44,8 @@ from backend.services.otp_service import (
     SMSDeliveryFailedError,
 )
 from backend.services.sms_service import build_sms_provider
+from backend.dependencies.quota import require_whatsapp_quota
+from backend.services import whatsapp_sender
 
 
 router = APIRouter(tags=["Settings"])
@@ -471,3 +473,67 @@ def delete_alert_recipient(
     )
     db.delete(row)
     db.commit()
+
+
+class TestMessageResponse(BaseModel):
+    status: str
+    provider_message_id: str | None
+    error_message: str | None
+    attempt_count: int
+
+
+@router.post("/alert-recipients/{recipient_id}/test", response_model=TestMessageResponse)
+def test_alert_recipient(
+    recipient_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    _quota: dict[str, object] = Depends(require_whatsapp_quota),
+) -> TestMessageResponse:
+    """Send a test WhatsApp message to a verified recipient.
+
+    Requires an active WhatsApp pack with quota. Used by frontend admin
+    to verify end-to-end delivery before enabling live alerts.
+    """
+    _require_alert_admin(current_user, db)
+    org_id = _current_org_id(current_user)
+    row = _recipient_or_404(db, org_id=org_id, recipient_id=recipient_id)
+
+    if not _recipient_has_verified_route(db, row):
+        raise HTTPException(
+            status_code=400,
+            detail="Recipient phone must be verified before sending a test message.",
+        )
+
+    phone = row.phone_e164 or row.phone_number
+    if not phone:
+        raise HTTPException(status_code=400, detail="Recipient has no phone number.")
+
+    try:
+        result = whatsapp_sender.send_message_blocking(
+            to=phone,
+            template_name="ops_alert_text",
+            template_params={"body": "This is a test message from Factory Nerve to verify WhatsApp delivery."},
+            org_id=org_id,
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        raise HTTPException(
+            status_code=502,
+            detail=f"WhatsApp send failed: {error}",
+        ) from error
+
+    _write_audit(
+        db,
+        current_user=current_user,
+        request=request,
+        action="alert_recipient_test_sent",
+        details=f"recipient_id={recipient_id} phone={phone} status={result.status}",
+        org_id=org_id,
+    )
+
+    return TestMessageResponse(
+        status=result.status,
+        provider_message_id=result.provider_message_id,
+        error_message=result.error_message,
+        attempt_count=result.attempt_count,
+    )

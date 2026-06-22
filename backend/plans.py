@@ -259,6 +259,39 @@ ADDONS = [
         "sort_order": 3,
         "quantity_allowed": True,
     },
+    {
+        "id": "wa_light",
+        "feature_key": "whatsapp_pack",
+        "kind": "whatsapp_pack",
+        "name": "WhatsApp Light Pack",
+        "price": 199,
+        "description": "500 messages per month for essential alerts and notifications.",
+        "message_quota": 500,
+        "sort_order": 4,
+        "quantity_allowed": True,
+    },
+    {
+        "id": "wa_standard",
+        "feature_key": "whatsapp_pack",
+        "kind": "whatsapp_pack",
+        "name": "WhatsApp Standard Pack",
+        "price": 599,
+        "description": "2,000 messages per month for multi-shift operations with active alerts.",
+        "message_quota": 2000,
+        "sort_order": 5,
+        "quantity_allowed": True,
+    },
+    {
+        "id": "wa_heavy",
+        "feature_key": "whatsapp_pack",
+        "kind": "whatsapp_pack",
+        "name": "WhatsApp Heavy Pack",
+        "price": 1999,
+        "description": "10,000 messages per month for large teams and enterprise-wide alerting.",
+        "message_quota": 10000,
+        "sort_order": 6,
+        "quantity_allowed": True,
+    },
 ]
 ADDON_CATALOG = {str(item["id"]): item for item in ADDONS}
 FEATURE_ADDON_MAP = {
@@ -322,6 +355,23 @@ def addon_kind(addon_id: str | None) -> str | None:
 def addon_scan_quota(addon_id: str | None) -> int:
     addon = get_addon(addon_id)
     return int(addon.get("scan_quota", 0) or 0) if addon else 0
+
+
+def addon_message_quota(addon_id: str | None) -> int:
+    """Return the WhatsApp message quota for a given addon."""
+    addon = get_addon(addon_id)
+    return int(addon.get("message_quota", 0) or 0) if addon else 0
+
+
+def get_org_whatsapp_message_allowance(db: Session, *, org_id: str | None) -> int:
+    """Sum total WhatsApp message allowance from all active WhatsApp packs for an org."""
+    quantities = get_org_addon_quantity_map(db, org_id=org_id)
+    total = 0
+    for addon_id, quantity in quantities.items():
+        if addon_kind(addon_id) != "whatsapp_pack":
+            continue
+        total += addon_message_quota(addon_id) * max(0, int(quantity or 0))
+    return total
 
 
 def normalize_addon_ids(addon_ids: list[str] | tuple[str, ...] | set[str] | None) -> list[str]:
