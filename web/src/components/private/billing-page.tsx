@@ -736,15 +736,17 @@ function BillingPageInner() {
                 </div>
               </div>
 
+              {/* OCR Packs Section */}
+              {addonOptions.filter((a) => a.kind === "ocr_pack").length > 0 ? (
               <div className="min-w-0 space-y-3 rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="text-sm font-semibold">OCR scan packs</span>
+                  <span className="text-sm font-semibold">OCR Scan Packs</span>
                   <Link href="/plans" className="overflow-safe-text text-xs uppercase tracking-caption text-[var(--accent)]">
                     Compare on plans page
                   </Link>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2">
-                  {addonOptions.map((addon) => {
+                  {addonOptions.filter((a) => a.kind === "ocr_pack").map((addon) => {
                     const activeQuantity = activeAddonQuantities[addon.id] || 0;
                     const selectedQuantity = selectedAddonQuantities[addon.id] || 0;
                     return (
@@ -811,6 +813,86 @@ function BillingPageInner() {
                   })}
                 </div>
               </div>
+              ) : null}
+
+              {/* WhatsApp Packs Section */}
+              {addonOptions.filter((a) => a.kind === "whatsapp_pack").length > 0 ? (
+              <div className="min-w-0 space-y-3 rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-sm font-semibold">WhatsApp Alert Packs</span>
+                  <div className="overflow-safe-text text-xs uppercase tracking-caption text-[var(--muted)]">
+                    Messages per org for ops alerts
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {addonOptions.filter((a) => a.kind === "whatsapp_pack").map((addon) => {
+                    const activeQuantity = activeAddonQuantities[addon.id] || 0;
+                    const selectedQuantity = selectedAddonQuantities[addon.id] || 0;
+                    return (
+                      <div
+                        key={addon.id}
+                        className="min-w-0 rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.8)] p-3"
+                      >
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="font-semibold text-white">{addon.name}</div>
+                              <div className="overflow-safe-text mt-1 text-xs leading-5 text-[var(--muted)]">
+                                {addon.description}
+                              </div>
+                              <div className="mt-2 text-xs text-[var(--muted)]">
+                                Messages per month per pack
+                              </div>
+                            </div>
+                            <div className="shrink-0 text-xs font-semibold text-white">
+                              {formatAmount(addon.price, billingConfig?.currency || "INR")}/mo
+                            </div>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-caption">
+                            {activeQuantity > 0 ? (
+                              <span className={`rounded-full px-3 py-1 ${badgeClass("green")}`}>
+                                Active x{activeQuantity}
+                              </span>
+                            ) : null}
+                            {selectedQuantity > activeQuantity ? (
+                              <span className={`rounded-full px-3 py-1 ${badgeClass("blue")}`}>
+                                New packs x{selectedQuantity - activeQuantity}
+                              </span>
+                            ) : null}
+                          </div>
+                          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.6)] px-3 py-2">
+                            <span className="text-xs uppercase tracking-caption text-[var(--muted)]">
+                              Quantity
+                            </span>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                className="px-3 py-1"
+                                type="button"
+                                onClick={() => updateAddonQuantity(addon.id, selectedQuantity - 1)}
+                              >
+                                -
+                              </Button>
+                              <span className="min-w-8 text-center font-semibold text-white">
+                                {selectedQuantity}
+                              </span>
+                              <Button
+                                variant="outline"
+                                className="px-3 py-1"
+                                type="button"
+                                onClick={() => updateAddonQuantity(addon.id, selectedQuantity + 1)}
+                              >
+                                +
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              ) : null}
               <div className="min-w-0 space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>Base plan</span>
@@ -825,7 +907,7 @@ function BillingPageInner() {
                   </span>
                 </div>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span>Billable OCR packs</span>
+                  <span>Billable add-ons</span>
                   <span>{formatAmount(checkoutEstimate?.addonMonthlyCost || 0, billingConfig?.currency || "INR")}</span>
                 </div>
                 {checkoutEstimate?.chargeableAddons.map((addon) => (

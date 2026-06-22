@@ -347,10 +347,16 @@ def _activate_paid_order(
             current_period_end_at=period_end,
         )
     if org_id and period_end is not None:
+        # Combine plan OCR limit with all activated OCR pack allowances
+        from backend.plans import get_org_ocr_scan_allowance
+
+        plan_ocr_limit = int(plan_limit(plan, "ocr") or 0)
+        pack_ocr_allowance = get_org_ocr_scan_allowance(db, org_id=org_id)
+        total_ocr_limit = plan_ocr_limit + pack_ocr_allowance
         _reset_org_ocr_quota_period(
             db,
             org_id=org_id,
-            ocr_limit=int(plan_limit(plan, "ocr") or 0),
+            ocr_limit=total_ocr_limit,
             period_start=datetime.now(timezone.utc),
             period_end=period_end,
         )
