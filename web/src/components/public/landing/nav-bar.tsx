@@ -7,7 +7,7 @@ import { navItems, sectionIds } from "./data";
 function DprLogo() {
   return (
     <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(197,109,45,0.24),rgba(197,109,45,0.10))] text-sm font-bold text-amber-300">
-      D
+      F
     </div>
   );
 }
@@ -52,7 +52,7 @@ export default function NavBar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5">
           <DprLogo />
-          <span className="text-sm font-semibold tracking-tight text-white">DPR.ai</span>
+          <span className="text-sm font-semibold tracking-tight text-white">Factory Nerve</span>
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">

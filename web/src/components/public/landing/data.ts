@@ -148,7 +148,7 @@ export const faqs: FAQ[] = [
     answer: "Yes. The mobile app works offline — entries are queued locally and sync automatically when connectivity returns. Your team never stops working.",
   },
   {
-    question: "Can I integrate DPR.ai with my existing systems?",
+    question: "Can I integrate Factory Nerve with my existing systems?",
     answer: "We offer a REST API for custom integrations. Our Enterprise plan includes dedicated support for connecting with your existing ERP, accounting, or inventory systems.",
   },
   {
@@ -166,4 +166,4 @@ export const sectionIds = {
   faq: "faq",
 } as const;
 
-export const COMPANY_NAME = "DPR.ai Technologies Pvt. Ltd.";
+export const COMPANY_NAME = "Factory Nerve Technologies Pvt. Ltd.";

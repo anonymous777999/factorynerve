@@ -10,14 +10,14 @@ import { ServiceWorker } from "@/components/shared/service-worker";
 import { ToastCenter } from "@/components/shared/toast-center";
 
 export const metadata: Metadata = {
-  title: "DPR.ai Web",
-  description: "Modern production-ready frontend for DPR.ai",
+  title: "Factory Nerve",
+  description: "Factory trust infrastructure — production, attendance, inventory, and dispatch in one platform.",
   manifest: "/manifest.json",
-  applicationName: "DPR.ai",
+  applicationName: "Factory Nerve",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "DPR.ai",
+    title: "Factory Nerve",
   },
   formatDetection: {
     telephone: false,

@@ -16,21 +16,50 @@ export default function HeroSection() {
         </div>
 
         <h1 className="bg-[linear-gradient(180deg,#fff_40%,#ab9f93_100%)] bg-clip-text text-4xl font-bold leading-[1.1] tracking-tight text-transparent sm:text-6xl sm:leading-[1.08] md:text-7xl">
-          Factory trust infrastructure for teams that operate on paper, WhatsApp, and instinct.
+          Manage Your Entire Factory From One Platform
         </h1>
 
         <p className="mx-auto mt-6 max-w-3xl text-base leading-7 text-slate-400 sm:text-lg sm:leading-8">
-          DPR.ai turns daily production records from scattered paper and messages into trusted,
-          auditable business operations — in one mobile-first platform built for the Indian
-          manufacturing floor.
+          Production, Attendance, Inventory, Dispatch — all in one place
         </p>
+
+        <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4 text-left">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/15 bg-amber-500/10 text-amber-300">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" /><line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" /></svg>
+            </div>
+            <h3 className="mt-3 text-sm font-semibold text-white">Production Tracking</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-400">Shift-wise output, machine utilization, OEE, and scrap tracking in real time.</p>
+          </div>
+          <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4 text-left">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/15 bg-amber-500/10 text-amber-300">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+            </div>
+            <h3 className="mt-3 text-sm font-semibold text-white">Attendance Management</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-400">Punch in/out, shift tracking, leave management, and overtime calculation.</p>
+          </div>
+          <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4 text-left">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/15 bg-amber-500/10 text-amber-300">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg>
+            </div>
+            <h3 className="mt-3 text-sm font-semibold text-white">Inventory Control</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-400">Stock levels, material receipts, dispatch tracking, and automated reconciliation.</p>
+          </div>
+          <div className="rounded-xl border border-white/5 bg-white/[0.03] p-4 text-left">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/15 bg-amber-500/10 text-amber-300">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20V10" /><path d="M18 20V4" /><path d="M6 20v-4" /></svg>
+            </div>
+            <h3 className="mt-3 text-sm font-semibold text-white">Analytics Dashboard</h3>
+            <p className="mt-1 text-xs leading-5 text-slate-400">Real-time charts, anomaly detection, AI insights, and export-ready reports.</p>
+          </div>
+        </div>
 
         <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
-            href="/access"
+            href="/register"
             className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-[linear-gradient(135deg,rgba(197,109,45,0.95),rgba(197,109,45,0.55))] px-7 py-3.5 text-sm font-semibold text-[#06111c] shadow-[0_14px_30px_rgba(197,109,45,0.28)] transition hover:-translate-y-0.5 hover:brightness-110 hover:shadow-[0_18px_40px_rgba(197,109,45,0.38)]"
           >
-            Open your workspace
+            Start Free 14-Day Trial
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
             </svg>

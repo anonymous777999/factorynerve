@@ -8,8 +8,8 @@ export default function Footer() {
         <div className="flex flex-wrap items-start justify-between gap-8">
           <div className="max-w-xs">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/15 bg-amber-500/10 text-xs font-bold text-amber-300">D</div>
-              <span className="text-sm font-semibold text-white">DPR.ai</span>
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-amber-500/15 bg-amber-500/10 text-xs font-bold text-amber-300">F</div>
+              <span className="text-sm font-semibold text-white">Factory Nerve</span>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-500">{COMPANY_NAME}<br />4th Floor, Tech Tower, Industrial District<br />Shillong, Meghalaya 793001, India</p>
           </div>

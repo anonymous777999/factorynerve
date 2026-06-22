@@ -162,6 +162,21 @@ function ContactCard({ title, email, subtitle, children, icon, border, badge, ba
 }
 
 export default function ContactPage() {
+  const [formData, setFormData] = useState({ name: "", email: "", phone: "", message: "" });
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // In a real app, send the form data to the backend
+    console.log("Contact form submitted:", formData);
+    setSubmitted(true);
+    setFormData({ name: "", email: "", phone: "", message: "" });
+  };
+
   return (
     <main className="min-h-screen bg-[#090d14] px-4 py-8 text-[#e8edf7] sm:px-6 sm:py-12">
       <div className="mx-auto max-w-4xl">
@@ -174,7 +189,7 @@ export default function ContactPage() {
             Get in Touch
           </h1>
           <p className="mt-3 text-sm leading-7 text-slate-300">
-            We&rsquo;re here to help. Choose the best way to reach us below.
+            We&rsquo;re here to help. Fill out the form below or choose a contact channel.
           </p>
         </div>
 
@@ -191,201 +206,271 @@ export default function ContactPage() {
             </svg>
             FAQ
           </Link>
-          <a
-            href="https://status.dpr.ai"
-            target="_blank"
-            rel="noopener noreferrer"
+          <span className="text-xs text-white/10">&middot;</span>
+          <Link
+            href="/plans"
             className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-slate-300 transition hover:border-sky-300/30 hover:text-white"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="9" />
-              <circle cx="12" cy="12" r="4" fill="currentColor" />
-            </svg>
-            Status Page
-          </a>
-          <a
-            href="https://docs.dpr.ai"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-2 text-slate-300 transition hover:border-sky-300/30 hover:text-white"
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-            </svg>
-            Documentation
-          </a>
+            <DollarIcon />
+            Pricing
+          </Link>
         </div>
 
-        {/* Contact cards grid */}
-        <div className="space-y-5">
-          {/* General Support */}
-          <ContactCard
-            title="General Support"
-            email="support@dpr.ai"
-            subtitle="Response within 24 hours on business days"
-            icon={<HeadsetIcon />}
-            border="border-sky-400/20"
-            badge="bg-sky-400/[0.1] text-sky-200"
-            badgeBg="border-sky-400/20"
-          >
-            <p>
-              <strong className="text-slate-200">Best for:</strong> Technical issues, account help,
-              feature questions, onboarding assistance.
+        {/* Contact Form + Info Grid */}
+        <div className="mb-10 grid gap-8 lg:grid-cols-5">
+          {/* Contact Form */}
+          <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(24,28,37,0.98),rgba(18,23,33,0.98))] p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] sm:p-8 lg:col-span-3">
+            <h2 className="text-xl font-semibold tracking-tight text-white">Send us a message</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Fill in the details and we&rsquo;ll get back to you within 24 hours.
             </p>
-            <p className="mt-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/20 bg-sky-400/[0.08] px-2.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-sky-200">
-                <ClockIcon />
-                Business hours
-              </span>
-            </p>
-          </ContactCard>
 
-          {/* Sales */}
-          <ContactCard
-            title="Sales Inquiries"
-            email="sales@dpr.ai"
-            subtitle="We typically respond within 4 hours"
-            icon={<DollarIcon />}
-            border="border-emerald-400/20"
-            badge="bg-emerald-400/[0.1] text-emerald-200"
-            badgeBg="border-emerald-400/20"
-          >
-            <p>
-              <strong className="text-slate-200">Best for:</strong> Product demos, pricing questions,
-              enterprise plans, multi-factory deployments.
-            </p>
-            <a
-              href="#"
-              className="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.08] px-4 py-2 text-sm font-medium text-emerald-200 transition hover:bg-emerald-400/[0.14]"
-            >
-              Schedule a demo
-              <ExternalIcon />
-            </a>
-          </ContactCard>
-
-          <div className="grid gap-5 sm:grid-cols-2">
-            {/* Legal & Privacy */}
-            <ContactCard
-              title="Legal &amp; Privacy"
-              email="legal@dpr.ai"
-              subtitle="Legal inquiries handled within 2 business days"
-              icon={<ShieldIcon />}
-              border="border-amber-400/20"
-              badge="bg-amber-400/[0.1] text-amber-200"
-              badgeBg="border-amber-400/20"
-            >
-              <p>
-                <strong className="text-slate-200">Best for:</strong> Privacy requests, data deletion,
-                legal inquiries, DPA requests.
-              </p>
-            </ContactCard>
-
-            {/* Security */}
-            <ContactCard
-              title="Security &amp; Vulnerabilities"
-              email="security@dpr.ai"
-              subtitle="For responsible disclosure of security issues"
-              icon={<LockIcon />}
-              border="border-red-400/20"
-              badge="bg-red-400/[0.1] text-red-200"
-              badgeBg="border-red-400/20"
-            >
-              <p>
-                <strong className="text-slate-200">Best for:</strong> Security issues, vulnerability
-                disclosure, penetration testing inquiries.
-              </p>
-              <p className="mt-2">
-                <Link href="/security" className="text-sm text-sky-300 hover:underline">
-                  View our security practices &rarr;
-                </Link>
-              </p>
-            </ContactCard>
-
-            {/* Business & Partnerships */}
-            <ContactCard
-              title="Business &amp; Partnerships"
-              email="hello@dpr.ai"
-              subtitle="We reply to partnership inquiries within 3 business days"
-              icon={<HandshakeIcon />}
-              border="border-purple-400/20"
-              badge="bg-purple-400/[0.1] text-purple-200"
-              badgeBg="border-purple-400/20"
-            >
-              <p>
-                <strong className="text-slate-200">Best for:</strong> Partnership opportunities,
-                media inquiries, integrations.
-              </p>
-            </ContactCard>
-
-            {/* Billing */}
-            <ContactCard
-              title="Billing"
-              email="billing@dpr.ai"
-              subtitle="Payment and invoice questions answered quickly"
-              icon={<DollarIcon />}
-              border="border-cyan-400/20"
-              badge="bg-cyan-400/[0.1] text-cyan-200"
-              badgeBg="border-cyan-400/20"
-            >
-              <p>
-                <strong className="text-slate-200">Best for:</strong> Payment issues, invoice
-                questions, refund requests, plan changes.
-              </p>
-            </ContactCard>
+            {submitted ? (
+              <div className="mt-6 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] p-6 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl border border-emerald-400/20 bg-emerald-400/[0.1] text-emerald-300">
+                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
+                    <polyline points="20 6 9 17 4 12" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <h3 className="mt-4 text-lg font-semibold text-emerald-200">Message Sent!</h3>
+                <p className="mt-2 text-sm text-slate-400">Thank you for reaching out. We&rsquo;ll respond shortly.</p>
+                <button
+                  onClick={() => setSubmitted(false)}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-300 transition hover:border-sky-300/30 hover:text-white"
+                >
+                  Send another message
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+                <div className="grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="name" className="mb-1.5 block text-xs font-semibold uppercase tracking-caption text-slate-400">
+                      Name *
+                    </label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={handleChange}
+                      placeholder="Your full name"
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-sky-400/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-sky-400/20"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="email" className="mb-1.5 block text-xs font-semibold uppercase tracking-caption text-slate-400">
+                      Email *
+                    </label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      required
+                      value={formData.email}
+                      onChange={handleChange}
+                      placeholder="you@factory.com"
+                      className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-sky-400/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-sky-400/20"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="phone" className="mb-1.5 block text-xs font-semibold uppercase tracking-caption text-slate-400">
+                    Phone Number
+                  </label>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    placeholder="+91 98765 43210"
+                    className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-sky-400/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-sky-400/20"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="message" className="mb-1.5 block text-xs font-semibold uppercase tracking-caption text-slate-400">
+                    Message *
+                  </label>
+                  <textarea
+                    id="message"
+                    name="message"
+                    required
+                    rows={5}
+                    value={formData.message}
+                    onChange={handleChange}
+                    placeholder="Tell us how we can help..."
+                    className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-sky-400/40 focus:bg-white/[0.06] focus:ring-1 focus:ring-sky-400/20"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-[linear-gradient(135deg,rgba(197,109,45,0.9),rgba(197,109,45,0.6))] px-6 py-3 text-sm font-semibold text-[#06111c] shadow-[0_8px_20px_rgba(197,109,45,0.25)] transition hover:brightness-110 hover:shadow-[0_12px_28px_rgba(197,109,45,0.35)]"
+                >
+                  Send Message
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
+                  </svg>
+                </button>
+              </form>
+            )}
           </div>
 
-          {/* Support Hours + Address row */}
-          <div className="grid gap-5 sm:grid-cols-2">
+          {/* Contact Cards Sidebar */}
+          <div className="space-y-4 lg:col-span-2">
+            {/* General Support */}
+            <ContactCard
+              title="General Support"
+              email="support@factorynerve.online"
+              subtitle="Response within 24 hours on business days"
+              icon={<HeadsetIcon />}
+              border="border-sky-400/20"
+              badge="bg-sky-400/[0.1] text-sky-200"
+              badgeBg="border-sky-400/20"
+            >
+              <p>
+                <strong className="text-slate-200">Best for:</strong> Technical issues, account help,
+                feature questions, onboarding assistance.
+              </p>
+            </ContactCard>
+
+            {/* Sales */}
+            <ContactCard
+              title="Sales Inquiries"
+              email="sales@factorynerve.online"
+              subtitle="We typically respond within 4 hours"
+              icon={<DollarIcon />}
+              border="border-emerald-400/20"
+              badge="bg-emerald-400/[0.1] text-emerald-200"
+              badgeBg="border-emerald-400/20"
+            >
+              <p>
+                <strong className="text-slate-200">Best for:</strong> Product demos, pricing questions,
+                enterprise plans, multi-factory deployments.
+              </p>
+              <a
+                href="#"
+                className="mt-3 inline-flex items-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.08] px-4 py-2 text-sm font-medium text-emerald-200 transition hover:bg-emerald-400/[0.14]"
+              >
+                Schedule a demo
+                <ExternalIcon />
+              </a>
+            </ContactCard>
+
             {/* Support Hours */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300">
                   <ClockIcon />
                 </div>
-                <h3 className="text-base font-semibold text-white">Support Hours</h3>
+                <h3 className="text-sm font-semibold text-white">Support Hours</h3>
               </div>
-              <div className="mt-4 space-y-2 text-sm leading-7 text-slate-300">
-                <div className="flex justify-between border-b border-white/5 pb-1">
-                  <span className="text-slate-400">Monday &ndash; Friday</span>
-                  <span className="font-medium text-white">9:00 AM &ndash; 6:00 PM IST</span>
-                </div>
-                <div className="flex justify-between border-b border-white/5 pb-1">
-                  <span className="text-slate-400">Saturday</span>
-                  <span className="font-medium text-white">9:00 AM &ndash; 1:00 PM IST</span>
-                </div>
-                <div className="flex justify-between border-b border-white/5 pb-1">
-                  <span className="text-slate-400">Sunday</span>
-                  <span className="font-medium text-white">Closed</span>
+              <div className="mt-3 space-y-1 text-xs leading-6 text-slate-400">
+                <div className="flex justify-between">
+                  <span>Mon &ndash; Fri</span>
+                  <span className="text-white">9:00 AM &ndash; 6:00 PM IST</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-400">Emergency (Critical issues)</span>
-                  <span className="font-medium text-emerald-300">24/7 for Enterprise SLA</span>
+                  <span>Saturday</span>
+                  <span className="text-white">9:00 AM &ndash; 1:00 PM IST</span>
                 </div>
-              </div>
-            </div>
-
-            {/* Mailing Address */}
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300">
-                  <PinIcon />
+                <div className="flex justify-between">
+                  <span>Sunday</span>
+                  <span className="text-white">Closed</span>
                 </div>
-                <h3 className="text-base font-semibold text-white">Mailing Address</h3>
-              </div>
-              <div className="mt-4 text-sm leading-7 text-slate-300">
-                <p className="font-medium text-white">DPR.ai Technologies Pvt. Ltd.</p>
-                <p>4th Floor, Tech Tower</p>
-                <p>Industrial District</p>
-                <p className="flex items-center gap-2">
-                  <span>Shillong, Meghalaya 793001, India</span>
-                  <CopyButton text="4th Floor, Tech Tower, Industrial District, Shillong, Meghalaya 793001, India" />
-                </p>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* Emergency Support */}
+        {/* Additional Contact Cards Grid */}
+        <div className="mb-10 grid gap-4 sm:grid-cols-2">
+          {/* Legal & Privacy */}
+          <ContactCard
+            title="Legal &amp; Privacy"
+            email="legal@factorynerve.online"
+            subtitle="Legal inquiries handled within 2 business days"
+            icon={<ShieldIcon />}
+            border="border-amber-400/20"
+            badge="bg-amber-400/[0.1] text-amber-200"
+            badgeBg="border-amber-400/20"
+          >
+            <p>
+              <strong className="text-slate-200">Best for:</strong> Privacy requests, data deletion,
+              legal inquiries, DPA requests.
+            </p>
+          </ContactCard>
+
+          {/* Security */}
+          <ContactCard
+            title="Security &amp; Vulnerabilities"
+            email="security@factorynerve.online"
+            subtitle="For responsible disclosure of security issues"
+            icon={<LockIcon />}
+            border="border-red-400/20"
+            badge="bg-red-400/[0.1] text-red-200"
+            badgeBg="border-red-400/20"
+          >
+            <p>
+              <strong className="text-slate-200">Best for:</strong> Security issues, vulnerability
+              disclosure, penetration testing inquiries.
+            </p>
+          </ContactCard>
+
+          {/* Business & Partnerships */}
+          <ContactCard
+            title="Business &amp; Partnerships"
+            email="hello@factorynerve.online"
+            subtitle="We reply to partnership inquiries within 3 business days"
+            icon={<HandshakeIcon />}
+            border="border-purple-400/20"
+            badge="bg-purple-400/[0.1] text-purple-200"
+            badgeBg="border-purple-400/20"
+          >
+            <p>
+              <strong className="text-slate-200">Best for:</strong> Partnership opportunities,
+              media inquiries, integrations.
+            </p>
+          </ContactCard>
+
+          {/* Billing */}
+          <ContactCard
+            title="Billing"
+            email="billing@factorynerve.online"
+            subtitle="Payment and invoice questions answered quickly"
+            icon={<DollarIcon />}
+            border="border-cyan-400/20"
+            badge="bg-cyan-400/[0.1] text-cyan-200"
+            badgeBg="border-cyan-400/20"
+          >
+            <p>
+              <strong className="text-slate-200">Best for:</strong> Payment issues, invoice
+              questions, refund requests, plan changes.
+            </p>
+          </ContactCard>
+        </div>
+
+        {/* Mailing Address + Emergency Support */}
+        <div className="mb-10 grid gap-4 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300">
+                <PinIcon />
+              </div>
+              <h3 className="text-base font-semibold text-white">Mailing Address</h3>
+            </div>
+            <div className="mt-4 text-sm leading-7 text-slate-300">
+              <p className="font-medium text-white">Factory Nerve Technologies Pvt. Ltd.</p>
+              <p>4th Floor, Tech Tower</p>
+              <p>Industrial District</p>
+              <p className="flex items-center gap-2">
+                <span>Shillong, Meghalaya 793001, India</span>
+                <CopyButton text="4th Floor, Tech Tower, Industrial District, Shillong, Meghalaya 793001, India" />
+              </p>
+            </div>
+          </div>
+
           <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.04] p-6">
             <div className="flex items-start gap-4">
               <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.1] text-emerald-200">
@@ -396,15 +481,10 @@ export default function ContactPage() {
               <div>
                 <h3 className="text-lg font-semibold text-emerald-200">Emergency Support</h3>
                 <p className="mt-2 text-sm leading-7 text-slate-300">
-                  Enterprise SLA customers have 24/7 access to our critical incident response team
-                  for service outages and data emergencies. If you have an active enterprise plan,
-                  contact your account manager for the emergency hotline number.
-                </p>
-                <p className="mt-2 text-sm leading-7 text-slate-300">
+                  Enterprise SLA customers have 24/7 access to our critical incident response team.
                   For all other customers, email{" "}
-                  <a href="mailto:support@dpr.ai" className="text-sky-300 hover:underline">support@dpr.ai</a>{" "}
-                  with <strong>[URGENT]</strong> in the subject line, and we will prioritize your
-                  ticket.
+                  <a href="mailto:support@factorynerve.online" className="text-sky-300 hover:underline">support@factorynerve.online</a>{" "}
+                  with <strong>[URGENT]</strong> in the subject line.
                 </p>
               </div>
             </div>
@@ -412,16 +492,10 @@ export default function ContactPage() {
         </div>
 
         {/* Footer */}
-        <div className="mt-14 border-t border-white/10 pt-6 text-center text-xs text-slate-500">
-          <p>&copy; {new Date().getFullYear()} DPR.ai Technologies Pvt. Ltd. All rights reserved.</p>
+        <div className="border-t border-white/10 pt-6 text-center text-xs text-slate-500">
+          <p>&copy; {new Date().getFullYear()} Factory Nerve Technologies Pvt. Ltd. All rights reserved.</p>
           <p className="mt-1 flex items-center justify-center gap-4">
-            <Link href="/privacy" className="text-sky-300 hover:underline">Privacy Policy</Link>
-            <span className="text-white/20">|</span>
-            <Link href="/terms" className="text-sky-300 hover:underline">Terms of Service</Link>
-            <span className="text-white/20">|</span>
-            <Link href="/cookies" className="text-sky-300 hover:underline">Cookie Policy</Link>
-            <span className="text-white/20">|</span>
-            <Link href="/" className="text-sky-300 hover:underline">Return to DPR.ai</Link>
+            <Link href="/" className="text-sky-300 hover:underline">Return to Factory Nerve</Link>
           </p>
         </div>
       </div>
