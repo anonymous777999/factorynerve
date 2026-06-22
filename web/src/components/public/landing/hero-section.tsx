@@ -12,7 +12,7 @@ export default function HeroSection() {
       <div className="relative mx-auto max-w-5xl text-center">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-500/15 bg-amber-500/8 px-4 py-1.5 text-xs font-medium text-amber-200/80">
           <span className="flex h-2 w-2 rounded-full bg-amber-400" />
-          AI-Native Factory Operating System
+          Built for the Indian Factory Floor
         </div>
 
         <h1 className="bg-[linear-gradient(180deg,#fff_40%,#ab9f93_100%)] bg-clip-text text-4xl font-bold leading-[1.1] tracking-tight text-transparent sm:text-6xl sm:leading-[1.08] md:text-7xl">
@@ -65,10 +65,10 @@ export default function HeroSection() {
             </svg>
           </Link>
           <Link
-            href="/plans"
+            href="/contact"
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-7 py-3.5 text-sm font-semibold text-slate-200 shadow-[0_8px_24px_rgba(2,6,23,0.2)] transition hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/[0.08]"
           >
-            See plans and pricing
+            Talk to us
           </Link>
         </div>
 

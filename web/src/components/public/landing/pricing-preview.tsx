@@ -17,7 +17,7 @@ export default function PricingPreview() {
             Start free for 14 days with full access. Upgrade only when you see operational impact.
           </p>
         </div>
-        <div className="grid gap-6 sm:grid-cols-3">
+        <div className="mx-auto max-w-sm">
           {pricingTiers.map((tier) => (
             <div
               key={tier.name}
@@ -60,8 +60,8 @@ export default function PricingPreview() {
           ))}
         </div>
         <p className="mt-8 text-center text-xs text-slate-500">
-          Annual billing saves 17%. All plans include 99.9%+ uptime SLA, daily backups, and enterprise-grade security.
-          {" "}<Link href="/plans" className="text-amber-300 hover:underline">View full pricing &rarr;</Link>
+          Pilot is free with full access. Questions?{" "}
+          <Link href="/contact" className="text-amber-300 hover:underline">Talk to us &rarr;</Link>
         </p>
       </div>
     </section>

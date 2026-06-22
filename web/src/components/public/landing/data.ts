@@ -10,10 +10,10 @@ export const navItems: NavItem[] = [
 ];
 
 export const stats: Stat[] = [
-  { value: "45,000+", label: "Hours of production data processed" },
-  { value: "₹280", suffix: "Cr+", label: "Dispatch value tracked" },
-  { value: "99.9", suffix: "%", label: "Platform uptime" },
-  { value: "14", suffix: " days", label: "Free trial — no card required" },
+  { value: "Zero lock-in", label: "Your data stays yours. Export anytime." },
+  { value: "2–3", suffix: " days", label: "To go live with your factory" },
+  { value: "14", suffix: " days", label: "Free pilot — no card required" },
+  { value: "Mobile-first", label: "Works on the phone your team already has" },
 ];
 
 export const painPoints: PainPoint[] = [
@@ -54,28 +54,10 @@ export const engines: Engine[] = [
     description: "Verification drafts, approve/reject flows, bulk review, SLA aging lanes, and a full audit trail ensure every number is reliable before it reaches a report.",
   },
   {
-    id: "reporting",
-    title: "Reporting Engine",
-    tagline: "From trusted data to business output",
-    description: "Excel and PDF exports, scheduled email summaries, attendance reports, and custom operational dashboards that turn clean data into actionable insights.",
-  },
-  {
     id: "intelligence",
     title: "Intelligence Engine",
     tagline: "Find loss before it finds you",
     description: "Anomaly detection, AI summaries, risk ranking, and responsibility analytics highlight where money is at risk and what deserves attention first.",
-  },
-  {
-    id: "steel",
-    title: "Steel Operations Engine",
-    tagline: "Weight, batch, dispatch — end to end",
-    description: "Stock reconciliation, batch production tracking, customer ledger, sales invoices, and dispatch workflow from planned to delivered.",
-  },
-  {
-    id: "platform",
-    title: "Platform & Control Engine",
-    tagline: "Secure, scalable, multi-plant",
-    description: "RBAC with 7 roles, factory switching, multi-language support, WhatsApp alerts, usage quotas, and enterprise-grade security keep the platform running.",
   },
 ];
 
@@ -110,50 +92,34 @@ export const pricingTiers = [
   {
     name: "Factory Pilot",
     price: "₹0",
-    period: "/ 14 days",
-    tagline: "Use everything. Test real workflows.",
-    features: ["Up to 7 users", "1 workspace", "150 OCR pages", "100 AI actions", "WhatsApp alerts"],
-    cta: "Start free trial",
-  },
-  {
-    name: "Factory",
-    price: "₹8,999",
-    period: "/ month",
-    tagline: "Best for growing factories with multiple shifts.",
-    features: ["Up to 30 users", "Up to 3 workspaces", "1,200 AI actions", "Automated approvals", "Advanced dashboards", "Priority support"],
-    cta: "Activate Factory",
-    highlight: true,
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
     period: "",
-    tagline: "For industrial groups and multi-plant operations.",
-    features: ["Unlimited users", "Up to 20 workspaces", "Dedicated account manager", "Custom integrations", "99.95% uptime SLA", "On-premise option"],
-    cta: "Talk to sales",
+    tagline: "Full access. Your real data. No time limit during pilot.",
+    features: ["Up to 7 users", "1 factory workspace", "OCR scanning & extraction", "Attendance tracking", "Production reporting", "Inventory & dispatch tracking", "AI-powered insights", "WhatsApp alerts", "Personal onboarding support"],
+    cta: "Start your pilot",
+    highlight: true,
   },
 ];
 
 export const faqs: FAQ[] = [
   {
     question: "How fast can we get started?",
-    answer: "Most factories go live in 2–3 days. Onboarding takes a single session — we set up your factory profile, invite your team, and you start capturing data immediately.",
+    answer: "We can set you up in a single session. Share your factory details, we configure your workspace, invite your team, and you start capturing data immediately — often the same day.",
   },
   {
     question: "Is my data secure?",
-    answer: "Yes. All data is encrypted at rest (AES-256) and in transit (TLS 1.3). Infrastructure runs on AWS Mumbai. We follow SOC 2 controls and have a GDPR-compliant Data Processing Addendum available.",
+    answer: "Yes. All data is encrypted in transit (TLS 1.3) and at rest (AES-256). Infrastructure runs on AWS Mumbai. Access is role-based — you control who sees what.",
   },
   {
     question: "Does it work without internet?",
     answer: "Yes. The mobile app works offline — entries are queued locally and sync automatically when connectivity returns. Your team never stops working.",
   },
   {
-    question: "Can I integrate Factory Nerve with my existing systems?",
-    answer: "We offer a REST API for custom integrations. Our Enterprise plan includes dedicated support for connecting with your existing ERP, accounting, or inventory systems.",
+    question: "We already have existing data in registers. Can we start fresh?",
+    answer: "Absolutely. You can start fresh from today, or we can help you digitize historical records through OCR scanning. Most factories go live with current data first.",
   },
   {
-    question: "Do you offer discounts for annual billing?",
-    answer: "Yes. Annual plans save 17% compared to monthly billing. All plans are available monthly or annually with no long-term lock-in.",
+    question: "What happens after the pilot?",
+    answer: "You keep using the product. We'll discuss a plan that fits your factory size and usage. There's no lock-in — your data stays yours, and you can export it anytime.",
   },
 ];
 

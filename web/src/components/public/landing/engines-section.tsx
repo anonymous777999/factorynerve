@@ -20,7 +20,7 @@ export default function EnginesSection() {
             Seven engines. One operating system.
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
-            DPR.ai is not a single tool. It is a complete operational infrastructure — from
+            Factory Nerve is not a single tool. It is a complete operational infrastructure — from
             capture to intelligence — designed for the way factories actually work.
           </p>
         </div>
