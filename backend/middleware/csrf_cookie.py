@@ -29,7 +29,7 @@ def _is_exempt(path: str) -> bool:
         return True
     if path.startswith("/auth-secure"):
         return True
-    if path in {"/auth/login", "/auth/register", "/auth/password/forgot", "/auth/password/reset"}:
+    if path in {"/auth/login", "/auth/register", "/auth/password/forgot", "/auth/password/reset", "/auth/email/verify", "/auth/email/verification/resend"}:
         return True
     return False
 

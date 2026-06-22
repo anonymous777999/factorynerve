@@ -352,7 +352,7 @@ export async function apiFetch<T>(
         headers,
         body: body as BodyInit | null | undefined,
         signal: options.signal ?? controller?.signal,
-        credentials: useCookies ? "include" : options.credentials,
+        credentials: useCookies ? "include" : "omit",
       });
     } catch (err) {
       if (controller?.signal.aborted) {
