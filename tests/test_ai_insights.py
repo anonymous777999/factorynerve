@@ -105,23 +105,24 @@ def test_ai_anomalies_and_executive_summary_accessible_on_pilot(http_client):
 
 
 def test_ai_nlq_requires_group_and_returns_data(http_client):
-    factory_user = register_user(http_client, role="admin")
-    _set_org_plan(factory_user["email"], "factory")
-    factory_headers = _auth_headers(factory_user["access_token"])
+    # Operator plan has no NLQ feature — blocked by quota check
+    operator_user = register_user(http_client, role="admin")
+    _set_org_plan(operator_user["email"], "operator")
+    operator_headers = _auth_headers(operator_user["access_token"])
 
-    blocked = http_client.post("/ai/query", json={"question": "Show me last month's downtime by shift"}, headers=factory_headers)
-    assert blocked.status_code == HTTPStatus.PAYMENT_REQUIRED
+    blocked = http_client.post("/ai/query", json={"question": "Show me last month's downtime by shift"}, headers=operator_headers)
+    assert blocked.status_code == HTTPStatus.FORBIDDEN
 
-    business_user = register_user(http_client, role="admin")
-    _set_org_plan(business_user["email"], "group")
-    headers = _auth_headers(business_user["access_token"])
+    # Pilot plan now has NLQ with 10 queries — allowed
+    pilot_user = register_user(http_client, role="admin")
+    pilot_headers = _auth_headers(pilot_user["access_token"])
 
     payload = create_entry_payload(index=6)
     payload["downtime_minutes"] = 33
-    created = http_client.post("/entries", json=payload, headers=headers)
+    created = http_client.post("/entries", json=payload, headers=pilot_headers)
     assert created.status_code == HTTPStatus.CREATED, created.text
 
-    response = http_client.post("/ai/query", json={"question": "Show me last 7 days downtime by shift"}, headers=headers)
+    response = http_client.post("/ai/query", json={"question": "Show me last 7 days downtime by shift"}, headers=pilot_headers)
     assert response.status_code == HTTPStatus.OK, response.text
     data = response.json()
     assert data["answer"]

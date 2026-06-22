@@ -4161,9 +4161,9 @@ def create_steel_dispatch(
         raise HTTPException(status_code=400, detail="Add at least one dispatch line.")
 
     if _dispatch_status_posts_inventory(requested_status):
-        balances = stock_balances_for_factory(db, factory.factory_id)
-        for item_id, requested_weight in requested_by_item.items():
-            available = float(balances.get(item_id, 0.0))
+        # Use pessimistic row-level locking to prevent concurrent dispatch race conditions
+        for item_id, requested_weight in sorted(requested_by_item.items()):
+            available = locked_stock_balance_for_item(db, factory.factory_id, item_id)
             if available + 0.0001 < requested_weight:
                 raise HTTPException(status_code=400, detail="Dispatch would make stock negative for one or more items.")
 
@@ -4355,9 +4355,9 @@ def update_steel_dispatch_status(
         requested_by_item: dict[int, float] = {}
         for row in line_rows:
             requested_by_item[row.item_id] = float(requested_by_item.get(row.item_id, 0.0)) + float(row.weight_kg or 0.0)
-        balances = stock_balances_for_factory(db, factory.factory_id)
-        for item_id, requested_weight in requested_by_item.items():
-            available = float(balances.get(item_id, 0.0))
+        # Use pessimistic row-level locking to prevent concurrent dispatch race conditions
+        for item_id, requested_weight in sorted(requested_by_item.items()):
+            available = locked_stock_balance_for_item(db, factory.factory_id, item_id)
             if available + 0.0001 < requested_weight:
                 raise HTTPException(status_code=400, detail="Dispatch would make stock negative for one or more items.")
         _create_dispatch_inventory_movements(

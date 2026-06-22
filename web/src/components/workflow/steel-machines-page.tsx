@@ -145,14 +145,14 @@ export function SteelMachinesPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#fafaf9_0%,#f5f5f4_48%,#fafaf9_100%)] px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <section className="rounded-[2rem] border border-[#e7e5e4] bg-[linear-gradient(135deg,#ffffff,#fafaf9)] p-6 shadow-[0_22px_55px_rgba(15,23,42,0.08)]">
+        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-sm uppercase tracking-prominent text-[#78716c]">Production Setup</div>
-              <h1 className="mt-2 text-3xl font-semibold text-[#111111] md:text-4xl">Machines</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#57534e]">
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Production Setup</div>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Machines</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Manage machine records for utilization tracking, rejection analysis, and batch assignment.
               </p>
             </div>
@@ -162,10 +162,10 @@ export function SteelMachinesPage() {
           </div>
 
           {showForm ? (
-            <div className="mt-6 rounded-2xl border border-[#e7e5e4] bg-white/80 p-6">
+            <div className="mt-6 rounded-2xl border border-[var(--border)] bg-[rgba(20,24,36,0.5)] p-6">
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[#78716c]">Production Line *</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Production Line *</label>
                   <Select
                     value={formLineId ? String(formLineId) : ""}
                     onChange={(e) => setFormLineId(parseInt(e.target.value))}
@@ -179,33 +179,33 @@ export function SteelMachinesPage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[#78716c]">Machine Code *</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Machine Code *</label>
                   <Input value={formCode} onChange={(e) => setFormCode(e.target.value)} placeholder="e.g. RM-01" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[#78716c]">Name *</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Name *</label>
                   <Input value={formName} onChange={(e) => setFormName(e.target.value)} placeholder="e.g. Rebar Mill 1" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[#78716c]">Type</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Type</label>
                   <Input value={formType} onChange={(e) => setFormType(e.target.value)} placeholder="e.g. Rolling Mill, Furnace" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[#78716c]">Rated Capacity (kg/hr)</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Rated Capacity (kg/hr)</label>
                   <Input type="number" value={formCapacity} onChange={(e) => setFormCapacity(e.target.value)} placeholder="e.g. 5000" />
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[#78716c]">Planned Runtime (min/day)</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Planned Runtime (min/day)</label>
                   <Input type="number" value={formPlannedRuntime} onChange={(e) => setFormPlannedRuntime(e.target.value)} placeholder="e.g. 480 (8 hours)" />
-                  <div className="mt-1 text-[10px] text-[#78716c]">Used for OEE availability calculation</div>
+                  <div className="mt-1 text-[10px] text-[var(--muted)]">Used for OEE availability calculation</div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[#78716c]">Operating Runtime (min/day)</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Operating Runtime (min/day)</label>
                   <Input type="number" value={formOperatingRuntime} onChange={(e) => setFormOperatingRuntime(e.target.value)} placeholder="e.g. 420 (7 hours)" />
-                  <div className="mt-1 text-[10px] text-[#78716c]">Actual operating time, excluding downtime</div>
+                  <div className="mt-1 text-[10px] text-[var(--muted)]">Actual operating time, excluding downtime</div>
                 </div>
                 <div className="md:col-span-3">
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[#78716c]">Description</label>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Description</label>
                   <Textarea
                     value={formDescription}
                     onChange={(e) => setFormDescription(e.target.value)}
@@ -214,7 +214,7 @@ export function SteelMachinesPage() {
                   />
                 </div>
               </div>
-              {saveError ? <div className="mt-3 text-sm text-rose-600">{saveError}</div> : null}
+              {saveError ? <div className="mt-3 text-sm text-rose-200">{saveError}</div> : null}
               <div className="mt-4 flex gap-2">
                 <Button onClick={() => void handleCreate()} disabled={saving}>
                   {saving ? "Saving..." : "Create Machine"}
@@ -226,16 +226,16 @@ export function SteelMachinesPage() {
         </section>
 
         {error ? (
-          <div className="rounded-2xl border border-rose-400/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-600">{error}</div>
+          <div className="rounded-2xl border border-rose-400/35 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{error}</div>
         ) : null}
 
-        <Card className="border border-[#e7e5e4] bg-white shadow-sm">
+        <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.7)] shadow-sm">
           <CardHeader>
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div className="flex flex-wrap items-center gap-4">
                 <div>
-                  <div className="text-xs uppercase tracking-wider text-[#78716c]">Machine Records</div>
-                  <CardTitle className="text-xl text-[#111111]">{machines.length} machine{machines.length !== 1 ? "s" : ""}</CardTitle>
+                  <div className="text-xs uppercase tracking-wider text-[var(--muted)]">Machine Records</div>
+                  <CardTitle className="text-xl">{machines.length} machine{machines.length !== 1 ? "s" : ""}</CardTitle>
                 </div>
                 <div className="min-w-[200px]">
                   <Select
@@ -256,38 +256,39 @@ export function SteelMachinesPage() {
           </CardHeader>
           <CardContent>
             {machines.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-[#e7e5e4] px-4 py-8 text-center text-sm text-[#57534e]">
+              <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
                 {filterLineId
                   ? "No machines found for the selected line."
                   : "No machines yet. Add a machine to start tracking machine-level utilization and rejection analysis."}
               </div>
             ) : (
-              <ResponsiveScrollArea className="rounded-3xl border border-[#e7e5e4]" debugLabel="machines-table">
+              <ResponsiveScrollArea className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]" debugLabel="machines-table">
                 <table className="min-w-full text-left text-sm">
-                  <thead className="text-[#78716c]">
-                    <tr className="border-b border-[#e7e5e4]">
+                  <thead className="text-[var(--muted)]">
+                    <tr className="border-b border-[var(--border)]">
                       <th className="px-3 py-3 font-medium">Code</th>
                       <th className="px-3 py-3 font-medium">Name</th>
-                      <th className="px-3 py-3 font-medium">Type</th>                          <th className="px-3 py-3 font-medium">Line</th>
-                          <th className="px-3 py-3 font-medium">Capacity (kg/hr)</th>
-                          <th className="px-3 py-3 font-medium">Status</th>
-                          <th className="px-3 py-3 font-medium">Manage</th>
+                      <th className="px-3 py-3 font-medium">Type</th>
+                      <th className="px-3 py-3 font-medium">Line</th>
+                      <th className="px-3 py-3 font-medium">Capacity (kg/hr)</th>
+                      <th className="px-3 py-3 font-medium">Status</th>
+                      <th className="px-3 py-3 font-medium">Manage</th>
                     </tr>
                   </thead>
                   <tbody>
                     {machines.map((machine) => (
                       <>
-                      <tr key={machine.id} className="border-b border-[#e7e5e4]/60 last:border-none hover:bg-[#f5f5f4]/60">
-                        <td className="px-3 py-3 font-mono text-xs font-semibold text-[#111111]">{machine.machine_code}</td>
-                        <td className="px-3 py-3 font-semibold text-[#111111]">{machine.name}</td>
-                        <td className="px-3 py-3 text-[#57534e]">{machine.machine_type || "\u2014"}</td>
-                        <td className="px-3 py-3 text-[#57534e]">{getLineName(machine.line_id)}</td>
-                        <td className="px-3 py-3 text-[#57534e]">{formatNumber(machine.rated_capacity_per_hour)}</td>
+                      <tr key={machine.id} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(62,166,255,0.04)]">
+                        <td className="px-3 py-3 font-mono text-xs font-semibold">{machine.machine_code}</td>
+                        <td className="px-3 py-3 font-semibold">{machine.name}</td>
+                        <td className="px-3 py-3 text-[var(--muted)]">{machine.machine_type || "\u2014"}</td>
+                        <td className="px-3 py-3 text-[var(--muted)]">{getLineName(machine.line_id)}</td>
+                        <td className="px-3 py-3 text-[var(--muted)]">{formatNumber(machine.rated_capacity_per_hour)}</td>
                         <td className="px-3 py-3">
                           <span className={`inline-flex rounded-full px-2 py-0.5 text-xs uppercase tracking-caption ${
                             machine.is_active
-                              ? "bg-emerald-400/12 text-emerald-600 border border-emerald-400/35"
-                              : "bg-rose-400/12 text-rose-600 border border-rose-400/35"
+                              ? "border-emerald-400/35 bg-emerald-400/12 text-emerald-200"
+                              : "border-rose-400/35 bg-rose-400/12 text-rose-200"
                           }`}>
                             {machine.is_active ? "Active" : "Inactive"}
                           </span>

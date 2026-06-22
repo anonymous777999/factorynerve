@@ -54,6 +54,19 @@ commit after the callback returns. If the callback raises, the transaction is ro
 """
 
 
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+
+def _get_approval_instance_with_lock(db: Session, instance_id: str) -> ApprovalInstance | None:
+    """Fetch an ApprovalInstance by ID with FOR UPDATE."""
+    return (
+        db.query(ApprovalInstance)
+        .filter(ApprovalInstance.instance_id == instance_id)
+        .with_for_update()
+        .first()
+    )
+
+
 # ── Exceptions ────────────────────────────────────────────────────────────────
 
 
@@ -517,12 +530,7 @@ class ApprovalService:
             instance_id: The approval instance ID returned by initiate_approval().
             outcome: Optional final outcome. Defaults to "completed".
         """
-        instance = (
-            db.query(ApprovalInstance)
-            .filter(ApprovalInstance.instance_id == instance_id)
-            .with_for_update()
-            .first()
-        )
+        instance = _get_approval_instance_with_lock(db, instance_id)
         if instance is None:
             return  # Silently ignore unknown instances (idempotent)
 
@@ -559,12 +567,7 @@ class ApprovalService:
         Returns:
             ApprovalDecision with the result.
         """
-        instance = (
-            db.query(ApprovalInstance)
-            .filter(ApprovalInstance.instance_id == instance_id)
-            .with_for_update()
-            .first()
-        )
+        instance = _get_approval_instance_with_lock(db, instance_id)
         if instance is None:
             return ApprovalDecision(
                 result="denied",

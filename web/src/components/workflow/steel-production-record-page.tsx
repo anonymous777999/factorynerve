@@ -40,6 +40,8 @@ export function SteelProductionRecordPage() {
     input_quantity_kg: "",
     expected_output_kg: "",
     actual_output_kg: "",
+    scrap_qty_kg: "",
+    rejection_qty_kg: "",
     notes: "",
   });
 
@@ -85,6 +87,8 @@ export function SteelProductionRecordPage() {
         input_quantity_kg: Number(form.input_quantity_kg),
         expected_output_kg: Number(form.expected_output_kg),
         actual_output_kg: Number(form.actual_output_kg),
+        scrap_qty_kg: form.scrap_qty_kg ? Number(form.scrap_qty_kg) : null,
+        rejection_qty_kg: form.rejection_qty_kg ? Number(form.rejection_qty_kg) : null,
         notes: form.notes || null,
       });
       setStatus("Batch recorded successfully.");
@@ -214,6 +218,33 @@ export function SteelProductionRecordPage() {
                       placeholder="0.00"
                       required
                     />
+                  </div>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Scrap Qty (KG) <span className="text-[var(--muted)] opacity-60">(Optional)</span></label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.scrap_qty_kg}
+                      onChange={(e) => setForm({ ...form, scrap_qty_kg: e.target.value })}
+                      placeholder="0.00"
+                    />
+                    <div className="mt-1 text-[11px] leading-4 text-[var(--muted)]">Scrap/waste material generated during this batch.</div>
+                  </div>
+                  <div>
+                    <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Rejection Qty (KG) <span className="text-[var(--muted)] opacity-60">(Optional)</span></label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.rejection_qty_kg}
+                      onChange={(e) => setForm({ ...form, rejection_qty_kg: e.target.value })}
+                      placeholder="0.00"
+                    />
+                    <div className="mt-1 text-[11px] leading-4 text-[var(--muted)]">Output that failed quality check and was rejected.</div>
                   </div>
                 </div>
 
