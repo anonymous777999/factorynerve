@@ -605,6 +605,14 @@ def create_factory(
     if approval_decision.result == "denied":
         raise HTTPException(status_code=403, detail=approval_decision.reason)
 
+    if approval_decision.result == "approval_required":
+        db.commit()
+        return {
+            "status": "pending_approval",
+            "approval_instance_id": approval_decision.instance_id,
+            "message": "Submitted for approval. The factory will be created once approved.",
+        }
+
     if approval_decision.result not in ("approved", "no_approval_required"):
         raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
 
@@ -1157,6 +1165,14 @@ def update_user_factory_access(
     if approval_decision.result == "denied":
         raise HTTPException(status_code=403, detail=approval_decision.reason)
 
+    if approval_decision.result == "approval_required":
+        db.commit()
+        return {
+            "status": "pending_approval",
+            "approval_instance_id": approval_decision.instance_id,
+            "message": "Submitted for approval. Factory access changes will apply once approved.",
+        }
+
     if approval_decision.result not in ("approved", "no_approval_required"):
         raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
 
@@ -1301,6 +1317,14 @@ def update_user_role(
 
     if approval_decision.result == "denied":
         raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        db.commit()
+        return {
+            "status": "pending_approval",
+            "approval_instance_id": approval_decision.instance_id,
+            "message": "Submitted for approval. The role change will apply once approved.",
+        }
 
     if approval_decision.result not in ("approved", "no_approval_required"):
         raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
@@ -1449,6 +1473,13 @@ def deactivate_user(
 
     if approval_decision.result == "denied":
         raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {
+            "status": "pending_approval",
+            "approval_instance_id": approval_decision.instance_id,
+            "message": "Submitted for approval. The user will be deactivated once approved.",
+        }
 
     if approval_decision.result not in ("approved", "no_approval_required"):
         raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")

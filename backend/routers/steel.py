@@ -35,6 +35,8 @@ from backend.models.steel_customer_payment_allocation import SteelCustomerPaymen
 from backend.models.steel_sales_invoice import SteelSalesInvoice
 from backend.models.steel_sales_invoice_line import SteelSalesInvoiceLine
 from backend.models.steel_stock_reconciliation import SteelStockReconciliation
+from backend.models.steel_machine import SteelMachine
+from backend.models.steel_production_line import SteelProductionLine
 from backend.models.user import User, UserRole
 from backend.plans import get_org_plan, has_plan_feature, min_plan_for_feature
 from backend.authorization import PDP, ResourceContext
@@ -4578,6 +4580,26 @@ def create_steel_batch(
 # ── Machine Update Endpoints ─────────────────────────────────────────────
 
 
+# ── Production Line & Machine Request Models ───────────────────────────────
+
+
+class SteelProductionLineCreateRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=100)
+    code: str = Field(min_length=1, max_length=24)
+    description: str | None = Field(default=None, max_length=300)
+
+
+class SteelMachineCreateRequest(BaseModel):
+    line_id: int
+    machine_code: str = Field(min_length=1, max_length=24)
+    name: str = Field(min_length=1, max_length=160)
+    machine_type: str | None = Field(default=None, max_length=60)
+    description: str | None = Field(default=None, max_length=300)
+    rated_capacity_per_hour: float | None = Field(default=None, ge=0)
+    planned_runtime_minutes: float | None = Field(default=None, ge=0)
+    operating_runtime_minutes: float | None = Field(default=None, ge=0)
+
+
 class SteelMachineUpdateRequest(BaseModel):
     line_id: int | None = Field(default=None)
     machine_code: str | None = Field(default=None, min_length=1, max_length=24)
@@ -4587,6 +4609,252 @@ class SteelMachineUpdateRequest(BaseModel):
     rated_capacity_per_hour: float | None = Field(default=None, ge=0)
     planned_runtime_minutes: float | None = Field(default=None, ge=0)
     operating_runtime_minutes: float | None = Field(default=None, ge=0)
+
+
+# ── Production Lines Endpoints ─────────────────────────────────────────────
+
+
+@router.get("/production/lines")
+def list_steel_production_lines(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+
+    lines = (
+        db.query(SteelProductionLine)
+        .filter(
+            SteelProductionLine.factory_id == factory.factory_id,
+            SteelProductionLine.is_active.is_(True),
+        )
+        .order_by(SteelProductionLine.name.asc())
+        .all()
+    )
+
+    return {
+        "lines": [
+            {
+                "id": line.id,
+                "code": line.code or "",
+                "name": line.name,
+                "description": line.description,
+                "is_active": line.is_active,
+            }
+            for line in lines
+        ]
+    }
+
+
+@router.post("/production/lines", status_code=201)
+def create_steel_production_line(
+    payload: SteelProductionLineCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
+
+    name = sanitize_text(payload.name, max_length=100, preserve_newlines=False) or payload.name.strip()
+    code = sanitize_text(payload.code, max_length=24, preserve_newlines=False) or payload.code.strip()
+
+    if not name or not code:
+        raise HTTPException(status_code=400, detail="Line name and code are required.")
+
+    existing = (
+        db.query(SteelProductionLine.id)
+        .filter(
+            SteelProductionLine.factory_id == factory.factory_id,
+            SteelProductionLine.name == name,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="A production line with this name already exists in this factory.")
+
+    line = SteelProductionLine(
+        org_id=factory.org_id,
+        factory_id=factory.factory_id,
+        name=name,
+        code=code,
+        description=sanitize_text(payload.description, max_length=300) if payload.description else None,
+        created_by_user_id=current_user.id,
+    )
+    db.add(line)
+    _write_steel_audit(
+        db,
+        actor=current_user,
+        factory_id=factory.factory_id,
+        action="STEEL_PRODUCTION_LINE_CREATED",
+        details=f"name={name} code={code}",
+        request=request,
+    )
+    db.commit()
+    db.refresh(line)
+
+    return {
+        "line": {
+            "id": line.id,
+            "code": line.code or "",
+            "name": line.name,
+            "description": line.description,
+            "is_active": line.is_active,
+        }
+    }
+
+
+# ── Production Machines Endpoints ────────────────────────────────────────────
+
+
+@router.get("/production/machines")
+def list_steel_machines(
+    line_id: int | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+
+    query = db.query(SteelMachine).filter(
+        SteelMachine.factory_id == factory.factory_id,
+        SteelMachine.is_active.is_(True),
+    )
+    if line_id is not None:
+        query = query.filter(SteelMachine.line_id == line_id)
+    machines = query.order_by(SteelMachine.name.asc()).all()
+
+    return {
+        "machines": [
+            {
+                "id": machine.id,
+                "line_id": machine.line_id,
+                "machine_code": machine.machine_code,
+                "name": machine.name,
+                "machine_type": machine.machine_type,
+                "description": machine.description,
+                "rated_capacity_per_hour": machine.rated_capacity_per_hour,
+                "planned_runtime_minutes": machine.planned_runtime_minutes,
+                "operating_runtime_minutes": machine.operating_runtime_minutes,
+                "is_active": machine.is_active,
+            }
+            for machine in machines
+        ]
+    }
+
+
+@router.post("/production/machines", status_code=201)
+def create_steel_machine(
+    payload: SteelMachineCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
+
+    name = sanitize_text(payload.name, max_length=160, preserve_newlines=False) or payload.name.strip()
+    machine_code = sanitize_text(payload.machine_code, max_length=24, preserve_newlines=False) or payload.machine_code.strip()
+
+    if not name or not machine_code:
+        raise HTTPException(status_code=400, detail="Machine name and code are required.")
+
+    # Verify the line exists and belongs to the same factory
+    line = (
+        db.query(SteelProductionLine)
+        .filter(
+            SteelProductionLine.id == payload.line_id,
+            SteelProductionLine.factory_id == factory.factory_id,
+        )
+        .first()
+    )
+    if not line:
+        raise HTTPException(status_code=404, detail="Production line not found in this factory.")
+
+    existing = (
+        db.query(SteelMachine.id)
+        .filter(
+            SteelMachine.factory_id == factory.factory_id,
+            SteelMachine.machine_code == machine_code,
+        )
+        .first()
+    )
+    if existing:
+        raise HTTPException(status_code=409, detail="A machine with this code already exists in this factory.")
+
+    machine = SteelMachine(
+        org_id=factory.org_id,
+        factory_id=factory.factory_id,
+        line_id=payload.line_id,
+        machine_code=machine_code,
+        name=name,
+        machine_type=sanitize_text(payload.machine_type, max_length=60, preserve_newlines=False) if payload.machine_type else None,
+        description=sanitize_text(payload.description, max_length=300) if payload.description else None,
+        rated_capacity_per_hour=payload.rated_capacity_per_hour,
+        planned_runtime_minutes=payload.planned_runtime_minutes,
+        operating_runtime_minutes=payload.operating_runtime_minutes,
+        created_by_user_id=current_user.id,
+    )
+    db.add(machine)
+    _write_steel_audit(
+        db,
+        actor=current_user,
+        factory_id=factory.factory_id,
+        action="STEEL_MACHINE_CREATED",
+        details=f"name={name} code={machine_code} line_id={payload.line_id}",
+        request=request,
+    )
+    db.commit()
+    db.refresh(machine)
+
+    return {
+        "machine": {
+            "id": machine.id,
+            "line_id": machine.line_id,
+            "machine_code": machine.machine_code,
+            "name": machine.name,
+            "machine_type": machine.machine_type,
+            "description": machine.description,
+            "rated_capacity_per_hour": machine.rated_capacity_per_hour,
+            "planned_runtime_minutes": machine.planned_runtime_minutes,
+            "operating_runtime_minutes": machine.operating_runtime_minutes,
+            "is_active": machine.is_active,
+        }
+    }
 
 
 @router.patch("/production/machines/{machine_id}")

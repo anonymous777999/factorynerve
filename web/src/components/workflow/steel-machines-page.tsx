@@ -156,9 +156,14 @@ export function SteelMachinesPage() {
                 Manage machine records for utilization tracking, rejection analysis, and batch assignment.
               </p>
             </div>
-            <Button variant="outline" onClick={() => { setShowForm(!showForm); setSaveError(""); }}>
-              {showForm ? "Cancel" : "Add Machine"}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Link href="/steel/production/lines">
+                <Button variant="ghost">Manage Lines</Button>
+              </Link>
+              <Button variant="outline" onClick={() => { setShowForm(!showForm); setSaveError(""); }}>
+                {showForm ? "Cancel" : "Add Machine"}
+              </Button>
+            </div>
           </div>
 
           {showForm ? (
@@ -166,17 +171,26 @@ export function SteelMachinesPage() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Production Line *</label>
-                  <Select
-                    value={formLineId ? String(formLineId) : ""}
-                    onChange={(e) => setFormLineId(parseInt(e.target.value))}
-                  >
-                    <option value="" disabled>Select line</option>
-                    {lines.map((line) => (
-                      <option key={line.id} value={String(line.id)}>
-                        {line.name} ({line.code})
-                      </option>
-                    ))}
-                  </Select>
+                  {lines.length === 0 ? (
+                    <div className="rounded-xl border border-amber-400/25 bg-amber-400/8 px-3 py-2.5 text-xs text-amber-200">
+                      No production lines available.{' '}
+                      <Link href="/steel/production/lines" className="underline hover:text-amber-100">
+                        Create a line first
+                      </Link>
+                    </div>
+                  ) : (
+                    <Select
+                      value={formLineId ? String(formLineId) : ""}
+                      onChange={(e) => setFormLineId(parseInt(e.target.value))}
+                    >
+                      <option value="" disabled>Select line</option>
+                      {lines.map((line) => (
+                        <option key={line.id} value={String(line.id)}>
+                          {line.name} ({line.code})
+                        </option>
+                      ))}
+                    </Select>
+                  )}
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Machine Code *</label>

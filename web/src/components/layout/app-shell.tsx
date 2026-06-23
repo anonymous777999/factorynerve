@@ -177,6 +177,13 @@ const navSections: NavSection[] = [
         match: (pathname) => pathname === "/steel/production/record" || pathname.startsWith("/steel/production/record"),
       },
       {
+        label: "Production Lines",
+        href: "/steel/production/lines",
+        description: "Manage production line records for line-level efficiency tracking and batch assignment",
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/production/lines" || pathname.startsWith("/steel/production/lines"),
+      },
+      {
         label: "Machines",
         href: "/steel/production/machines",
         description: "Machine registry, downtime tracking, maintenance scheduling, and OEE readiness",
@@ -537,6 +544,10 @@ const ITEM_TRANSLATION_KEY: Record<string, { label: string; description: string 
     label: "nav.steel_inventory_intelligence.label",
     description: "nav.steel_inventory_intelligence.description",
   },
+  "/steel/production/lines": {
+    label: "nav.steel_production_lines.label",
+    description: "nav.steel_production_lines.description",
+  },
   "/steel/production/machines": {
     label: "nav.steel_machines.label",
     description: "nav.steel_machines.description",
@@ -827,6 +838,8 @@ function getNavIconName(href: string): NavIconName {
     case "/ocr/scan":
       return "docs";
     case "/steel":
+      return "steel";
+    case "/steel/production/lines":
       return "steel";
     case "/steel/production/machines":
       return "steel";

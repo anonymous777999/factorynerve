@@ -310,6 +310,46 @@ def _on_attendance_review_completed(db: Session, instance: dict[str, Any]) -> No
     db.flush()
 
 
+def _on_user_deactivate_completed(db: Session, instance: dict[str, Any]) -> None:
+    """Deactivate the user when approval completes."""
+    resource_id = instance.get("resource_id")
+    actor_user_id = (
+        instance.get("approved_by_user_id")
+        or instance.get("rejected_by_user_id")
+        or instance.get("actor_user_id")
+    )
+    final_status = instance.get("status")
+
+    if not resource_id:
+        return
+
+    try:
+        user_id = int(resource_id)
+    except (ValueError, TypeError):
+        return
+
+    from backend.models.user import User
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        logger.warning("on_user_deactivate_completed: user %s not found", user_id)
+        return
+
+    if final_status == "approved":
+        user.is_active = False
+        user.profile_picture = None
+        logger.info("User %s deactivated via approval completion", user_id)
+
+    _write_audit(
+        db,
+        user_id=actor_user_id,
+        org_id=instance.get("org_id"),
+        factory_id=instance.get("factory_id"),
+        action=f"USER_DEACTIVATED_VIA_APPROVAL_{final_status.upper()}",
+        details=f"user_id={user.id} role={user.role.value} status={final_status}",
+    )
+    db.flush()
+
+
 def _on_generic_completed(db: Session, instance: dict[str, Any]) -> None:
     """Fallback callback for workflow keys without a specific handler."""
     workflow_key = instance.get("workflow_key", "unknown")
@@ -357,7 +397,7 @@ APPROVAL_CALLBACKS: dict[str, Any] = {
     "user.invite": _on_generic_completed,
     "user.role.assign": _on_generic_completed,
     "user.membership.assign": _on_generic_completed,
-    "user.deactivate": _on_generic_completed,
+    "user.deactivate": _on_user_deactivate_completed,
     # Billing
     "billing.plan.downgrade": _on_generic_completed,
     "billing.plan.change": _on_generic_completed,
