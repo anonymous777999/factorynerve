@@ -1,15 +1,14 @@
 """Add failed_login_attempts and locked_until columns to auth_users table.
 
 The AuthUser model was updated to support account lockout after repeated
-failed login attempts (auth_security/lockout.py), but the migration to
-add the required columns was never created. This adds:
+failed login attempts (auth_security/lockout.py), but the migration was
+never created, causing a column-not-found error on login.
 
-- failed_login_attempts (Integer, default 0, not null)
-- locked_until (DateTime(timezone=True), nullable)
+This migration depends on 20260623_01 (ensure_steel_lines_machines_tables)
+for a clean single-chain lineage — no branch merge needed.
 
-PR: (part of the auth hardening work)
 Revision ID: 20260623_100001
-Revises: e9d27018633b (repair_billing_stealth_drift)
+Revises: 20260623_01 (ensure_steel_lines_machines_tables)
 Create Date: 2026-06-23 10:00:01.000000
 """
 
@@ -21,7 +20,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "20260623_100001"
-down_revision: ClassVar[str | None] = "e9d27018633b"  # last migration
+down_revision: ClassVar[str | None] = "20260623_01"
 branch_labels: ClassVar[str | None] = None
 depends_on: ClassVar[str | None] = None
 
