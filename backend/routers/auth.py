@@ -26,7 +26,7 @@ from backend.models.report import AuditLog, TokenBlacklist
 from backend.models.email_verification_token import EmailVerificationToken
 from backend.models.pending_registration import PendingRegistration
 from backend.models.refresh_token import RefreshToken
-from backend.models.user import User, UserReadSchema, UserRole
+from backend.models.user import User, UserReadSchema, UserRole, role_rank
 from backend.models.factory import Factory
 from backend.models.organization import Organization
 from backend.models.user_factory_role import UserFactoryRole
@@ -72,7 +72,7 @@ from backend.services.user_code_service import (
     next_user_code,
 )
 from backend.services.user_service import validate_factory_role_assignment
-from backend.email_service import send_email
+from backend.email_utils import queue_and_send_email
 from backend.services.registration_service import resolve_registration_context
 from backend.auth_cookies import (
     clear_auth_cookies,
@@ -235,10 +235,18 @@ def _send_auth_email(
     to_email: str,
     body: str,
     context: str,
+    user_id: int | None = None,
+    factory_name: str | None = None,
 ) -> bool:
     try:
-        send_email(subject=subject, to_emails=[to_email], body=body)
-        return True
+        result = queue_and_send_email(
+            to_emails=[to_email],
+            subject=subject,
+            body=body,
+            user_id=user_id or 0,
+            factory_name=factory_name or "FactoryNerve",
+        )
+        return result.get("sent", False) or result.get("queue_id") is not None
     except Exception:  # pylint: disable=broad-except
         logger.exception("Auth email delivery failed for %s.", context)
         return False
@@ -454,25 +462,14 @@ def _hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-_ROLE_ORDER = {
-    UserRole.ATTENDANCE: 0,
-    UserRole.OPERATOR: 1,
-    UserRole.SUPERVISOR: 2,
-    UserRole.ACCOUNTANT: 2,
-    UserRole.MANAGER: 3,
-    UserRole.ADMIN: 4,
-    UserRole.OWNER: 5,
-}
-
-
 def _build_permissions(user: User) -> PermissionsSchema:
     role_value = user.role.value if isinstance(user.role, UserRole) else str(user.role)
     role = user.role if isinstance(user.role, UserRole) else None
     return PermissionsSchema(
         can_view_billing=role in {UserRole.ADMIN, UserRole.OWNER},
-        can_manage_users=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.MANAGER]),
-        can_view_analytics=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
-        can_approve_entries=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
+        can_manage_users=bool(role and role_rank(role) >= role_rank(UserRole.MANAGER)),
+        can_view_analytics=bool(role and role_rank(role) >= role_rank(UserRole.SUPERVISOR)),
+        can_approve_entries=bool(role and role_rank(role) >= role_rank(UserRole.SUPERVISOR)),
         can_export_data=role not in {UserRole.ATTENDANCE, UserRole.OPERATOR},
         can_manage_billing=role == UserRole.OWNER,
         can_view_admin_panel=role_value == "superadmin",
@@ -690,7 +687,7 @@ def _preview_public_registration(
         )
         if factory:
             if factory.name.strip().lower() != normalized_factory.lower():
-                raise HTTPException(status_code=400, detail="Company code does not match factory name.")
+                raise HTTPException(status_code=400, detail="Invalid factory name or company code.")
             org_id = factory.org_id
             normalized_factory = factory.name
         else:
@@ -700,9 +697,9 @@ def _preview_public_registration(
                 .first()
             )
             if not legacy:
-                raise HTTPException(status_code=400, detail="Invalid company code.")
+                raise HTTPException(status_code=400, detail="Invalid factory name or company code.")
             if legacy.factory_name.strip().lower() != normalized_factory.lower():
-                raise HTTPException(status_code=400, detail="Company code does not match factory name.")
+                raise HTTPException(status_code=400, detail="Invalid factory name or company code.")
             org_id = legacy.org_id
             normalized_factory = legacy.factory_name
     else:
@@ -873,6 +870,8 @@ def register_user(
                     "If you did not create this account, you can ignore this email."
                 ),
                 context="registration_verification",
+                user_id=None,
+                factory_name=requested_factory,
             )
             if not sent:
                 delivery_mode = "email_failed"
@@ -981,9 +980,15 @@ def logout_all_devices(
     token = str(getattr(current_user, "current_token", "") or "")
     if not token:
         token = get_access_cookie(request) or ""
+    jti = str(getattr(current_user, "current_token_jti", "") or "")
     if token:
-        jti = str(getattr(current_user, "current_token_jti", "") or "")
-        exp = getattr(current_user, "current_token_expires_at", None)
+        # Decode jti from token if user-level attr is missing (defense-in-depth)
+        try:
+            payload = decode_access_token(token)
+            jti = jti or str(payload.get("jti", ""))
+            exp = datetime.fromtimestamp(int(payload["exp"]), tz=timezone.utc) if payload.get("exp") else None
+        except Exception:
+            exp = getattr(current_user, "current_token_expires_at", None)
         existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first() if jti else None
         if jti and exp and not existing:
             db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
@@ -1148,6 +1153,8 @@ def resend_email_verification(
                     "If you did not request this, you can ignore this email."
                 ),
                 context="resend_verification",
+                user_id=None,
+                factory_name=pending.factory_name,
             )
         if delivered:
             _log_auth_event(
@@ -1179,6 +1186,8 @@ def resend_email_verification(
                     "If you did not request this, you can ignore this email."
                 ),
                 context="resend_verification",
+                user_id=user.id,
+                factory_name=user.factory_name,
             )
         if delivered:
             _log_auth_event(
@@ -1307,6 +1316,8 @@ def password_forgot(
                 ),
                 to_email=user.email,
                 context="password_reset",
+                user_id=user.id,
+                factory_name=user.factory_name,
             )
         if delivered:
             _log_auth_event(
@@ -1363,6 +1374,20 @@ def password_reset(
         auth_user.password_changed_at = now
         auth_user.updated_at = now
     record.used_at = now
+
+    # Invalidate all other pending reset tokens for this user
+    from backend.models.password_reset_token import PasswordResetToken
+    from backend.models.auth_password_reset import AuthPasswordReset
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.used_at.is_(None),
+        PasswordResetToken.id != record.id,
+    ).update({"used_at": now}, synchronize_session=False)
+    if auth_user:
+        db.query(AuthPasswordReset).filter(
+            AuthPasswordReset.auth_user_id == auth_user.id,
+            AuthPasswordReset.used_at.is_(None),
+        ).update({"used_at": now}, synchronize_session=False)
 
     db.query(RefreshToken).filter(
         RefreshToken.user_id == user.id,
@@ -1693,6 +1718,19 @@ def change_password(
             auth_user.password_hash = auth_hash_password(payload.new_password)
             auth_user.password_changed_at = datetime.now(timezone.utc)
             auth_user.updated_at = datetime.now(timezone.utc)
+        # Invalidate any pending password reset tokens (legacy and v2)
+        from backend.models.password_reset_token import PasswordResetToken
+        from backend.models.auth_password_reset import AuthPasswordReset
+        now = datetime.now(timezone.utc)
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == current_user.id,
+            PasswordResetToken.used_at.is_(None),
+        ).update({"used_at": now}, synchronize_session=False)
+        if auth_user:
+            db.query(AuthPasswordReset).filter(
+                AuthPasswordReset.auth_user_id == auth_user.id,
+                AuthPasswordReset.used_at.is_(None),
+            ).update({"used_at": now}, synchronize_session=False)
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
         return {"message": "Password changed successfully."}

@@ -1222,6 +1222,7 @@ def _refresh_invoice_payment_statuses(db: Session, *, factory_id: str, invoice_i
             SteelCustomerPayment.factory_id == factory_id,
             SteelCustomerPayment.customer_id.in_(list(customer_ids)),
         )
+        .limit(2000)
         .all()
         if customer_ids
         else []
@@ -1232,6 +1233,7 @@ def _refresh_invoice_payment_statuses(db: Session, *, factory_id: str, invoice_i
             SteelCustomerPaymentAllocation.factory_id == factory_id,
             SteelCustomerPaymentAllocation.invoice_id.in_(list(invoice_ids)),
         )
+        .limit(2000)
         .all()
     )
     invoice_map = {int(row.id): row for row in invoices}
@@ -1800,6 +1802,7 @@ def list_steel_inventory_transactions(
         item.id: item
         for item in db.query(SteelInventoryItem)
         .filter(SteelInventoryItem.factory_id == factory.factory_id, SteelInventoryItem.is_active.is_(True))
+        .limit(500)
         .all()
     }
     return {
@@ -1959,6 +1962,8 @@ def create_steel_inventory_transaction(
         raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision_txn.result}")
 
     item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.item_id)
+    # Lock the item row to prevent concurrent stock underflow (TOCTOU race)
+    db.query(SteelInventoryItem).filter(SteelInventoryItem.id == item.id).with_for_update().first()
     balances = stock_balances_for_factory(db, factory.factory_id)
     projected_balance = float(balances.get(item.id, 0.0)) + signed_quantity
     if projected_balance < -0.001:
@@ -2202,6 +2207,10 @@ def approve_steel_stock_reconciliation(
     if row.status != "pending":
         raise HTTPException(status_code=400, detail="Only pending reconciliations can be approved.")
 
+    # Self-approval guard: the user who counted cannot also approve
+    if row.counted_by_user_id is not None and row.counted_by_user_id == current_user.id:
+        raise HTTPException(status_code=403, detail="You cannot approve your own reconciliation. Another user must review it.")
+
     # Step 1: Approval service initiation (maker-checker)
     org_id = resolve_org_id(current_user)
     factory_id = factory.factory_id
@@ -2334,6 +2343,10 @@ def reject_steel_stock_reconciliation(
     )
     if _stock_variance_needs_cause(row.variance_kg) and mismatch_cause is None:
         raise HTTPException(status_code=400, detail="Mismatch cause is required before rejection.")
+
+    # Self-approval guard: the user who counted cannot also reject
+    if row.counted_by_user_id is not None and row.counted_by_user_id == current_user.id:
+        raise HTTPException(status_code=403, detail="You cannot reject your own reconciliation. Another user must review it.")
 
     # Approval service initiation (maker-checker)
     org_id = resolve_org_id(current_user)
@@ -2643,6 +2656,7 @@ def list_steel_customers(
             SteelSalesInvoice.factory_id == factory.factory_id,
             SteelSalesInvoice.customer_id.in_(customer_ids),
         )
+        .limit(2000)
         .all()
         if customer_ids
         else []
@@ -2653,6 +2667,7 @@ def list_steel_customers(
             SteelCustomerPayment.factory_id == factory.factory_id,
             SteelCustomerPayment.customer_id.in_(customer_ids),
         )
+        .limit(2000)
         .all()
         if customer_ids
         else []
@@ -2663,6 +2678,7 @@ def list_steel_customers(
             SteelCustomerFollowUpTask.factory_id == factory.factory_id,
             SteelCustomerFollowUpTask.customer_id.in_(customer_ids),
         )
+        .limit(2000)
         .all()
         if customer_ids
         else []
@@ -2674,6 +2690,7 @@ def list_steel_customers(
             SteelCustomerPaymentAllocation.factory_id == factory.factory_id,
             SteelCustomerPaymentAllocation.invoice_id.in_(invoice_ids),
         )
+        .limit(2000)
         .all()
         if invoice_ids
         else []
@@ -2827,12 +2844,14 @@ def get_steel_customer_ledger(
         db.query(SteelSalesInvoice)
         .filter(SteelSalesInvoice.factory_id == factory.factory_id, SteelSalesInvoice.customer_id == customer.id)
         .order_by(SteelSalesInvoice.invoice_date.desc(), SteelSalesInvoice.created_at.desc())
+        .limit(500)
         .all()
     )
     payments = (
         db.query(SteelCustomerPayment)
         .filter(SteelCustomerPayment.factory_id == factory.factory_id, SteelCustomerPayment.customer_id == customer.id)
         .order_by(SteelCustomerPayment.payment_date.desc(), SteelCustomerPayment.created_at.desc())
+        .limit(500)
         .all()
     )
     allocation_rows = (
@@ -2841,6 +2860,7 @@ def get_steel_customer_ledger(
             SteelCustomerPaymentAllocation.factory_id == factory.factory_id,
             SteelCustomerPaymentAllocation.customer_id == customer.id,
         )
+        .limit(1000)
         .all()
     )
     follow_up_tasks = (
@@ -2854,6 +2874,7 @@ def get_steel_customer_ledger(
             SteelCustomerFollowUpTask.due_date.asc().nulls_last(),
             SteelCustomerFollowUpTask.created_at.desc(),
         )
+        .limit(200)
         .all()
     )
 
@@ -3320,6 +3341,7 @@ def create_steel_customer_payment(
             SteelSalesInvoice.customer_id == customer.id,
         )
         .order_by(SteelSalesInvoice.due_date.asc(), SteelSalesInvoice.invoice_date.asc(), SteelSalesInvoice.id.asc())
+        .limit(500)
         .all()
     )
     invoice_map = {int(row.id): row for row in customer_invoices}
@@ -3329,6 +3351,7 @@ def create_steel_customer_payment(
             SteelCustomerPayment.factory_id == factory.factory_id,
             SteelCustomerPayment.customer_id == customer.id,
         )
+        .limit(500)
         .all()
     )
     allocation_rows = (
@@ -3337,6 +3360,7 @@ def create_steel_customer_payment(
             SteelCustomerPaymentAllocation.factory_id == factory.factory_id,
             SteelCustomerPaymentAllocation.customer_id == customer.id,
         )
+        .limit(1000)
         .all()
     )
     _, paid_by_invoice, _ = _build_payment_allocation_maps(
@@ -4316,12 +4340,16 @@ def update_steel_dispatch_status(
     if next_status in {"pending", "loaded"} and _dispatch_has_posted_inventory(dispatch):
         raise HTTPException(status_code=409, detail="Posted dispatches cannot move back to pending or loaded.")
 
+    # Self-approval guard: the user who created the dispatch cannot also approve its status change
+    if dispatch.created_by_user_id is not None and dispatch.created_by_user_id == current_user.id:
+        raise HTTPException(status_code=403, detail="You cannot approve your own dispatch status change. Another user must review it.")
+
     # Approval service initiation for dispatch status changes
     org_id_ds = resolve_org_id(current_user)
     factory_id_ds = factory.factory_id
     approval_decision_ds = APPROVAL_SERVICE.initiate_approval(db, 
         actor_user_id=current_user.id,
-        subject_user_id=dispatch.created_by_user_id or current_user.id,
+        subject_user_id=dispatch.created_by_user_id,
         workflow_key="dispatch.status.update",
         action_key="dispatch.record.update",
         resource_type="SteelDispatch",
@@ -4474,6 +4502,8 @@ def create_steel_batch(
     if payload.actual_output_kg > payload.input_quantity_kg:
         raise HTTPException(status_code=400, detail="Actual output cannot exceed input quantity.")
 
+    # Lock the input item row to prevent concurrent stock underflow (TOCTOU race)
+    db.query(SteelInventoryItem).filter(SteelInventoryItem.id == input_item.id).with_for_update().first()
     balances = stock_balances_for_factory(db, factory.factory_id)
     available_input = float(balances.get(input_item.id, 0.0))
     if available_input + 0.0001 < payload.input_quantity_kg:

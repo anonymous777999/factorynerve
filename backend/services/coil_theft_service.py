@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -35,8 +35,11 @@ def detect_coil_theft(
         query = query.filter(SteelProductionBatch.org_id == org_id)
     if factory_id:
         query = query.filter(SteelProductionBatch.factory_id == factory_id)
-    # Optionally restrict to recent batches (e.g., last 30 days)
-    # For simplicity, we process all; caller can limit.
+    # Default to last 365 days to prevent full table scan on long-running factories.
+    # The function signature can be extended with a days= parameter if callers
+    # need a longer lookback window.
+    _cutoff_date = datetime.now(timezone.utc).date() - timedelta(days=365)
+    query = query.filter(SteelProductionBatch.production_date >= _cutoff_date)
     batches: List[SteelProductionBatch] = query.all()
 
     alerts: List[Alert] = []

@@ -83,7 +83,12 @@ def _subscription_sort_key(sub: Subscription, *, now: datetime | None = None) ->
 
 
 def get_canonical_subscription(db: Session, org_id: str) -> Subscription | None:
-    rows = db.query(Subscription).filter(Subscription.org_id == org_id).all()
+    rows = (
+        db.query(Subscription)
+        .filter(Subscription.org_id == org_id)
+        .limit(50)
+        .all()
+    )
     if not rows:
         return None
     now = datetime.now(timezone.utc)
@@ -91,7 +96,12 @@ def get_canonical_subscription(db: Session, org_id: str) -> Subscription | None:
 
 
 def get_mutable_subscription(db: Session, org_id: str) -> Subscription | None:
-    rows = db.query(Subscription).filter(Subscription.org_id == org_id).all()
+    rows = (
+        db.query(Subscription)
+        .filter(Subscription.org_id == org_id)
+        .limit(50)
+        .all()
+    )
     if not rows:
         return None
     now = datetime.now(timezone.utc)
@@ -178,9 +188,22 @@ def normalize_subscription_record(
 def normalize_subscription_states(db: Session) -> int:
     now = datetime.now(timezone.utc)
     updated = 0
-    for row in db.query(Subscription).all():
-        if normalize_subscription_record(db, row, now=now):
-            updated += 1
+    page_size = 200
+    offset = 0
+    while True:
+        rows = (
+            db.query(Subscription)
+            .order_by(Subscription.id)
+            .limit(page_size)
+            .offset(offset)
+            .all()
+        )
+        if not rows:
+            break
+        for row in rows:
+            if normalize_subscription_record(db, row, now=now):
+                updated += 1
+        offset += page_size
     return updated
 
 
@@ -453,23 +476,35 @@ def apply_due_downgrades(
 
 def enforce_expired_grace_periods(db: Session) -> int:
     now = datetime.now(timezone.utc)
-    rows = db.query(Subscription).all()
     changed = 0
-    for row in rows:
-        previous_status = str(row.status or "").strip().lower()
-        if normalize_subscription_record(db, row, now=now):
-            changed += 1
-            log_billing_event(
-                "subscription.state_change",
-                row.org_id,
-                "success",
-                action="GRACE_PERIOD_EXPIRED"
-                if previous_status == "past_due" and row.status == "suspended"
-                else "STATE_NORMALIZED",
-                user_id=row.user_id,
-                status=row.status,
-                grace_period_end=row.grace_period_end_at.isoformat() if row.grace_period_end_at else None,
-            )
+    page_size = 200
+    offset = 0
+    while True:
+        rows = (
+            db.query(Subscription)
+            .order_by(Subscription.id)
+            .limit(page_size)
+            .offset(offset)
+            .all()
+        )
+        if not rows:
+            break
+        for row in rows:
+            previous_status = str(row.status or "").strip().lower()
+            if normalize_subscription_record(db, row, now=now):
+                changed += 1
+                log_billing_event(
+                    "subscription.state_change",
+                    row.org_id,
+                    "success",
+                    action="GRACE_PERIOD_EXPIRED"
+                    if previous_status == "past_due" and row.status == "suspended"
+                    else "STATE_NORMALIZED",
+                    user_id=row.user_id,
+                    status=row.status,
+                    grace_period_end=row.grace_period_end_at.isoformat() if row.grace_period_end_at else None,
+                )
+        offset += page_size
     return changed
 
 

@@ -50,6 +50,7 @@ from backend.plans import (
     plan_has_hard_caps,
 )
 from backend.tenancy import resolve_org_id
+from backend.utils import ensure_utc
 from backend.services.billing_manager import (
     activate_org_addons,
     apply_plan_change,
@@ -66,6 +67,8 @@ from backend.services.ops_alerts import (
     record_payment_failure,
     record_payment_webhook_error,
 )
+from backend.services.invoice_pdf import generate_invoice_pdf
+from fastapi.responses import Response
 
 
 router = APIRouter(tags=["Billing"])
@@ -223,14 +226,15 @@ def _mark_payment_order_status(db: Session, *, order_id: str | None, status: str
     db.add(row)
 
 
-def _get_payment_order(db: Session, *, order_id: str | None) -> PaymentOrder | None:
+def _get_payment_order(db: Session, *, order_id: str | None, for_update: bool = True) -> PaymentOrder | None:
     if not order_id:
         return None
-    return (
-        db.query(PaymentOrder)
-        .filter(PaymentOrder.provider == "razorpay", PaymentOrder.provider_order_id == order_id)
-        .first()
+    query = db.query(PaymentOrder).filter(
+        PaymentOrder.provider == "razorpay", PaymentOrder.provider_order_id == order_id
     )
+    if for_update:
+        query = query.with_for_update()
+    return query.first()
 
 
 def _resolve_event_id(data: dict, payload: bytes) -> str:
@@ -302,6 +306,7 @@ def _activate_paid_order(
     *,
     user_id: int,
     plan: str,
+    org_id: str | None,
     billing_cycle: str | None,
     amount_paise: int | None,
     addon_quantities: dict[str, int],
@@ -310,6 +315,27 @@ def _activate_paid_order(
     currency: str,
     event_type: str,
 ) -> None:
+    # Idempotency guard: skip if subscription is already active for this period
+    if org_id:
+        existing_sub = get_mutable_subscription(db, org_id)
+        if existing_sub is not None:
+            now = datetime.now(timezone.utc)
+            period_end = ensure_utc(existing_sub.current_period_end_at)
+            if (
+                existing_sub.status == "active"
+                and period_end is not None
+                and period_end > now
+            ):
+                logger.info(
+                    "Idempotency guard: subscription for org_id=%s is already active "
+                    "with plan=%s until %s; skipping activation for event=%s",
+                    org_id,
+                    existing_sub.plan,
+                    period_end.isoformat(),
+                    event_type,
+                )
+                return
+
     cycle = billing_cycle or _resolve_billing_cycle(plan, amount_paise)
     period_end = _resolve_period_end(cycle)
     detail_parts = [f"plan={plan}", f"event={event_type}"]
@@ -775,9 +801,42 @@ def get_invoices(
             "provider": row.provider,
             "provider_invoice_id": row.provider_invoice_id,
             "pdf_url": row.pdf_url,
+            "invoice_number": row.invoice_number,
+            "org_id": row.org_id,
         }
         for row in rows
     ]
+
+
+@router.get("/invoices/{invoice_id}/pdf")
+def download_invoice_pdf(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Generate and download a GST-compliant PDF invoice."""
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found.")
+    # Access check: user must own the invoice or belong to its org
+    user_owns = invoice.user_id is not None and invoice.user_id == current_user.id
+    if not user_owns:
+        from backend.models.organization import Organization as OrgModel
+        org = db.query(OrgModel).filter(OrgModel.org_id == invoice.org_id).first()
+        user_org_id = resolve_org_id(current_user)
+        if not org or not user_org_id or org.org_id != user_org_id:
+            raise HTTPException(status_code=403, detail="Access denied to this invoice.")
+    try:
+        pdf_bytes = generate_invoice_pdf(db, invoice)
+    except Exception as error:
+        logger.exception("Failed to generate PDF invoice for invoice_id=%s", invoice_id)
+        raise HTTPException(status_code=500, detail="Failed to generate invoice PDF.") from error
+    inv_number = invoice.invoice_number or f"INV-{invoice.id:06d}"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="factory-nerve-invoice-{inv_number}.pdf"'},
+    )
 
 
 class DowngradeRequest(BaseModel):
@@ -1071,10 +1130,12 @@ async def sync_order_status(
         amount = order_entity.get("amount") if isinstance(order_entity.get("amount"), int) else payment_order.amount
         addon_quantities = _extract_addon_quantities_from_notes(notes)
         currency = str(order_entity.get("currency") or payment_order.currency or SUPPORTED_CURRENCY)
+        sync_org_id = resolve_org_id(current_user)
         _activate_paid_order(
             db,
             user_id=current_user.id,
             plan=plan,
+            org_id=sync_org_id,
             billing_cycle=billing_cycle,
             amount_paise=amount,
             addon_quantities=addon_quantities,
@@ -1138,6 +1199,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
         existing = (
             db.query(WebhookEvent)
             .filter(WebhookEvent.provider == "razorpay", WebhookEvent.event_id == event_id)
+            .with_for_update()
             .first()
         )
         if existing:
@@ -1202,6 +1264,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                             db,
                             user_id=user_id,
                             plan=plan,
+                            org_id=org_id,
                             billing_cycle=cycle,
                             amount_paise=amount,
                             addon_quantities=addon_quantities,

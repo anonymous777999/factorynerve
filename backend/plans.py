@@ -488,7 +488,7 @@ def get_effective_factory_plan(
         org_id=org_id,
         factory_id=factory_id,
     )
-    rows = db.query(UserPlan).join(active_user_ids, active_user_ids.c.user_id == UserPlan.user_id).all()
+    rows = db.query(UserPlan).join(active_user_ids, active_user_ids.c.user_id == UserPlan.user_id).limit(50).all()
     if not rows:
         return DEFAULT_PLAN
     best = DEFAULT_PLAN

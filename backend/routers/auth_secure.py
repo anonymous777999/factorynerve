@@ -10,7 +10,7 @@ from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
-from backend.email_service import send_email
+from backend.email_utils import queue_and_send_email
 from backend.auth_cookies import clear_auth_cookies, set_access_cookie
 from backend.security import create_access_token
 from backend.models.auth_audit_log import AuthAuditLog
@@ -31,6 +31,11 @@ from backend.auth_security.sessions import (
     touch_session,
 )
 from backend.auth_security.tokens import build_reset_token, expires_at, generate_token, hash_token, verify_reset_token
+from backend.auth_security.lockout import (
+    check_account_locked,
+    increment_failed_login,
+    reset_failed_login,
+)
 
 
 router = APIRouter(tags=["AuthSecure"])
@@ -159,6 +164,18 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
 
     user = db.query(AuthUser).filter(AuthUser.email == email, AuthUser.is_active.is_(True)).first()
 
+    # Check account lockout before proceeding
+    if user and check_account_locked(user):
+        _log_event(
+            db, action="AUTH_LOGIN_BLOCKED_LOCKED", user_id=user.id,
+            request=request, meta={"email": email},
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Account temporarily locked due to too many failed login attempts. Try again later.",
+        )
+
     # Legacy user migration: if no AuthUser record exists, look up the legacy User table
     # and auto-create an AuthUser on-the-fly. This handles users registered via the
     # legacy registration flow (bcrypt) who are logging in for the first time via v2.
@@ -177,7 +194,25 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
             db.flush()
 
     if not user or not verify_password(payload.password, user.password_hash):
-        _log_event(db, action="AUTH_LOGIN_FAILED", user_id=None, request=request, meta={"email": email})
+        if user:
+            now_locked = increment_failed_login(db, user)
+            if now_locked:
+                _log_event(
+                    db, action="AUTH_LOGIN_LOCKOUT", user_id=user.id,
+                    request=request, meta={"email": email},
+                )
+                db.commit()
+                raise HTTPException(
+                    status_code=status.HTTP_423_LOCKED,
+                    detail="Account temporarily locked due to too many failed login attempts. Try again later.",
+                )
+        _log_event(db, action="AUTH_LOGIN_FAILED", user_id=user.id if user else None, request=request, meta={"email": email})
+        db.commit()
+        raise _generic_login_error()
+
+    # Email verification check: unverified emails cannot log in
+    if not user.is_email_verified:
+        _log_event(db, action="AUTH_LOGIN_EMAIL_UNVERIFIED", user_id=user.id, request=request, meta={"email": email})
         db.commit()
         raise _generic_login_error()
 
@@ -191,6 +226,9 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
             db.commit()
             raise _generic_login_error()
 
+    # On successful login, reset the failed login counter
+    reset_failed_login(db, user)
+
     # mfa_verified is True ONLY when the user has MFA enabled AND
     # successfully completed an MFA challenge during this login session.
     # The login handler guards above ensure we only reach here when:
@@ -203,9 +241,10 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         db, auth_user=user, request=request, response=response,
         mfa_verified=mfa_verified,
     )
-    # Set legacy CSRF cookie so cookie-session tests can verify the flow
+    # Set legacy CSRF cookie and header so cookie-session tests can verify the flow
     from backend.auth_cookies import set_csrf_cookie
-    set_csrf_cookie(response=response, request=request)
+    csrf_token = set_csrf_cookie(response=response, request=request)
+    response.headers["X-CSRF-Token"] = csrf_token
     _log_event(db, action="AUTH_LOGIN_SUCCESS", user_id=user.id, request=request)
     db.commit()
     return {"message": "Login successful."}
@@ -247,11 +286,25 @@ def password_forgot(payload: PasswordForgotRequest, request: Request, db: Sessio
         db.flush()
         signed = build_reset_token({"uid": user.id, "token": raw})
         reset_link = f"{RESET_BASE_URL}?token={signed}"
+        # Try to resolve a legacy User.id for the email queue FK constraint.
+        legacy_user_id = 0
         try:
-            send_email(
+            from backend.models.user import User as LegacyUser
+            legacy = db.query(LegacyUser).filter(
+                LegacyUser.email == email, LegacyUser.is_active.is_(True)
+            ).first()
+            if legacy is not None:
+                legacy_user_id = legacy.id
+        except Exception:
+            logger.warning("Could not resolve legacy user_id for password reset email.")
+
+        try:
+            queue_and_send_email(
                 subject="Reset your password",
                 to_emails=[user.email],
                 body=f"Use this link to reset your password (valid {RESET_TTL_MINUTES} minutes):\n{reset_link}",
+                user_id=legacy_user_id,
+                factory_name="FactoryNerve",
             )
         except Exception as error:  # pylint: disable=broad-except
             raise HTTPException(status_code=502, detail="Could not deliver the password reset email.") from error
@@ -287,6 +340,14 @@ def password_reset(payload: PasswordResetRequest, request: Request, response: Re
     user.password_changed_at = datetime.now(timezone.utc)
     user.updated_at = datetime.now(timezone.utc)
     reset.used_at = datetime.now(timezone.utc)
+    # Invalidate all other pending reset tokens for this user
+    from backend.models.auth_password_reset import AuthPasswordReset
+    now = datetime.now(timezone.utc)
+    db.query(AuthPasswordReset).filter(
+        AuthPasswordReset.auth_user_id == user.id,
+        AuthPasswordReset.used_at.is_(None),
+        AuthPasswordReset.id != reset.id,
+    ).update({"used_at": now}, synchronize_session=False)
     revoke_all_sessions(db, user_id=user.id)
     _log_event(db, action="AUTH_PASSWORD_RESET", user_id=user.id, request=request)
     db.commit()

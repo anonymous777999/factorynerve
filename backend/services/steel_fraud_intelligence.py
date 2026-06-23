@@ -165,7 +165,7 @@ def _build_inventory_loss_signals(
         .all()
     )
 
-    items = db.query(SteelInventoryItem).all()
+    items = db.query(SteelInventoryItem).filter(SteelInventoryItem.factory_id == factory_id).all()
     item_map = {it.id: it for it in items}
 
     # Count reconciliations per item, track repeated shortages

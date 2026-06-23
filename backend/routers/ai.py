@@ -46,6 +46,9 @@ from backend.services.nlq_language import (
 )
 from backend.models.steel_dispatch import SteelDispatch
 from backend.models.alert import Alert as AlertModel
+from backend.models.ai_usage_log import AIUsageLog
+from backend.models.organization import Organization
+from backend.services.plan_resolver import get_effective_plan
 from backend.tenancy import resolve_factory_id, resolve_org_id
 
 
@@ -260,6 +263,54 @@ class NaturalLanguageQueryResponse(BaseModel):
     action_items: list[ActionItem] = []
     health_score: int | None = None
     health_label: str | None = None
+
+
+
+
+class AiCostDailyBreakdown(BaseModel):
+    """Single day's token and cost usage."""
+    date: str
+    input_tokens: int
+    output_tokens: int
+    total_tokens: int
+    total_cost_usd: float
+    cache_hit_rate: float
+    request_count: int
+
+
+class AiCostPipelineBreakdown(BaseModel):
+    """Pipeline-level cost breakdown."""
+    pipeline_name: str
+    total_tokens: int
+    total_cost_usd: float
+    request_count: int
+    cache_hit_rate: float
+
+
+class AiCostModelBreakdown(BaseModel):
+    """Model-level cost breakdown."""
+    model: str
+    total_tokens: int
+    total_cost_usd: float
+    request_count: int
+
+
+class AiCostUsageResponse(BaseModel):
+    """AI cost dashboard showing current month's token usage and spend."""
+    period: str
+    plan: str
+    total_input_tokens: int
+    total_output_tokens: int
+    total_tokens: int
+    total_cost_usd: float
+    total_cost_inr: float
+    daily_token_cap: int
+    monthly_cost_cap_usd: float
+    token_usage_percent: float
+    cost_usage_percent: float
+    daily_breakdown: list[AiCostDailyBreakdown]
+    pipeline_breakdown: list[AiCostPipelineBreakdown]
+    model_breakdown: list[AiCostModelBreakdown]
 
 
 class ExecutiveSummaryResponse(BaseModel):
@@ -2184,6 +2235,150 @@ def get_ai_usage(
         nlq_min_plan=_nlq_min_plan(),
         executive_min_plan=_executive_min_plan(),
     )
+
+@router.get("/cost-usage", response_model=AiCostUsageResponse)
+def get_ai_cost_usage(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> AiCostUsageResponse:
+    """Return current month's AI token usage and cost dashboard for the customer's org."""
+    _ensure_ai_access(current_user)
+    PDP(db=db).require_permission(actor=current_user, permission_key="ai.usage.view")
+    org_id = resolve_org_id(current_user)
+    plan = get_effective_plan(org_id, db) if org_id else "pilot"
+
+    now = datetime.now(timezone.utc)
+    month_start = datetime(now.year, now.month, 1, tzinfo=timezone.utc)
+    period = now.strftime("%Y-%m")
+
+    # Fetch org caps
+    daily_token_cap = 250000
+    monthly_cost_cap_usd = 250.0
+    if org_id:
+        org = db.query(Organization).filter(Organization.org_id == org_id).first()
+        if org:
+            daily_token_cap = int(org.ai_daily_token_cap or 250000)
+            monthly_cost_cap_usd = float(org.ai_monthly_cost_cap_usd or 250.0)
+
+    # Base query: AIUsageLog for this org + current month
+    base_query = db.query(AIUsageLog).filter(
+        AIUsageLog.org_id == org_id,
+        AIUsageLog.created_at >= month_start,
+    ) if org_id else db.query(AIUsageLog).filter(AIUsageLog.created_at >= month_start)
+
+    # Month totals
+    totals = base_query.with_entities(
+        func.coalesce(func.sum(AIUsageLog.input_tokens), 0).label("total_input"),
+        func.coalesce(func.sum(AIUsageLog.output_tokens), 0).label("total_output"),
+        func.coalesce(func.sum(AIUsageLog.estimated_cost_usd), 0.0).label("total_cost"),
+    ).first()
+
+    total_input = int(totals.total_input or 0)
+    total_output = int(totals.total_output or 0)
+    total_tokens_val = total_input + total_output
+    total_cost_usd = round(float(totals.total_cost or 0.0), 4)
+    total_cost_inr = round(total_cost_usd * 83.0, 2)
+
+    # Daily breakdown (last 31 days)
+    daily_rows = (
+        base_query.with_entities(
+            func.date(AIUsageLog.created_at).label("day"),
+            func.coalesce(func.sum(AIUsageLog.input_tokens), 0).label("input_tokens"),
+            func.coalesce(func.sum(AIUsageLog.output_tokens), 0).label("output_tokens"),
+            func.coalesce(func.sum(AIUsageLog.estimated_cost_usd), 0.0).label("cost"),
+            func.count(AIUsageLog.id).label("count"),
+            func.avg(case((AIUsageLog.cache_hit.is_(True), 1.0), else_=0.0)).label("cache_rate"),
+        )
+        .group_by(func.date(AIUsageLog.created_at))
+        .order_by(func.date(AIUsageLog.created_at).desc())
+        .limit(31)
+        .all()
+    )
+
+    daily_breakdown = [
+        AiCostDailyBreakdown(
+            date=str(row.day),
+            input_tokens=int(row.input_tokens or 0),
+            output_tokens=int(row.output_tokens or 0),
+            total_tokens=int((row.input_tokens or 0) + (row.output_tokens or 0)),
+            total_cost_usd=round(float(row.cost or 0.0), 4),
+            cache_hit_rate=round(float(row.cache_rate or 0.0), 4),
+            request_count=int(row.count or 0),
+        )
+        for row in daily_rows
+    ]
+
+    # Pipeline breakdown
+    pipeline_rows = (
+        base_query.with_entities(
+            AIUsageLog.pipeline_name,
+            func.coalesce(func.sum(AIUsageLog.input_tokens + AIUsageLog.output_tokens), 0).label("total_tokens"),
+            func.coalesce(func.sum(AIUsageLog.estimated_cost_usd), 0.0).label("total_cost"),
+            func.count(AIUsageLog.id).label("count"),
+            func.avg(case((AIUsageLog.cache_hit.is_(True), 1.0), else_=0.0)).label("cache_rate"),
+        )
+        .group_by(AIUsageLog.pipeline_name)
+        .order_by(func.coalesce(func.sum(AIUsageLog.estimated_cost_usd), 0.0).desc(), AIUsageLog.pipeline_name.asc())
+        .all()
+    )
+
+    pipeline_breakdown = [
+        AiCostPipelineBreakdown(
+            pipeline_name=row.pipeline_name,
+            total_tokens=int(row.total_tokens or 0),
+            total_cost_usd=round(float(row.total_cost or 0.0), 4),
+            request_count=int(row.count or 0),
+            cache_hit_rate=round(float(row.cache_rate or 0.0), 4),
+        )
+        for row in pipeline_rows
+    ]
+
+    # Model breakdown
+    model_rows = (
+        base_query.with_entities(
+            AIUsageLog.model,
+            func.coalesce(func.sum(AIUsageLog.input_tokens + AIUsageLog.output_tokens), 0).label("total_tokens"),
+            func.coalesce(func.sum(AIUsageLog.estimated_cost_usd), 0.0).label("total_cost"),
+            func.count(AIUsageLog.id).label("count"),
+        )
+        .group_by(AIUsageLog.model)
+        .order_by(func.coalesce(func.sum(AIUsageLog.estimated_cost_usd), 0.0).desc(), AIUsageLog.model.asc())
+        .all()
+    )
+
+    model_breakdown = [
+        AiCostModelBreakdown(
+            model=row.model,
+            total_tokens=int(row.total_tokens or 0),
+            total_cost_usd=round(float(row.total_cost or 0.0), 4),
+            request_count=int(row.count or 0),
+        )
+        for row in model_rows
+    ]
+
+    # Usage percentages
+    # Peak daily usage as percentage of daily token cap (more meaningful than comparing total month to daily limit)
+    max_daily_tokens = max((d.total_tokens for d in daily_breakdown), default=0)
+    token_usage_percent = min(100.0, round((max_daily_tokens / max(1, daily_token_cap)) * 100.0, 1))
+    cost_usage_percent = min(100.0, round((total_cost_usd / max(0.01, monthly_cost_cap_usd)) * 100.0, 1))
+
+    return AiCostUsageResponse(
+        period=period,
+        plan=plan,
+        total_input_tokens=total_input,
+        total_output_tokens=total_output,
+        total_tokens=total_tokens_val,
+        total_cost_usd=total_cost_usd,
+        total_cost_inr=total_cost_inr,
+        daily_token_cap=daily_token_cap,
+        monthly_cost_cap_usd=monthly_cost_cap_usd,
+        token_usage_percent=token_usage_percent,
+        cost_usage_percent=cost_usage_percent,
+        daily_breakdown=daily_breakdown,
+        pipeline_breakdown=pipeline_breakdown,
+        model_breakdown=model_breakdown,
+    )
+
 
 
 @router.get("/suggestions", response_model=SuggestionResponse)

@@ -708,6 +708,9 @@ class ApprovalService:
         )
         if org_id:
             query = query.filter(ApprovalInstance.org_id == org_id)
+        else:
+            # Safety limit when querying across all orgs to prevent OOM
+            query = query.limit(200)
         rows = query.order_by(ApprovalInstance.created_at.desc()).all()
         return [row.to_dict() for row in rows]
 

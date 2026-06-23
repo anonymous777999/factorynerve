@@ -269,6 +269,11 @@ class AttendanceReviewDecisionRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class AttendanceForceCloseRequest(BaseModel):
+    """Optional note for supervisor force-close of a missed punch-out."""
+    note: str | None = Field(default=None, max_length=500)
+
+
 class AttendanceReportDay(BaseModel):
     attendance_date: date
     total_people: int
@@ -402,7 +407,7 @@ def _attendance_users_for_factory(db: Session, *, factory_id: str, org_id: str |
     )
     if org_id:
         query = query.filter(UserFactoryRole.org_id == org_id, User.org_id == org_id)
-    return query.order_by(User.name.asc()).all()
+    return query.order_by(User.name.asc()).limit(500).all()
 
 
 def _employee_profiles_for_factory(
@@ -752,6 +757,41 @@ def _serialize_today_response(
         can_punch_in=record is None,
         can_punch_out=bool(record and record.punch_in_at and record.punch_out_at is None),
     )
+
+
+def _default_shift_end_time(
+    *,
+    factory: Factory,
+    attendance_date: date,
+    shift_name: str | None,
+    template: ShiftTemplate | None,
+) -> datetime:
+    """Compute the default punch-out time from the shift template's end time.
+
+    For cross-midnight shifts (e.g. night shift 22:00-06:00), the end time
+    falls on the next calendar day. Falls back to 8 hours after a nominal
+    06:00 start when no template is found.
+    """
+    factory_tz = _factory_timezone(factory)
+    if template:
+        end_date = attendance_date
+        if template.cross_midnight:
+            end_date += timedelta(days=1)
+        naive_end = datetime.combine(end_date, template.end_time, factory_tz)
+        return naive_end.astimezone(timezone.utc)
+    # Fallback: if shift name is known, use standard end times
+    normalized_shift = (shift_name or "").strip().lower()
+    fallback_end: dict[str, time] = {
+        "morning": time(14, 0),
+        "evening": time(22, 0),
+        "night": time(6, 0),
+    }
+    end = fallback_end.get(normalized_shift, time(14, 0))
+    end_date = attendance_date
+    if normalized_shift == "night":
+        end_date += timedelta(days=1)
+    naive_end = datetime.combine(end_date, end, factory_tz)
+    return naive_end.astimezone(timezone.utc)
 
 
 def _serialize_shift_template(template: ShiftTemplate) -> ShiftTemplateItem:
@@ -1777,6 +1817,175 @@ def approve_attendance_review(
         note=record.note,
         review_reason="Attendance review approved",
         regularization=_serialize_regularization(regularization),
+    )
+
+
+@router.post("/review/{attendance_id}/force-close", response_model=AttendanceReviewItem)
+def force_close_attendance(
+    attendance_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    payload: AttendanceForceCloseRequest | None = None,
+) -> AttendanceReviewItem:
+    """Force-close a missed punch-out using the shift template's end time.
+
+    Supervisors use this when a worker clocked in but left without punching out.
+    The system computes the default punch-out time from the shift's end time
+    and calculates worked/overtime/late metrics automatically.
+
+    Only applies to records from *previous* days (not today's open records).
+    """
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="attendance.record.approve",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
+    factory = _active_factory_or_400(db, current_user)
+    org_id = _active_org_or_400(current_user)
+    record = (
+        db.query(AttendanceRecord)
+        .filter(
+            AttendanceRecord.id == attendance_id,
+            AttendanceRecord.org_id == org_id,
+            AttendanceRecord.factory_id == factory.factory_id,
+        )
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found.")
+
+    # Guard: must have punched in without punching out
+    if not record.punch_in_at:
+        raise HTTPException(
+            status_code=422,
+            detail="Record has no punch-in time. Use the standard approve endpoint instead.",
+        )
+    if record.punch_out_at is not None:
+        raise HTTPException(status_code=409, detail="Attendance record already has a punch-out time.")
+
+    # Guard: only for previous days (cannot force-close today's open records)
+    factory_tz = _factory_timezone(factory)
+    local_now = datetime.now(factory_tz)
+    if record.attendance_date >= local_now.date():
+        raise HTTPException(
+            status_code=422,
+            detail="Force-close is only for missed punch-outs from previous days. "
+            "Use the regular punch-out for today's records.",
+        )
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(
+        db,
+        actor_user_id=current_user.id,
+        subject_user_id=record.user_id,
+        workflow_key="attendance.review.approve",
+        action_key="attendance.record.approve",
+        resource_type="AttendanceRecord",
+        resource_id=str(attendance_id),
+        org_id=org_id,
+        factory_id=factory.factory_id,
+        current_workflow_state=record.review_status,
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # Step 3: Compute default punch-out time from shift template
+    template = _shift_template_for_shift(
+        db,
+        org_id=org_id,
+        factory_id=factory.factory_id,
+        shift_name=record.shift,
+        shift_template_id=record.shift_template_id,
+    )
+    default_punch_out = _default_shift_end_time(
+        factory=factory,
+        attendance_date=record.attendance_date,
+        shift_name=record.shift,
+        template=template,
+    )
+
+    note = sanitize_text(payload.note, max_length=500) if payload and payload.note else None
+
+    # Step 4: Apply the force-close
+    record.punch_out_at = default_punch_out
+    _sync_record_metrics(record=record, factory=factory, template=template, status_value="completed")
+    record.review_status = "approved"
+    record.approved_by_user_id = current_user.id
+    record.approved_at = datetime.now(timezone.utc)
+    if note:
+        record.note = note
+
+    # Log AttendanceEvent
+    db.add(
+        AttendanceEvent(
+            org_id=org_id,
+            factory_id=factory.factory_id,
+            user_id=record.user_id,
+            attendance_record_id=record.id,
+            attendance_date=record.attendance_date,
+            shift=record.shift,
+            event_type="out",
+            event_time=default_punch_out,
+            source="supervisor_force_close",
+            note=note,
+        )
+    )
+
+    _write_attendance_audit(
+        db,
+        current_user=current_user,
+        request=request,
+        factory_id=factory.factory_id,
+        action="ATTENDANCE_FORCE_CLOSED",
+        details=(
+            f"attendance_id={record.id}; "
+            f"punch_out_at={default_punch_out.isoformat()}; "
+            f"worked_minutes={record.worked_minutes}"
+        ),
+    )
+    db.commit()
+    db.refresh(record)
+
+    # Step 5: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
+    profile = _employee_profile_for_user(db, org_id=org_id, factory_id=factory.factory_id, user_id=record.user_id)
+    user = db.query(User).filter(User.id == record.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return AttendanceReviewItem(
+        attendance_id=record.id,
+        attendance_date=record.attendance_date,
+        user_id=user.id,
+        user_code=user.user_code,
+        name=user.name,
+        role=user.role.value,
+        department=profile.department if profile else None,
+        designation=profile.designation if profile else None,
+        shift=record.shift,
+        status=record.status,
+        review_status=record.review_status,
+        punch_in_at=record.punch_in_at,
+        punch_out_at=record.punch_out_at,
+        worked_minutes=record.worked_minutes,
+        late_minutes=record.late_minutes,
+        overtime_minutes=record.overtime_minutes,
+        note=record.note,
+        review_reason="Force-closed by supervisor (missed punch-out)",
+        regularization=None,
     )
 
 

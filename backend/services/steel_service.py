@@ -91,20 +91,22 @@ def stock_balances_for_factory(db: Session, factory_id: str) -> dict[int, float]
 def locked_stock_balance_for_item(db: Session, factory_id: str, item_id: int) -> float:
     """Return the current stock balance for a single item with a pessimistic row lock.
 
-    Uses ``SELECT ... FOR UPDATE`` to prevent concurrent transactions from reading
-    a stale balance (race condition).  Call within a transaction before any
-    write that depends on an accurate balance.
+    Uses ``SELECT SUM(...) ... FOR UPDATE`` to prevent concurrent transactions
+    from reading a stale balance (race condition).  The aggregation is performed
+    inside the database so only one row is returned, avoiding a full table fetch.
+
+    Call within a transaction before any write that depends on an accurate balance.
     """
-    rows = (
-        db.query(SteelInventoryTransaction.quantity_kg)
+    result = (
+        db.query(func.sum(SteelInventoryTransaction.quantity_kg))
         .filter(
             SteelInventoryTransaction.factory_id == factory_id,
             SteelInventoryTransaction.item_id == item_id,
         )
         .with_for_update()
-        .all()
+        .scalar()
     )
-    return sum(float(row[0] or 0.0) for row in rows)
+    return float(result or 0.0)
 
 
 def latest_reconciliations_for_factory(db: Session, factory_id: str) -> dict[int, SteelStockReconciliation]:
@@ -113,6 +115,7 @@ def latest_reconciliations_for_factory(db: Session, factory_id: str) -> dict[int
         .filter(
             SteelStockReconciliation.factory_id == factory_id,
             SteelStockReconciliation.status == "approved",
+            SteelStockReconciliation.counted_at >= datetime.now(timezone.utc) - timedelta(days=365),
         )
         .order_by(SteelStockReconciliation.item_id.asc(), SteelStockReconciliation.counted_at.desc())
         .all()
@@ -427,11 +430,15 @@ def build_steel_realization_metrics(
     factory_id: str,
     target_date: date | None = None,
 ) -> dict[str, float | int]:
-    batch_rows = (
-        db.query(SteelProductionBatch)
-        .filter(SteelProductionBatch.factory_id == factory_id)
-        .all()
-    )
+    # Default to last 365 days when no specific target_date is given to avoid
+    # loading the entire batch table (OOM risk for long-running factories).
+    batch_query = db.query(SteelProductionBatch).filter(SteelProductionBatch.factory_id == factory_id)
+    if target_date is not None:
+        batch_query = batch_query.filter(SteelProductionBatch.production_date == target_date)
+    else:
+        cutoff = datetime.now(timezone.utc).date() - timedelta(days=365)
+        batch_query = batch_query.filter(SteelProductionBatch.production_date >= cutoff)
+    batch_rows = batch_query.all()
     if batch_rows:
         item_ids = {batch.input_item_id for batch in batch_rows} | {batch.output_item_id for batch in batch_rows}
         item_map = {
@@ -462,9 +469,13 @@ def build_steel_realization_metrics(
         for item_id, row in output_item_cost_rollup.items()
     }
 
+    # Apply the same 365-day default to invoices and dispatches for consistency
+    # and to prevent loading the entire table when target_date is not specified.
     invoices_query = db.query(SteelSalesInvoice).filter(SteelSalesInvoice.factory_id == factory_id)
     if target_date is not None:
         invoices_query = invoices_query.filter(SteelSalesInvoice.invoice_date == target_date)
+    else:
+        invoices_query = invoices_query.filter(SteelSalesInvoice.invoice_date >= cutoff)
     invoice_rows = invoices_query.all()
     invoice_ids = [int(row.id) for row in invoice_rows]
     invoice_lines = (
@@ -483,6 +494,8 @@ def build_steel_realization_metrics(
     )
     if target_date is not None:
         dispatch_query = dispatch_query.filter(SteelDispatch.dispatch_date == target_date)
+    else:
+        dispatch_query = dispatch_query.filter(SteelDispatch.dispatch_date >= cutoff)
     dispatch_rows = dispatch_query.all()
 
     realized_dispatched_revenue_inr = 0.0
@@ -539,6 +552,7 @@ def build_steel_overview(db: Session, factory: Factory) -> dict[str, object]:
         db.query(SteelInventoryItem)
         .filter(SteelInventoryItem.factory_id == factory.factory_id, SteelInventoryItem.is_active.is_(True))
         .order_by(SteelInventoryItem.category.asc(), SteelInventoryItem.name.asc())
+        .limit(500)
         .all()
     )
     balances = stock_balances_for_factory(db, factory.factory_id)

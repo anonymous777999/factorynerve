@@ -46,6 +46,7 @@ from backend.routers.premium import router as premium_router
 from backend.routers.steel import router as steel_router
 from backend.routers.steel_intelligence import router as steel_intelligence_router
 from backend.routers.steel_finance import router as steel_finance_router
+from backend.routers.cron import router as cron_router
 from backend.routers.coil_theft import router as coil_theft_router
 from backend.routers.workforce_intelligence import router as workforce_intelligence_router
 from backend.utils import get_config, setup_logging
@@ -103,6 +104,11 @@ from backend.services.feedback_anomaly_detection import (
     initialize_feedback_anomaly_detector,
     shutdown_feedback_anomaly_detector,
 )
+from backend.services.attendance_auto_close_service import (
+    initialize_attendance_auto_close_scheduler,
+    shutdown_attendance_auto_close_scheduler,
+)
+from backend.services.email_queue_processor import start_email_processor, stop_email_processor
 from backend.services.billing_manager import (
     enforce_expired_grace_periods,
     normalize_subscription_states,
@@ -144,7 +150,9 @@ async def lifespan(_app: FastAPI):
         initialize_attendance_absence_scheduler()
         initialize_approval_expiry_scheduler()
         initialize_feedback_anomaly_detector()
+        initialize_attendance_auto_close_scheduler()
         initialize_ops_alerting()
+        start_email_processor()
 
         # Phase P3: Register approval completion callbacks
         try:
@@ -162,8 +170,10 @@ async def lifespan(_app: FastAPI):
         shutdown_attendance_absence_scheduler()
         shutdown_approval_expiry_scheduler()
         shutdown_feedback_anomaly_detector()
+        shutdown_attendance_auto_close_scheduler()
         shutdown_ops_alerting()
         shutdown_whatsapp_sender()
+        stop_email_processor()
 
 
 app = FastAPI(title=config.app_name, version="0.3.0", lifespan=lifespan)
@@ -208,6 +218,7 @@ app.include_router(steel_router, prefix="/steel")
 app.include_router(steel_intelligence_router, prefix="/steel")
 app.include_router(steel_finance_router, prefix="/steel")
 app.include_router(workforce_intelligence_router, prefix="/intelligence")
+app.include_router(cron_router)
 
 apply_security(app)
 apply_response_envelope(app)

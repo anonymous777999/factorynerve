@@ -26,11 +26,11 @@ class UserRole(str, Enum):
 _ROLE_ORDER = {
     UserRole.ATTENDANCE: 0,
     UserRole.OPERATOR: 1,
+    UserRole.SUPERVISOR: 2,
     UserRole.ACCOUNTANT: 2,
-    UserRole.SUPERVISOR: 3,
-    UserRole.MANAGER: 4,
-    UserRole.ADMIN: 5,
-    UserRole.OWNER: 6,
+    UserRole.MANAGER: 3,
+    UserRole.ADMIN: 4,
+    UserRole.OWNER: 5,
 }
 
 

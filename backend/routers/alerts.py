@@ -52,7 +52,7 @@ def list_unread_alerts(
     PDP(db=db).require_permission(actor=current_user, permission_key="ops.alerts.view")
     response.headers["Cache-Control"] = "private, max-age=30"
     query = _scoped_alert_query(db, current_user).filter(Alert.is_read.is_(False))
-    return query.order_by(Alert.created_at.desc()).all()
+    return query.order_by(Alert.created_at.desc()).limit(100).all()
 
 
 @router.put("/{alert_id}/read")

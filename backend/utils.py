@@ -144,7 +144,7 @@ def get_config() -> AppConfig:
         openai_api_key=str(raw.get("OPENAI_API_KEY") or ""),
         ai_provider=str(raw["AI_PROVIDER"]),
         jwt_secret_key=str(raw["JWT_SECRET_KEY"]),
-        jwt_expire_hours=_to_int(raw["JWT_EXPIRE_HOURS"], 24),
+        jwt_expire_hours=_to_int(raw["JWT_EXPIRE_HOURS"], 8),
         app_name=str(raw["APP_NAME"]),
         app_env=str(raw.get("APP_ENV") or "development").strip().lower(),
         debug=_to_bool(raw["DEBUG"], False),
@@ -414,6 +414,40 @@ def check_entry_alerts(entry: Any) -> list[dict[str, str]]:
             {"type": "MANPOWER_SHORTAGE", "message": f"Absenteeism at {percent_absent}% (above 20%).", "severity": "high"}
         )
     return alerts
+def number_to_words(value: float) -> str:
+    """Convert a numeric amount to Indian Rupees words (e.g., 1250.50 -> 'One Thousand Two Hundred Fifty Rupees and Fifty Paise')."""
+    if value < 0:
+        return "Minus " + number_to_words(-value)
+    if value == 0:
+        return "Zero Rupees"
+    amount = int(value)
+    paise = int(round((value - amount) * 100))
+    below_twenty = [
+        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+        "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+        "Seventeen", "Eighteen", "Nineteen"
+    ]
+    tens = [
+        "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"
+    ]
+
+    def _words(n: int) -> str:
+        if n < 20:
+            return below_twenty[n]
+        if n < 100:
+            return tens[n // 10] + (" " + below_twenty[n % 10] if n % 10 else "")
+        if n < 1000:
+            return below_twenty[n // 100] + " Hundred" + (" " + _words(n % 100) if n % 100 else "")
+        if n < 100000:  # up to 99,999
+            return _words(n // 1000) + " Thousand" + (" " + _words(n % 1000) if n % 1000 else "")
+        if n < 10000000:  # up to 99,99,999
+            return _words(n // 100000) + " Lakh" + (" " + _words(n % 100000) if n % 100000 else "")
+        return _words(n // 10000000) + " Crore" + (" " + _words(n % 10000000) if n % 10000000 else "")
+
+    result = _words(abs(amount)) + " Rupees"
+    if paise > 0:
+        result += " and " + _words(paise) + " Paise"
+    return result
 
 
 LOW_CONFIDENCE_THRESHOLD = 60

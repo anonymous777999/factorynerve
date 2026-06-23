@@ -33,7 +33,7 @@ from backend.models.organization import Organization
 from backend.security import get_current_user, hash_password
 from backend.utils import sanitize_text
 from backend.ocr_limits import get_usage_summary, get_org_usage_summary
-from backend.email_service import send_email
+from backend.email_utils import queue_and_send_email
 from backend.models.user import role_rank
 from backend.authorization import PDP, ResourceContext
 from backend.authorization.pdp import build_request_context
@@ -1000,7 +1000,7 @@ def invite_user(
     reset_link = build_reset_link(reset_token)
     if delivery_mode == "email":
         try:
-            send_email(
+            queue_and_send_email(
                 subject=INVITE_EMAIL_SUBJECT,
                 to_emails=[user.email],
                 body=(
@@ -1010,6 +1010,8 @@ def invite_user(
                     f"2. Set your password within {PASSWORD_RESET_TTL_MINUTES} minutes:\n{reset_link}\n\n"
                     "Use the password setup link after verification. If you were not expecting this invite, ignore this email."
                 ),
+                user_id=user.id,
+                factory_name=factory_name,
             )
         except Exception as error:  # pylint: disable=broad-except
             db.rollback()
@@ -1275,8 +1277,7 @@ def update_user_role(
     if role_rank(payload.role) < role_rank(user.role):
         if (payload.confirm_action or "").strip().upper() != "DOWNGRADE":
             raise HTTPException(status_code=400, detail="Type DOWNGRADE to confirm role downgrade.")
-    if user.id == current_user.id and payload.role != current_user.role and current_user.role not in {UserRole.ADMIN, UserRole.OWNER}:
-        raise HTTPException(status_code=400, detail="You cannot change your own role.")
+
     if user.role in {UserRole.ADMIN, UserRole.OWNER} and payload.role != user.role:
         if not _has_other_privileged_user(db, org_id=org_id, exclude_user_id=user.id):
             raise HTTPException(status_code=400, detail="Cannot remove the last owner/admin account.")

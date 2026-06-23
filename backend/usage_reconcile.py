@@ -201,6 +201,7 @@ def _apply_feature_usage(
     existing = (
         db.query(FeatureUsage)
         .filter(FeatureUsage.period == period, FeatureUsage.feature == feature)
+        .limit(5000)
         .all()
     )
     existing_map = {row.user_id: row for row in existing}
@@ -249,7 +250,7 @@ def _apply_ocr_usage(
 ) -> dict[str, Any]:
     changes = 0
     created = 0
-    existing = db.query(OcrUsage).filter(OcrUsage.period == period).all()
+    existing = db.query(OcrUsage).filter(OcrUsage.period == period).limit(5000).all()
     existing_map = {row.user_id: row for row in existing}
     for user_id, new_requests in requests.items():
         row = existing_map.get(user_id)
@@ -303,6 +304,7 @@ def _apply_org_feature_usage(
     existing = (
         db.query(OrgFeatureUsage)
         .filter(OrgFeatureUsage.period == period, OrgFeatureUsage.feature == feature)
+        .limit(5000)
         .all()
     )
     existing_map = {row.org_id: row for row in existing}
@@ -351,7 +353,7 @@ def _apply_org_ocr_usage(
 ) -> dict[str, Any]:
     changes = 0
     created = 0
-    existing = db.query(OrgOcrUsage).filter(OrgOcrUsage.period == period).all()
+    existing = db.query(OrgOcrUsage).filter(OrgOcrUsage.period == period).limit(5000).all()
     existing_map = {row.org_id: row for row in existing}
     for org_id, new_requests in requests.items():
         row = existing_map.get(org_id)
@@ -435,7 +437,7 @@ def _apply_org_whatsapp_usage(
     """Apply WhatsApp message counts to OrgWhatsAppUsage rows for reconciliation."""
     changes = 0
     created = 0
-    existing = db.query(OrgWhatsAppUsage).filter(OrgWhatsAppUsage.period == period).all()
+    existing = db.query(OrgWhatsAppUsage).filter(OrgWhatsAppUsage.period == period).limit(5000).all()
     existing_map = {row.org_id: row for row in existing}
     for org_id, new_count in counts.items():
         row = existing_map.get(org_id)

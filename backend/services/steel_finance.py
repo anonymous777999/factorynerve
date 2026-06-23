@@ -586,10 +586,13 @@ def build_receivables_summary(
     """
     today = date.today()
 
-    # ── All invoices for this factory ────────────────────────────────────
+    # ── All invoices for this factory (last 3 years) ─────────────────────
     invoices = (
         db.query(SteelSalesInvoice)
-        .filter(SteelSalesInvoice.factory_id == factory_id)
+        .filter(
+            SteelSalesInvoice.factory_id == factory_id,
+            SteelSalesInvoice.invoice_date >= today - timedelta(days=365 * 3),
+        )
         .order_by(SteelSalesInvoice.invoice_date.desc())
         .all()
     )
@@ -769,7 +772,10 @@ def build_payables_summary(
 
     bills = (
         db.query(SteelVendorBill)
-        .filter(SteelVendorBill.factory_id == factory_id)
+        .filter(
+            SteelVendorBill.factory_id == factory_id,
+            SteelVendorBill.bill_date >= today - timedelta(days=365 * 3),
+        )
         .order_by(SteelVendorBill.bill_date.desc())
         .all()
     )
