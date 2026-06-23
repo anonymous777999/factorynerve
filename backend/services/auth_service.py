@@ -14,8 +14,10 @@ from backend.models.organization import Organization
 from backend.models.factory import Factory
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
+from backend.models.auth_user import AuthUser
 from backend.plans import DEFAULT_PLAN
-from backend.security import hash_password
+from backend.security import hash_password as legacy_hash_password
+from backend.auth_security.passwords import hash_password
 from backend.services.user_code_service import (
     MAX_USER_CODE_ATTEMPTS,
     is_user_code_collision,
@@ -62,14 +64,35 @@ def get_or_create_google_user(
     google_id: str,
     picture: str | None,
 ) -> tuple[User, str, str]:
+    now = datetime.now(timezone.utc)
+    random_hash = hash_password(secrets.token_urlsafe(32))
+
+    def _sync_auth_user(auth_email: str) -> None:
+        auth_user = db.query(AuthUser).filter(AuthUser.email == auth_email).first()
+        if auth_user:
+            auth_user.is_active = True
+            auth_user.is_email_verified = True
+            auth_user.updated_at = now
+        else:
+            db.add(
+                AuthUser(
+                    email=auth_email,
+                    password_hash=random_hash,
+                    is_active=True,
+                    is_email_verified=True,
+                    password_changed_at=now,
+                )
+            )
+
     user = db.query(User).filter(User.google_id == google_id).first()
     if user:
         if picture:
             user.profile_picture = picture
         user.auth_provider = "google"
         if user.email_verified_at is None:
-            user.email_verified_at = datetime.now(timezone.utc)
+            user.email_verified_at = now
         db.add(user)
+        _sync_auth_user(user.email)
         db.flush()
         return user, user.org_id, _resolve_factory_id(db, user)
 
@@ -78,17 +101,17 @@ def get_or_create_google_user(
         user.google_id = google_id
         user.auth_provider = "google"
         if user.email_verified_at is None:
-            user.email_verified_at = datetime.now(timezone.utc)
+            user.email_verified_at = now
         if picture:
             user.profile_picture = picture
         db.add(user)
+        _sync_auth_user(user.email)
         db.flush()
         return user, user.org_id, _resolve_factory_id(db, user)
 
     org_name = _org_name_from_email(email)
     org_id = str(uuid.uuid4())
     factory_id = str(uuid.uuid4())
-    now = datetime.now(timezone.utc)
 
     org = Organization(org_id=org_id, name=org_name, plan=DEFAULT_PLAN, created_at=now, is_active=True)
     factory = Factory(factory_id=factory_id, org_id=org_id, name=f"{org_name} Factory", timezone="Asia/Kolkata")
@@ -96,7 +119,7 @@ def get_or_create_google_user(
         org_id=org_id,
         name=name or org_name,
         email=email,
-        password_hash=hash_password(secrets.token_urlsafe(32)),
+        password_hash=legacy_hash_password(secrets.token_urlsafe(32)),
         role=UserRole.ADMIN,
         factory_name=factory.name,
         is_active=True,
@@ -119,6 +142,7 @@ def get_or_create_google_user(
             assigned_at=now,
         )
     )
+    _sync_auth_user(user.email)
     db.flush()
     return user, org_id, factory_id
 
