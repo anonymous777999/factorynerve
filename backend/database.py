@@ -340,6 +340,7 @@ def init_db() -> None:
         _ensure_phone_and_alerting_columns()
         _ensure_feedback_columns()
         _ensure_workforce_tables()
+        _ensure_steel_lines_machines_tables()
         _ensure_billing_schema_columns()
         _verify_messaging_schema_or_raise()
         logger.info("Database initialization complete.")
@@ -1534,8 +1535,79 @@ def _ensure_phone_and_alerting_columns() -> None:
         logger.exception("Failed to ensure phone verification and alerting columns.")
 
 
+def _ensure_steel_lines_machines_tables() -> None:
+    """Create steel_production_lines and steel_machines tables if missed by Alembic."""
+    try:
+        inspector = inspect(engine)
+        table_names = set(inspector.get_table_names())
+        with engine.connect() as conn:
+            if "steel_production_lines" not in table_names:
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE steel_production_lines (
+                        id SERIAL PRIMARY KEY,
+                        org_id VARCHAR(36) NOT NULL REFERENCES organizations(org_id),
+                        factory_id VARCHAR(36) NOT NULL REFERENCES factories(factory_id),
+                        name VARCHAR(100) NOT NULL,
+                        code VARCHAR(24),
+                        description VARCHAR(300),
+                        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                        created_by_user_id INTEGER REFERENCES users(id),
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+                    )
+                    """
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_steel_production_lines_factory_id "
+                    "ON steel_production_lines (factory_id)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_steel_production_lines_factory_name "
+                    "ON steel_production_lines (factory_id, name)"
+                )
+                logger.info("Created missing table: steel_production_lines")
+
+            if "steel_machines" not in table_names:
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE steel_machines (
+                        id SERIAL PRIMARY KEY,
+                        org_id VARCHAR(36) NOT NULL REFERENCES organizations(org_id),
+                        factory_id VARCHAR(36) NOT NULL REFERENCES factories(factory_id),
+                        line_id INTEGER REFERENCES steel_production_lines(id),
+                        machine_code VARCHAR(24) NOT NULL,
+                        name VARCHAR(160) NOT NULL,
+                        machine_type VARCHAR(60),
+                        description VARCHAR(300),
+                        rated_capacity_per_hour FLOAT,
+                        planned_runtime_minutes FLOAT,
+                        operating_runtime_minutes FLOAT,
+                        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                        created_by_user_id INTEGER REFERENCES users(id),
+                        created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                        updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+                    )
+                    """
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_steel_machines_factory_id "
+                    "ON steel_machines (factory_id)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_steel_machines_factory_code "
+                    "ON steel_machines (factory_id, machine_code)"
+                )
+                logger.info("Created missing table: steel_machines")
+
+            conn.commit()
+    except Exception:
+        logger.exception("Failed to ensure steel lines/machines tables.")
+
+
 def _ensure_workforce_tables() -> None:
     """Create workforce and master-data tables that may have been missed on first deploy."""
+
     try:
         inspector = inspect(engine)
         table_names = set(inspector.get_table_names())
