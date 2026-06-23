@@ -5212,7 +5212,7 @@ def list_machine_alerts(
 
     # Check PDP permission
     from backend.authorization import PDP, ResourceContext
-    pdp = PDP()
+    pdp = PDP(db=db)
     context = ResourceContext(
         org_id=org_id,
         factory_id=factory_id,
