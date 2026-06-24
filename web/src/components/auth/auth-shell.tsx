@@ -13,19 +13,37 @@ type AuthShellStep = {
   description: string;
 };
 
+type BrandTrustPoint = {
+  icon: ReactNode;
+  text: string;
+};
+
+type BrandConfig = {
+  appInitial: string;
+  appName: string;
+  eyebrow: string;
+  title: string;
+  description: string;
+  trustPoints: BrandTrustPoint[];
+};
+
 type AuthShellProps = {
   badge: string;
   title: string;
   description: string;
-  journeyTitle: string;
-  journeyDescription: string;
-  steps: AuthShellStep[];
+  journeyTitle?: string;
+  journeyDescription?: string;
+  steps?: AuthShellStep[];
   supportTitle?: string;
   supportDescription?: string;
   children: ReactNode;
   cardClassName?: string;
   contentClassName?: string;
   guidanceKey?: string;
+  /** @default "single" */
+  variant?: "single" | "split";
+  /** Required when variant="split" */
+  brand?: BrandConfig;
 };
 
 export function AuthShell({
@@ -41,6 +59,8 @@ export function AuthShell({
   cardClassName,
   contentClassName,
   guidanceKey = "auth-login-help",
+  variant = "single",
+  brand,
 }: AuthShellProps) {
   const { t } = useI18n();
   useI18nNamespaces(["auth", "common"]);
@@ -52,6 +72,110 @@ export function AuthShell({
       "Every auth step is designed to protect the workspace, verify inbox ownership, and keep access traceable.",
     );
 
+  // ── Split-pane variant ──────────────────────────────────────────────
+  if (variant === "split" && brand) {
+    return (
+      <main className="relative min-h-screen bg-[#090d14] text-[#e8edf7]">
+        <div className="grid min-h-screen lg:grid-cols-2">
+          {/* Brand sidebar — desktop only */}
+          <aside className="relative hidden overflow-hidden border-r border-white/8 lg:flex lg:flex-col lg:justify-between lg:p-12">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(circle at 20% 15%, rgba(72,158,255,0.14), transparent 42%), radial-gradient(circle at 80% 80%, rgba(34,211,238,0.08), transparent 40%), linear-gradient(180deg, #0b1116 0%, #111820 100%)",
+              }}
+            />
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0 opacity-[0.15] [background-image:linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.04)_1px,transparent_1px)] [background-size:40px_40px]"
+            />
+
+            {/* Logo */}
+            <div className="relative flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(76,176,255,0.24),rgba(45,212,191,0.18))] shadow-[0_8px_20px_rgba(5,13,24,0.3)]">
+                <span className="text-base font-bold text-white">{brand.appInitial}</span>
+              </div>
+              <div className="text-lg font-semibold tracking-tight text-[#f0f4fc]">{brand.appName}</div>
+            </div>
+
+            {/* Value proposition */}
+            <div className="relative max-w-md">
+              <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#8fc8ff]">{brand.eyebrow}</div>
+              <h1 className="mt-4 text-[2.5rem] font-semibold leading-[1.1] tracking-tight text-[#f0f4fc]">
+                {brand.title}
+              </h1>
+              <p className="mt-5 text-[15px] leading-7 text-[#97a6bd]">{brand.description}</p>
+
+              <ul className="mt-10 space-y-4">
+                {brand.trustPoints.map((point) => (
+                  <li key={point.text} className="flex items-start gap-3 text-sm text-[#97a6bd]">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-cyan-300">
+                      {point.icon}
+                    </span>
+                    <span>{point.text}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="relative text-xs text-slate-500">
+              &copy; {new Date().getFullYear()} DPR.ai Technologies
+            </div>
+          </aside>
+
+          {/* Form column */}
+          <section className="flex min-h-screen items-center justify-center px-6 py-12 sm:px-10">
+            <div className="w-full max-w-[440px]">
+              {/* Mobile logo */}
+              <div className="mb-10 flex items-center gap-3 lg:hidden">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(76,176,255,0.24),rgba(45,212,191,0.18))]">
+                  <span className="text-sm font-bold text-white">{brand.appInitial}</span>
+                </div>
+                <div className="text-base font-semibold tracking-tight text-[#f0f4fc]">{brand.appName}</div>
+              </div>
+
+              <Card
+                className={cn(
+                  "border border-white/10 bg-[linear-gradient(180deg,rgba(11,18,30,0.84),rgba(8,13,24,0.94))] shadow-[0_32px_110px_rgba(2,6,23,0.55)] backdrop-blur-2xl",
+                  cardClassName,
+                )}
+              >
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(76,176,255,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.08),transparent_28%)]" />
+                <CardHeader className="relative space-y-3 border-b border-white/8 pb-6">
+                  <div className="inline-flex w-fit rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-header text-slate-300">
+                    {badge}
+                  </div>
+                  <CardTitle className="text-3xl tracking-tight text-white sm:text-[2.65rem]">{title}</CardTitle>
+                  <p className="max-w-2xl text-sm leading-7 text-slate-300">{description}</p>
+                </CardHeader>
+                <CardContent className={cn("relative pt-6", contentClassName)}>{children}</CardContent>
+              </Card>
+
+              {/* Footer */}
+              <div className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-slate-500">
+                <Link href="/privacy" className="transition hover:text-sky-300 hover:underline">
+                  {t("auth.shell.footer_privacy", "Privacy")}
+                </Link>
+                <Link href="/terms" className="transition hover:text-sky-300 hover:underline">
+                  {t("auth.shell.footer_terms", "Terms")}
+                </Link>
+                <Link href="/security" className="transition hover:text-sky-300 hover:underline">
+                  {t("auth.shell.footer_security", "Security")}
+                </Link>
+                <Link href="/contact" className="transition hover:text-sky-300 hover:underline">
+                  {t("auth.shell.footer_contact", "Contact")}
+                </Link>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
+  // ── Single-column variant (original) ────────────────────────────────
   return (
     <main className="relative flex flex-1 items-center justify-center overflow-hidden px-4 py-8 sm:px-6 sm:py-10 lg:px-10 lg:py-12">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(3,9,16,0.95),rgba(7,14,24,0.97))]" />
@@ -138,7 +262,7 @@ export function AuthShell({
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">{journeyDescription}</p>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                  {steps.map((step, index) => (
+                  {(steps ?? []).map((step, index) => (
                     <div
                       key={`${step.title}-${index}`}
                       className="rounded-[1.35rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"

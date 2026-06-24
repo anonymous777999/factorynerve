@@ -13,6 +13,35 @@ import { PasswordField } from "@/components/auth/password-field";
 import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter";
 import { Button } from "@/components/ui/button";
 
+function LockSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function ShieldSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function RefreshSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 2v6h-6" />
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M3 22v-6h6" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+    </svg>
+  );
+}
+
 export default function ResetPasswordPage() {
   const { t } = useI18n();
   useI18nNamespaces(["auth", "errors", "common"]);
@@ -22,6 +51,31 @@ export default function ResetPasswordPage() {
     () => searchParams.get("token") || searchParams.get("reset_token") || "",
     [searchParams],
   );
+
+  const brand = {
+    appInitial: "D",
+    appName: "DPR.ai",
+    eyebrow: t("auth.reset.badge", "Reset Password"),
+    title: t("auth.reset.title", "Reset password"),
+    description: t(
+      "auth.reset.description",
+      "Create a new password, then sign in again with the same email.",
+    ),
+    trustPoints: [
+      {
+        icon: <LockSm />,
+        text: t("auth.reset.trust_single_use", "One-time use link for secure password reset"),
+      },
+      {
+        icon: <RefreshSm />,
+        text: t("auth.reset.trust_revoke", "Password reset revokes all existing sessions automatically"),
+      },
+      {
+        icon: <ShieldSm />,
+        text: t("auth.reset.trust_strong", "Strong password required for workspace protection"),
+      },
+    ],
+  };
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -136,30 +190,11 @@ export default function ResetPasswordPage() {
 
   return (
     <AuthShell
+      variant="split"
+      brand={brand}
       badge={t("auth.reset.badge", "Reset Password")}
       title={t("auth.reset.title", "Reset password")}
       description={t("auth.reset.description", "Create a new password, then sign in again with the same email.")}
-      journeyTitle={t("auth.reset.journey_title", "Turn a one-time link into a clean account reset.")}
-      journeyDescription={t("auth.reset.journey_description", "The link is temporary and one-time-use. Saving the new password revokes older sessions.")}
-      steps={[
-        {
-          title: t("auth.reset.step_1_title", "Validate the link"),
-          description: t("auth.reset.step_1_detail", "We first check that the recovery link is still valid."),
-        },
-        {
-          title: t("auth.reset.step_2_title", "Set a strong new password"),
-          description: t("auth.reset.step_2_detail", "Use a fresh password with enough length and complexity."),
-        },
-        {
-          title: t("auth.reset.step_3_title", "Sign in again"),
-          description: t("auth.reset.step_3_detail", "After the reset completes, sign in again with the new password only."),
-        },
-      ]}
-      supportTitle={t("auth.reset.support_title", "Why old sessions stop working")}
-      supportDescription={t("auth.reset.support_description", "Password reset revokes active refresh sessions so only the new password opens fresh sessions.")}
-      cardClassName="max-w-xl"
-      contentClassName="space-y-5"
-      guidanceKey="auth-reset-help"
     >
       {resolvedVerifying ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">

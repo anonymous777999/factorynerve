@@ -11,6 +11,42 @@ import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 
+function MailSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 6-10 7L2 6" />
+    </svg>
+  );
+}
+
+function ShieldSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function ZapSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" />
+    </svg>
+  );
+}
+
+function GlobeSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M2 12h20" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10Z" />
+    </svg>
+  );
+}
+
 export default function VerifyEmailPage() {
   const { t } = useI18n();
   useI18nNamespaces(["auth", "errors", "common"]);
@@ -20,6 +56,31 @@ export default function VerifyEmailPage() {
     () => searchParams.get("token") || searchParams.get("verification_token") || "",
     [searchParams],
   );
+
+  const brand = {
+    appInitial: "D",
+    appName: "DPR.ai",
+    eyebrow: t("auth.verify.badge", "Email Verification"),
+    title: t("auth.verify.title", "Verify email"),
+    description: t(
+      "auth.verify.description",
+      "Confirm your email address so the account can sign in securely.",
+    ),
+    trustPoints: [
+      {
+        icon: <MailSm />,
+        text: t("auth.verify.trust_inbox", "Inbox ownership proves the email belongs to you"),
+      },
+      {
+        icon: <ZapSm />,
+        text: t("auth.verify.trust_activate", "Activates pending signup into a real DPR.ai account"),
+      },
+      {
+        icon: <GlobeSm />,
+        text: t("auth.verify.trust_secure", "Secure sign-in with verified email and password"),
+      },
+    ],
+  };
 
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(true);
@@ -122,30 +183,11 @@ export default function VerifyEmailPage() {
 
   return (
     <AuthShell
+      variant="split"
+      brand={brand}
       badge={t("auth.verify.badge", "Email Verification")}
       title={t("auth.verify.title", "Verify email")}
       description={t("auth.verify.description", "Confirm your email address so the account can sign in securely.")}
-      journeyTitle={t("auth.verify.journey_title", "Use inbox ownership as the final activation gate.")}
-      journeyDescription={t("auth.verify.journey_description", "Verification turns a pending signup into a real account or confirms ownership on an existing local account.")}
-      steps={[
-        {
-          title: t("auth.verify.step_1_title", "Open the verification link"),
-          description: t("auth.verify.step_1_detail", "The inbox owner proves they can open the secure verification email."),
-        },
-        {
-          title: t("auth.verify.step_2_title", "Confirm account activation"),
-          description: t("auth.verify.step_2_detail", "Pending signups become real accounts only after the token is redeemed."),
-        },
-        {
-          title: t("auth.verify.step_3_title", "Return to sign in"),
-          description: t("auth.verify.step_3_detail", "Once verification succeeds, sign in with the same email and password."),
-        },
-      ]}
-      supportTitle={t("auth.verify.support_title", "Why we verify before login")}
-      supportDescription={t("auth.verify.support_description", "This keeps every activated account tied to a reachable email owner before factory access starts.")}
-      cardClassName="max-w-xl"
-      contentClassName="space-y-5"
-      guidanceKey="auth-verify-help"
     >
       {resolvedVerifying ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">

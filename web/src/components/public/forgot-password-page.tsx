@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ApiError } from "@/lib/api";
 import { requestPasswordReset, resendEmailVerification, type PasswordForgotResponse } from "@/lib/auth";
@@ -9,6 +9,44 @@ import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { AuthShell } from "@/components/auth/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+function MailSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 6-10 7L2 6" />
+    </svg>
+  );
+}
+
+function ShieldSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function LockSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
+function RefreshSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 2v6h-6" />
+      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+      <path d="M3 22v-6h6" />
+      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+    </svg>
+  );
+}
 
 export default function ForgotPasswordPage() {
   const { t } = useI18n();
@@ -20,7 +58,40 @@ export default function ForgotPasswordPage() {
   const [copyStatus, setCopyStatus] = useState("");
   const [resendingVerification, setResendingVerification] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const id = window.setTimeout(() => setCooldown((c) => Math.max(0, c - 1)), 1000);
+    return () => window.clearTimeout(id);
+  }, [cooldown]);
+  const RESUBMIT_COOLDOWN_SECONDS = 30;
   const isEmailDelivery = response?.delivery_mode !== "preview";
+
+  const brand = {
+    appInitial: "D",
+    appName: "DPR.ai",
+    eyebrow: t("auth.forgot.badge", "Password Recovery"),
+    title: t("auth.forgot.title", "Forgot password"),
+    description: t(
+      "auth.forgot.description",
+      "Enter your account email and we will prepare a reset path.",
+    ),
+    trustPoints: [
+      {
+        icon: <ShieldSm />,
+        text: t("auth.forgot.trust_privacy", "Privacy-safe — never confirms whether an email exists"),
+      },
+      {
+        icon: <LockSm />,
+        text: t("auth.forgot.trust_single_use", "Single-use reset links for account security"),
+      },
+      {
+        icon: <RefreshSm />,
+        text: t("auth.forgot.trust_verified", "Reset works only after signup verification is complete"),
+      },
+    ],
+  };
 
   const copyResetLink = async () => {
     if (!response?.reset_link) return;
@@ -50,12 +121,17 @@ export default function ForgotPasswordPage() {
     setResponse(null);
     setCopyStatus("");
     setVerificationStatus("");
+    if (cooldown > 0) return;
     try {
       const result = await requestPasswordReset(email);
       setResponse(result);
+      setCooldown(RESUBMIT_COOLDOWN_SECONDS);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
+        if (err.status === 429) {
+          setCooldown(RESUBMIT_COOLDOWN_SECONDS);
+        }
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -91,30 +167,11 @@ export default function ForgotPasswordPage() {
 
   return (
     <AuthShell
+      variant="split"
+      brand={brand}
       badge={t("auth.forgot.badge", "Password Recovery")}
       title={t("auth.forgot.title", "Forgot password")}
       description={t("auth.forgot.description", "Enter your account email and we will prepare a reset path.")}
-      journeyTitle={t("auth.forgot.journey_title", "Recover access without leaking account state.")}
-      journeyDescription={t("auth.forgot.journey_description", "The flow stays privacy-safe and only works for verified, active accounts.")}
-      steps={[
-        {
-          title: t("auth.forgot.step_1_title", "Request a reset link"),
-          description: t("auth.forgot.step_1_detail", "Submit the account email. The response stays privacy-safe either way."),
-        },
-        {
-          title: t("auth.forgot.step_2_title", "Open the newest link"),
-          description: t("auth.forgot.step_2_detail", "Use only the latest valid email if multiple links were requested."),
-        },
-        {
-          title: t("auth.forgot.step_3_title", "Set a fresh password"),
-          description: t("auth.forgot.step_3_detail", "Choose a strong password, then sign in again with the same email."),
-        },
-      ]}
-      supportTitle={t("auth.forgot.support_title", "Privacy-safe by design")}
-      supportDescription={t("auth.forgot.support_description", "This screen never confirms whether an email exists. Reset works only after signup verification creates the real account.")}
-      cardClassName="max-w-xl"
-      contentClassName="space-y-5"
-      guidanceKey="auth-forgot-help"
     >
       <form onSubmit={onSubmit} className="space-y-4">
             <div>
@@ -128,8 +185,12 @@ export default function ForgotPasswordPage() {
               />
             </div>
             {error ? <div className="text-sm text-red-400">{error}</div> : null}
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? t("auth.forgot.submitting", "Preparing...") : t("auth.forgot.submit", "Send link")}
+            <Button type="submit" disabled={loading || cooldown > 0} className="w-full">
+              {loading
+                ? t("auth.forgot.submitting", "Preparing...")
+                : cooldown > 0
+                  ? t("auth.forgot.cooldown", "Try again in {{seconds}}s", { seconds: String(cooldown) })
+                  : t("auth.forgot.submit", "Send link")}
             </Button>
           </form>
 

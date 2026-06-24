@@ -14,6 +14,32 @@ import { PasswordField } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+function ShieldSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
+      <path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
+
+function ZapSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" />
+    </svg>
+  );
+}
+
+function ClockSm() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </svg>
+  );
+}
+
 function destinationLabel(path: string, t: (key: string, fallback?: string) => string) {
   switch (path) {
     case "/attendance":
@@ -72,6 +98,31 @@ export default function RegisterPage() {
             : "border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] text-sky-100",
       }
     : null;
+
+  const brand = {
+    appInitial: "D",
+    appName: "DPR.ai",
+    eyebrow: t("auth.register.badge", "Public Signup"),
+    title: t("auth.register.title", "Create your account"),
+    description: t(
+      "auth.register.description",
+      "Public signup creates an attendance-worker signup request that stays locked until the inbox is verified.",
+    ),
+    trustPoints: [
+      {
+        icon: <ShieldSm />,
+        text: t("auth.register.trust_verified", "Verified email required before account activation"),
+      },
+      {
+        icon: <ClockSm />,
+        text: t("auth.register.trust_pending", "Pending signup stays locked until verification"),
+      },
+      {
+        icon: <ZapSm />,
+        text: t("auth.register.trust_attendance", "Attendance-first workflow for factory workers"),
+      },
+    ],
+  };
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -149,6 +200,8 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
+      variant="split"
+      brand={brand}
       badge={t("auth.register.badge", "Public Signup")}
       title={t("auth.register.title", "Create your account")}
       description={
@@ -156,30 +209,6 @@ export default function RegisterPage() {
           ? t("auth.register.description_redirect", "Create the account, verify the inbox, then continue into {{destination}}.", { destination: nextDestination })
           : t("auth.register.description", "Public signup creates an attendance-worker signup request that stays locked until the inbox is verified.")
       }
-      journeyTitle={t("auth.register.journey_title", "Bring workers into the system without risking factory access.")}
-      journeyDescription={
-        hasRedirectTarget
-          ? t("auth.register.journey_description_redirect", "The account stays locked until the inbox is verified, then the user can continue into {{destination}}.", { destination: nextDestination })
-          : t("auth.register.journey_description", "Collect the details, verify the inbox owner, then unlock the real account.")
-      }
-      steps={[
-        {
-          title: t("auth.register.step_1_title", "Submit worker details"),
-          description: t("auth.register.step_1_detail", "Collect the person, factory, and contact details needed to prepare a pending signup safely."),
-        },
-        {
-          title: t("auth.register.step_2_title", "Verify the email inbox"),
-          description: t("auth.register.step_2_detail", "Only the inbox owner can open the verification link and activate the real DPR.ai account."),
-        },
-        {
-          title: t("auth.register.step_3_title", "Unlock sign-in"),
-          description: t("auth.register.step_3_detail", "After verification, the worker returns to sign in and start using the attendance-first workflow."),
-        },
-      ]}
-      supportTitle={t("auth.register.support_title", "Why this feels stricter now")}
-      supportDescription={t("auth.register.support_description", "Wrong or fake emails can no longer create a working account. They only create a pending signup that stays locked until the real inbox verifies it.")}
-      cardClassName="max-w-3xl"
-      guidanceKey="auth-register-help"
     >
       {success ? (
         <div className="space-y-5">
@@ -232,8 +261,7 @@ export default function RegisterPage() {
                 ) : null}
                 {isEmailDelivery ? (
                   <div className="mt-3 rounded-xl border border-[rgba(34,197,94,0.18)] bg-[rgba(34,197,94,0.08)] p-3 text-xs text-[var(--muted)]">
-                    If you do not see the email within a minute, check spam or promotions, then use
-                    {" "}
+                    If you do not see the email within a minute, check spam or promotions, then use{" "}
                     <span className="font-medium text-[var(--text)]">Resend Verification Email</span>.
                   </div>
                 ) : null}
