@@ -10,7 +10,6 @@ export { OcrGuideCard } from "./ocr-guide-card";
 export { default as OcrHistoryPage } from "./ocr-history-page";
 export { default as OcrPage } from "./ocr-page";
 export { default as OcrScanPage } from "./ocr-scan-page";
-export { default as OcrVerificationPage } from "./ocr-verification-page";
 export { default as OcrVerificationV2Page } from "./ocr-verification-v2-page";
 export { SteelBatchDetailPage } from "./steel-batch-detail-page";
 export { SteelBatchesPage } from "./steel-batches-page";
