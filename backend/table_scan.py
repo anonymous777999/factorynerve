@@ -23,6 +23,9 @@ from openpyxl.utils import get_column_letter
 
 from backend.ledger_scan import preprocess_image_bytes
 from backend.utils import get_config
+from backend.services.indian_number_normalizer import (
+    parse_indian_number as _parse_indian_number,
+)
 from backend.services.anthropic_usage import (
     ANTHROPIC_MODEL_HAIKU,
     ANTHROPIC_MODEL_OPUS,
@@ -92,6 +95,11 @@ FOOTER_LABEL_FONT = Font(name="Arial", size=10, bold=True)
 FOOTER_VALUE_FONT = Font(name="Arial", size=10)
 TOTAL_FILL = PatternFill("solid", fgColor="E2F0D9")
 TOTAL_FONT = Font(name="Arial", size=10, bold=True)
+# Indian number format code for Excel — displays 4722000 as 47,22,000
+_INDIAN_NUM_FORMAT = '##\\,##\\,##0'
+# Draft warning row styling for non-approved exports
+DRAFT_WARNING_FILL = PatternFill("solid", fgColor="FFF2CC")  # Light yellow
+DRAFT_WARNING_FONT = Font(name="Arial", size=10, bold=True, color="7F6000")  # Dark amber
 LOW_CONF_FILL = PatternFill("solid", fgColor="FFF2CC")  # Light yellow
 ORANGE_CONF_FILL = PatternFill("solid", fgColor="FDE9D9") # Orange
 VERY_LOW_CONF_FILL = PatternFill("solid", fgColor="F4CCCC") # Light red
@@ -755,11 +763,12 @@ def _is_summable_numeric(value: Any) -> bool:
 
 def _excel_safe_value(value: Any) -> Any:
     """
-    Phase 3: Enhanced to use normalized numeric values for Excel cells.
-    
-    If value is a Phase 3 cell object with 'normalized' field,
-    use the numeric value to create true Excel numeric cells.
-    Otherwise preserve display value as string.
+    Convert a value to an Excel-safe cell value using Indian number normalization.
+
+    Priority:
+    1. If value is a cell object with 'normalized' field → return as float (true numeric cell)
+    2. If value is a bare string that parses as Indian number → return as int/float
+    3. Otherwise return the display string (formula-safe)
     """
     if value is None:
         return ""
@@ -770,16 +779,18 @@ def _excel_safe_value(value: Any) -> Any:
     
     # Phase 3: Check if this is a cell object with normalized numeric value
     if isinstance(value, dict):
-        # If cell has normalized value, use it for Excel (true numeric cell)
         if "normalized" in value and value["normalized"] is not None:
             try:
                 return float(value["normalized"])
             except (ValueError, TypeError):
-                pass  # Fall through to use display value
+                pass
 
-        # If it's a cell object with display value, extract it
         if "value" in value:
             display_value = value["value"]
+            # Try Indian number parse on display value first
+            indian_parsed = _parse_indian_number(display_value)
+            if indian_parsed is not None:
+                return indian_parsed
             matched, compact = _numeric_text_parts(display_value)
             if matched:
                 try:
@@ -788,10 +799,14 @@ def _excel_safe_value(value: Any) -> Any:
                     pass
             value = display_value
         else:
-            # Other dict/list -> serialize
             value = json.dumps(value, ensure_ascii=False, default=str)
     elif isinstance(value, list):
         value = json.dumps(value, ensure_ascii=False, default=str)
+    else:
+        # Bare string — try Indian number parse
+        indian_parsed = _parse_indian_number(value)
+        if indian_parsed is not None:
+            return indian_parsed
     
     text = str(value).strip()
     if not text:
@@ -858,7 +873,10 @@ def _build_totals_row(headers: list[str], rows: list[list[Any]]) -> list[Any] | 
     for column_index in range(len(headers)):
         values = [row[column_index] for row in rows if column_index < len(row) and row[column_index] not in {"", None}]
         if values and all(_is_summable_numeric(value) for value in values):
-            totals[column_index] = round(sum(_to_float(value) for value in values), 2)
+            # Use Indian number parser for totals calculation,
+            # so "47,22,000" + "14,000" correctly sums to 4736000 instead of "47,22,00014,000"
+            total = round(sum(_to_indian_float(value) for value in values), 2)
+            totals[column_index] = total
             numeric_columns.append(column_index)
     if not numeric_columns:
         return None
@@ -869,6 +887,27 @@ def _build_totals_row(headers: list[str], rows: list[list[Any]]) -> list[Any] | 
     elif label_index is not None:
         totals[label_index] = "Total"
     return totals
+
+
+def _to_indian_float(value: Any) -> float:
+    """Convert a value to float, using Indian number parser for strings."""
+    if value is None:
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, dict):
+        # Cell object — try normalized first
+        norm = value.get("normalized")
+        if norm is not None:
+            try:
+                return float(norm)
+            except (TypeError, ValueError):
+                pass
+        value = value.get("value", str(value))
+    parsed = _parse_indian_number(value)
+    if parsed is not None:
+        return float(parsed)
+    return _to_float(value)
 
 
 def _apply_widths(ws) -> None:
@@ -1186,6 +1225,13 @@ def build_table_excel_bytes(
         for key, value in metadata.items():
             footer_metadata[str(key)] = value
 
+    # Check if this export is from a draft/pending/rejected verification
+    verification_status = None
+    if metadata:
+        vs = metadata.get("Verification Status", "")
+        if vs in ("draft", "pending", "rejected"):
+            verification_status = vs
+
     wb = Workbook()
     ws = wb.active
     ws.title = sheet_name
@@ -1200,12 +1246,35 @@ def build_table_excel_bytes(
         cell.border = THIN_BORDER
 
     current_row += 1
+
+    # Insert draft warning row for non-approved exports
+    if verification_status:
+        total_col_count = len(headers)
+        warning_cell = ws.cell(row=current_row, column=1)
+        warning_cell.value = (
+            "⚠ DRAFT — Not approved. Do not use for official records."
+            if verification_status == "draft"
+            else f"⚠ {verification_status.upper()} — May contain unreviewed data."
+        )
+        warning_cell.font = DRAFT_WARNING_FONT
+        warning_cell.fill = DRAFT_WARNING_FILL
+        warning_cell.alignment = TEXT_ALIGN
+        if total_col_count > 1:
+            ws.merge_cells(
+                start_row=current_row, start_column=1,
+                end_row=current_row, end_column=total_col_count
+            )
+        current_row += 1
+
     for row_index, row in enumerate(rows):
         for col_index, value in enumerate(row, start=1):
             cell = ws.cell(row=current_row, column=col_index, value=value if value != "" else None)
             cell.font = TEXT_FONT
             cell.alignment = NUMBER_ALIGN if _is_display_numeric(value) else TEXT_ALIGN
             cell.border = THIN_BORDER
+            # Apply Indian number format to numeric cells for correct display
+            if isinstance(value, (int, float)):
+                cell.number_format = _INDIAN_NUM_FORMAT
             metadata_value = metadata_rows[row_index][col_index - 1] if row_index < len(metadata_rows) else None
             confidence, source = _apply_review_style(cell, metadata_value)
             if confidence is not None or source:
@@ -1228,6 +1297,8 @@ def build_table_excel_bytes(
             cell.font = TOTAL_FONT
             cell.alignment = NUMBER_ALIGN if isinstance(value, (int, float)) else TEXT_ALIGN
             cell.border = THIN_BORDER
+            if isinstance(value, (int, float)):
+                cell.number_format = _INDIAN_NUM_FORMAT
         current_row += 1
 
     if footer_metadata:

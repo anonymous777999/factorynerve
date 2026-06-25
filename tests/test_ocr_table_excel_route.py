@@ -286,7 +286,7 @@ def test_run_table_excel_pipeline_builds_excel_from_form_response(monkeypatch):
     assert sheet["A2"].value == "Invoice No"
     assert sheet["B2"].value == "INV-1001"
     assert sheet["A3"].value == "Amount"
-    assert sheet["B3"].value == "12500"
+    assert sheet["B3"].value == 12500
     assert metadata["extracted_type"] == "form"
     assert metadata["total_rows"] == 2
     assert metadata["total_columns"] == 2
@@ -483,7 +483,7 @@ def test_run_table_excel_pipeline_builds_excel_from_mixed_sections(monkeypatch):
     assert sheet["A7"].value == "Items"
     assert sheet["A8"].value == "Item"
     assert sheet["A9"].value == "Bolt"
-    assert sheet["B9"].value == "5"
+    assert sheet["B9"].value == 5
     assert metadata["extracted_type"] == "mixed"
     assert metadata["total_rows"] == 2
     assert metadata["total_columns"] == 2

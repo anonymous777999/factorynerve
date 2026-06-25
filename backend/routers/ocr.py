@@ -101,6 +101,7 @@ from backend.services.anthropic_usage import (
     serialize_anthropic_response_debug,
     verify_anthropic_response_model,
 )
+from backend.services.indian_number_normalizer import parse_indian_number
 from backend.services.ocr_normalization import (
     build_cell_confidence_matrix as build_heuristic_confidence_matrix,
     normalize_structured_payload,
@@ -1865,16 +1866,34 @@ def _verification_export_validation(
     if is_ledger_like:
         dr_index = next((index for index, header in enumerate(normalized_headers) if header in {"dr", "debit"} or "debit" in header), None)
         cr_index = next((index for index, header in enumerate(normalized_headers) if header in {"cr", "credit"} or "credit" in header), None)
+        dr_total = 0.0
+        cr_total = 0.0
+        has_numeric_values = False
         for row_index, row in enumerate(plain_rows, start=1):
             dr_value = row[dr_index].strip() if dr_index is not None and dr_index < len(row) else ""
             cr_value = row[cr_index].strip() if cr_index is not None and cr_index < len(row) else ""
             if dr_value and cr_value:
                 blockers.append(f"Row {row_index} contains both debit and credit values.")
             
+            dr_parsed = parse_indian_number(dr_value)
+            cr_parsed = parse_indian_number(cr_value)
+            if dr_parsed is not None:
+                dr_total += float(dr_parsed)
+                has_numeric_values = True
+            if cr_parsed is not None:
+                cr_total += float(cr_parsed)
+                has_numeric_values = True
+
             row_text_lower = [str(cell).strip().lower() for cell in row]
             if any(token in {"total", "balance", "sum", "grand total"} for token in row_text_lower):
                 if not (dr_value or cr_value):
                     warnings.append(f"Summary row {row_index} ('{row[0] if row else ''}') is missing a numeric total.")
+        
+        if has_numeric_values and abs(dr_total - cr_total) > 1.0:
+            warnings.append(
+                f"Ledger does not balance: Dr total (INR {dr_total:,.0f}) vs Cr total (INR {cr_total:,.0f}), "
+                f"difference = INR {abs(dr_total - cr_total):,.0f}. Review required."
+            )
     
     # 5. Impossible totals check (basic)
     # If we have an amount column and a total row, check if the total is roughly the sum
@@ -1886,17 +1905,17 @@ def _verification_export_validation(
                 total_val = 0.0
                 has_total = False
                 for row in plain_rows:
-                    val_str = row[idx].replace(",", "").replace(" ", "").strip()
+                    val_str = str(row[idx]).strip() if row[idx] is not None else ""
                     if not val_str: continue
                     if any(kw in str(row).lower() for kw in ("total", "sum", "balance")):
-                        try:
-                            total_val = float(val_str)
+                        parsed = parse_indian_number(val_str)
+                        if parsed is not None:
+                            total_val = float(parsed)
                             has_total = True
-                        except ValueError: pass
                     else:
-                        try:
-                            values.append(float(val_str))
-                        except ValueError: pass
+                        parsed = parse_indian_number(val_str)
+                        if parsed is not None:
+                            values.append(float(parsed))
                 
                 if has_total and values and abs(sum(values) - total_val) > 1.0:
                     warnings.append(f"Total in column '{headers[idx]}' ({total_val}) does not match the sum of individual rows ({sum(values):.2f}).")
