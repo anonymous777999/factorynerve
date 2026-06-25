@@ -28,8 +28,14 @@ function isOfflineLikeError(error: unknown) {
   if (typeof navigator !== "undefined" && !navigator.onLine) {
     return true;
   }
-  if (error instanceof ApiError && error.status === 0) {
-    return true;
+  if (error instanceof ApiError) {
+    // Treat 5xx server errors as transient — queue for retry
+    if (error.status >= 500) {
+      return true;
+    }
+    if (error.status === 0) {
+      return true;
+    }
   }
   if (error instanceof TypeError) {
     return true;
