@@ -119,6 +119,9 @@ _COLUMN_PRIORITY_GROUPS = (
     ("qty", "quantity", "unit", "units"),
     ("rate", "price", "amount", "debit", "credit", "balance", "total"),
 )
+# Keywords that identify a row as a totals/summary row already present in the data.
+# When detected, _build_totals_row skips adding a synthetic totals row to avoid duplication.
+_TOTAL_ROW_KEYWORDS = {"total", "subtotal", "sub total", "grand total", "sum", "balance", "net"}
 _TABLE_OUTPUT_VALIDATOR = AIOutputValidator()
 
 
@@ -865,13 +868,53 @@ def _normalize_excel_table(table: dict[str, Any]) -> tuple[list[str], list[list[
     return headers, normalized_rows
 
 
+def _row_looks_like_total(row: list[Any]) -> bool:
+    """Check if a row appears to be a totals/summary row already in the data.
+
+    Looks at the first cell of the row for common total keywords (case-insensitive).
+    This prevents _build_totals_row from adding a *second* totals row when the
+    OCR-extracted data already contains one (e.g. "Grand Total", "Balance", "Sum").
+    """
+    if not row:
+        return False
+    first_cell = str(row[0]).strip().lower() if row[0] is not None else ""
+    if not first_cell:
+        return False
+    return any(kw == first_cell or first_cell.startswith(kw) or first_cell.endswith(kw) or f" {kw} " in f" {first_cell} " for kw in _TOTAL_ROW_KEYWORDS)
+
+
 def _build_totals_row(headers: list[str], rows: list[list[Any]]) -> list[Any] | None:
     if not headers or not rows:
         return None
+
+    # Check if the data already has a totals/summary row at the end.
+    # OCR-extracted tables often contain rows like "Grand Total", "Balance", "Sum"
+    # that were present in the original document. Adding another auto-calculated
+    # total row would create duplicate totals and cause confusion.
+    # We check the last 2 rows to catch cases where the data ends with an empty/separator row
+    # before the actual totals row.
+    for check_row in (rows[-1], rows[-2] if len(rows) >= 2 else None):
+        if check_row is not None and _row_looks_like_total(check_row):
+            logger.info(
+                "Skipping auto-generated totals row because data already contains a totals row: '%s'",
+                str(check_row[0]) if check_row else "",
+            )
+            return None
+
     totals: list[Any] = [""] * len(headers)
     numeric_columns: list[int] = []
+
+    # Exclude any rows that look like totals from the sum calculation to avoid
+    # double-counting (the original total would be included in the sum).
+    data_rows = [row for row in rows if not _row_looks_like_total(row)]
+    if not data_rows:
+        return None
+
     for column_index in range(len(headers)):
-        values = [row[column_index] for row in rows if column_index < len(row) and row[column_index] not in {"", None}]
+        values = [
+            row[column_index] for row in data_rows
+            if column_index < len(row) and row[column_index] not in {"", None}
+        ]
         if values and all(_is_summable_numeric(value) for value in values):
             # Use Indian number parser for totals calculation,
             # so "47,22,000" + "14,000" correctly sums to 4736000 instead of "47,22,00014,000"
