@@ -556,7 +556,7 @@ function BillingPageInner() {
         key: billingConfig.key_id,
         amount: order.order.amount,
         currency: order.order.currency,
-        name: "DPR.ai",
+        name: "Factory Nerve",
         description: `${checkoutPlanInfo.name} plan (${billingCycle})`,
         order_id: order.order.id,
         prefill: {

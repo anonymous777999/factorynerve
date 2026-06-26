@@ -100,8 +100,9 @@ export default function RegisterPage() {
     : null;
 
   const brand = {
-    appInitial: "D",
-    appName: "DPR.ai",
+    appInitial: "F",
+    appName: "Factory Nerve",
+    useFnLogo: true,
     eyebrow: t("auth.register.badge", "Public Signup"),
     title: t("auth.register.title", "Create your account"),
     description: t(

@@ -3,7 +3,8 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-import { GuidanceBlock } from "@/components/ui/guidance-block";
+import { FnLogo } from "@/components/shared/fn-logo";
+import { GuidanceBlock} from "@/components/ui/guidance-block";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -25,6 +26,11 @@ type BrandConfig = {
   title: string;
   description: string;
   trustPoints: BrandTrustPoint[];
+  /**
+   * If true, uses the FnLogo mark component instead of the appInitial letter
+   * in the brand sidebar and mobile logo.
+   */
+  useFnLogo?: boolean;
 };
 
 type AuthShellProps = {
@@ -94,9 +100,13 @@ export function AuthShell({
 
             {/* Logo */}
             <div className="relative flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(76,176,255,0.24),rgba(45,212,191,0.18))] shadow-[0_8px_20px_rgba(5,13,24,0.3)]">
-                <span className="text-base font-bold text-white">{brand.appInitial}</span>
-              </div>
+              {brand.useFnLogo ? (
+                <FnLogo variant="mark" className="h-10 w-10" />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(76,176,255,0.24),rgba(45,212,191,0.18))] shadow-[0_8px_20px_rgba(5,13,24,0.3)]">
+                  <span className="text-base font-bold text-white">{brand.appInitial}</span>
+                </div>
+              )}
               <div className="text-lg font-semibold tracking-tight text-[#f0f4fc]">{brand.appName}</div>
             </div>
 
@@ -130,9 +140,13 @@ export function AuthShell({
             <div className="w-full max-w-[440px]">
               {/* Mobile logo */}
               <div className="mb-10 flex items-center gap-3 lg:hidden">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(76,176,255,0.24),rgba(45,212,191,0.18))]">
-                  <span className="text-sm font-bold text-white">{brand.appInitial}</span>
-                </div>
+                {brand.useFnLogo ? (
+                  <FnLogo variant="mark" className="h-9 w-9" />
+                ) : (
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(76,176,255,0.24),rgba(45,212,191,0.18))]">
+                    <span className="text-sm font-bold text-white">{brand.appInitial}</span>
+                  </div>
+                )}
                 <div className="text-base font-semibold tracking-tight text-[#f0f4fc]">{brand.appName}</div>
               </div>
 
@@ -192,13 +206,10 @@ export function AuthShell({
           className="auth-rise mb-5 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/6 px-4 py-2 text-sm text-slate-200 shadow-[0_12px_32px_rgba(2,6,23,0.28)] backdrop-blur-xl"
           style={{ animationDelay: "40ms" }}
         >
-          <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-cyan-200/15 bg-[linear-gradient(135deg,rgba(76,176,255,0.24),rgba(45,212,191,0.18))] text-sm font-semibold text-white">
-            D
-          </div>
-          <div className="leading-tight">
-            <div className="font-semibold text-white">{t("auth.shell.home_label", "DPR.ai")}</div>
-            <div className="text-[11px] uppercase tracking-header text-slate-400">{t("auth.shell.home_caption", "Factory access")}</div>
-          </div>
+          <FnLogo variant="mark" className="h-9 w-9" />              <div className="leading-tight">
+                <div className="font-semibold text-white">{t("auth.shell.home_label", "FactoryNerve")}</div>
+                <div className="text-[11px] uppercase tracking-header text-slate-400">{t("auth.shell.home_caption", "Factory access")}</div>
+              </div>
         </Link>
 
         <Card

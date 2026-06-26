@@ -1,6 +1,6 @@
 {
-  "name": "DPR.ai",
-  "short_name": "DPR.ai",
+  "name": "Factory Nerve",
+  "short_name": "FactoryNerve",
   "id": "https://www.factorynerve.online/",
   "scope": "https://www.factorynerve.online/",
   "start_url": "https://www.factorynerve.online/",
@@ -11,7 +11,7 @@
   "orientation": "portrait-primary",
   "background_color": "#0b0e14",
   "theme_color": "#0b0e14",
-  "description": "Factory operations system for attendance, OCR, approvals, dispatch, and reporting.",
+  "description": "Factory-first operating system for attendance, OCR, approvals, dispatch, and reporting.",
   "categories": ["business", "productivity", "utilities"],
   "prefer_related_applications": false,
   "shortcuts": [
@@ -41,6 +41,12 @@
     }
   ],
   "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "https://www.factorynerve.online/icons/icon-192.png",
       "sizes": "192x192",

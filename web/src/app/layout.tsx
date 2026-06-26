@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   description: "Factory trust infrastructure — production, attendance, inventory, and dispatch in one platform.",
   manifest: "/manifest.json",
   applicationName: "Factory Nerve",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

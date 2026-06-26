@@ -202,9 +202,10 @@ export default function LoginPage() {
       : routeInfo;
 
   const brand = {
-    appInitial: "D",
-    appName: "DPR.ai",
-    eyebrow: t("auth.login.eyebrow", "Industrial intelligence platform"),
+    appInitial: "F",
+    appName: "Factory Nerve",
+    useFnLogo: true,
+    eyebrow: t("auth.login.eyebrow", "Factory-first operating system"),
     title: t("auth.login.title", "System Access"),
     description: t(
       "auth.login.description",

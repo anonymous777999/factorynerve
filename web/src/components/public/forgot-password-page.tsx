@@ -69,8 +69,9 @@ export default function ForgotPasswordPage() {
   const isEmailDelivery = response?.delivery_mode !== "preview";
 
   const brand = {
-    appInitial: "D",
-    appName: "DPR.ai",
+    appInitial: "F",
+    appName: "Factory Nerve",
+    useFnLogo: true,
     eyebrow: t("auth.forgot.badge", "Password Recovery"),
     title: t("auth.forgot.title", "Forgot password"),
     description: t(

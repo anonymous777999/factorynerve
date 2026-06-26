@@ -53,8 +53,9 @@ export default function ResetPasswordPage() {
   );
 
   const brand = {
-    appInitial: "D",
-    appName: "DPR.ai",
+    appInitial: "F",
+    appName: "Factory Nerve",
+    useFnLogo: true,
     eyebrow: t("auth.reset.badge", "Reset Password"),
     title: t("auth.reset.title", "Reset password"),
     description: t(

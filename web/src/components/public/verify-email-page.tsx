@@ -58,8 +58,9 @@ export default function VerifyEmailPage() {
   );
 
   const brand = {
-    appInitial: "D",
-    appName: "DPR.ai",
+    appInitial: "F",
+    appName: "Factory Nerve",
+    useFnLogo: true,
     eyebrow: t("auth.verify.badge", "Email Verification"),
     title: t("auth.verify.title", "Verify email"),
     description: t(
@@ -73,7 +74,7 @@ export default function VerifyEmailPage() {
       },
       {
         icon: <ZapSm />,
-        text: t("auth.verify.trust_activate", "Activates pending signup into a real DPR.ai account"),
+        text: t("auth.verify.trust_activate", "Activates pending signup into a real Factory Nerve account"),
       },
       {
         icon: <GlobeSm />,

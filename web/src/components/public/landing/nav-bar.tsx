@@ -2,15 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { FnLogo } from "@/components/shared/fn-logo";
 import { navItems, sectionIds } from "./data";
-
-function BrandLogo() {
-  return (
-    <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-amber-500/20 bg-[linear-gradient(135deg,rgba(197,109,45,0.24),rgba(197,109,45,0.10))] text-sm font-bold text-amber-300">
-      F
-    </div>
-  );
-}
 
 export default function NavBar() {
   const [activeId, setActiveId] = useState("");
@@ -51,7 +44,7 @@ export default function NavBar() {
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5">
-          <BrandLogo />
+          <FnLogo variant="mark" className="h-9 w-9" />
           <span className="text-sm font-semibold tracking-tight text-white">Factory Nerve</span>
         </Link>
 

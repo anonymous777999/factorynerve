@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { FnLogo } from "@/components/shared/fn-logo";
 import { FeedbackActivityTracker } from "@/components/shared/feedback-activity-tracker";
 import { ErrorFeedbackPrompt } from "@/components/shared/error-feedback-prompt";
 import { FeedbackWidget } from "@/components/shared/feedback-widget";
@@ -1919,10 +1920,13 @@ function AppShellFrame({
           <div className="rounded-[1.25rem] border border-[rgba(62,166,255,0.18)] bg-[linear-gradient(180deg,rgba(62,166,255,0.1),rgba(12,16,26,0.94))] p-3 shadow-[0_14px_38px_rgba(3,8,20,0.24)]">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-header text-[rgba(62,166,255,0.88)]">
-                  DPR.ai
+                <div className="flex items-center gap-2">
+                  <FnLogo variant="mark" className="h-6 w-6 shrink-0" />
+                  <div className="text-[10px] font-semibold uppercase tracking-header text-[rgba(62,166,255,0.88)]">
+                    FactoryNerve
+                  </div>
                 </div>
-                <div className="mt-1 truncate text-[15px] font-semibold leading-5 text-[var(--text)]">
+                <div className="mt-2 truncate text-[15px] font-semibold leading-5 text-[var(--text)]">
                   {activeFactory?.name || user?.factory_name || t("common.not_selected", "Factory not selected")}
                 </div>
                 <div className="mt-0.5 text-[11px] leading-4 text-[var(--muted)]">
@@ -2179,7 +2183,7 @@ function AppShellFrame({
 
               <div className="min-w-0 flex-1 text-center">
                 <div className="truncate text-[10px] font-semibold uppercase tracking-header text-[rgba(62,166,255,0.88)]">
-                  {activeFactory?.name || user?.factory_name || "DPR.ai"}
+                  {activeFactory?.name || user?.factory_name || "FactoryNerve"}
                 </div>
                 <div className="truncate text-sm font-semibold text-[var(--text)]">{currentItem.label}</div>
               </div>
