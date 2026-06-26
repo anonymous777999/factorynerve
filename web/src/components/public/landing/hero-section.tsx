@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { FnLogo } from "@/components/shared/fn-logo";
 
 export default function HeroSection() {
   return (
@@ -10,6 +11,9 @@ export default function HeroSection() {
       </div>
 
       <div className="relative mx-auto max-w-5xl text-center">
+        <div className="mb-8 flex items-center justify-center gap-3">
+          <FnLogo variant="horizontal-simple" height={48} className="max-w-xs" />
+        </div>
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-amber-500/15 bg-amber-500/8 px-4 py-1.5 text-xs font-medium text-amber-200/80">
           <span className="flex h-2 w-2 rounded-full bg-amber-400" />
           Built for the Indian Factory Floor
