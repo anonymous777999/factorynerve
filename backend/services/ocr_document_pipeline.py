@@ -498,7 +498,8 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
     
     # Smart trust policy: lower trust only when document-level signals suggest a risky extraction.
     cache_trust = "high"
-    if review_required or (scan_quality.get("confidence_band") == "medium" and len(warnings) >= 2):
+    # Tightened: single warning on medium confidence now triggers low trust (Bug #24)
+    if review_required or (scan_quality.get("confidence_band") == "medium" and len(warnings) >= 1):
         cache_trust = "low"
 
     # user_corrected if reviewed_rows differs from original_rows
@@ -543,6 +544,7 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
         "ttl_hours": 24 if cache_trust == "low" else 168,
         "reprocess_count": reprocess_count,
         "reprocess_limit": 3,
+        "ai_degraded_to_base": routing.get("ai_degraded_to_base", False),
         "user_corrected": user_corrected,
         "review_required": review_required,
         "last_reprocessed_at": routing.get("last_reprocessed_at"),
@@ -838,4 +840,5 @@ def build_structured_ocr_result(
         else None,
         "reused": False,
         "reused_verification_id": None,
+        "ai_degraded_to_base": route_meta.get("ai_degraded_to_base", False),
     }

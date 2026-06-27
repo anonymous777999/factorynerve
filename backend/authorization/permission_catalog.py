@@ -872,6 +872,15 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         scope_level=ScopeLevel.FACTORY,
         default_roles=_ADMIN_PLUS,
     ),
+
+    # ── System / Platform Admin ──────────────────────────────────────────────
+    "system.admin": PermissionDef(
+        key="system.admin",
+        label="System admin access",
+        description="Generic platform-level admin gate. Grants access to admin-only diagnostic and management endpoints.",
+        scope_level=ScopeLevel.PLATFORM,
+        default_roles=_ADMIN_PLUS,
+    ),
 }
 
 # Deduplicate permission keys that were accidentally added twice

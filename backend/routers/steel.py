@@ -178,6 +178,15 @@ class SteelInvoiceLineCreateRequest(BaseModel):
     weight_kg: float = Field(gt=0)
     rate_per_kg: float = Field(ge=0)
 
+    @field_validator("weight_kg")
+    @classmethod
+    def validate_line_total(cls, v: float, info: ValidationInfo) -> float:
+        rate = info.data.get("rate_per_kg", 0.0) or 0.0
+        total = v * rate
+        if total > 10_000_000:
+            raise ValueError(f"Line total {total:,.2f} exceeds maximum allowed (10,000,000).")
+        return v
+
 
 class SteelInvoiceCreateRequest(BaseModel):
     invoice_number: str | None = Field(default=None, max_length=40)
@@ -249,6 +258,7 @@ class SteelDispatchLineCreateRequest(BaseModel):
 
 
 class SteelDispatchCreateRequest(BaseModel):
+    client_request_id: str | None = Field(default=None, max_length=64)
     dispatch_number: str | None = Field(default=None, max_length=40)
     gate_pass_number: str | None = Field(default=None, max_length=40)
     invoice_id: int
@@ -1222,6 +1232,7 @@ def _refresh_invoice_payment_statuses(db: Session, *, factory_id: str, invoice_i
             SteelCustomerPayment.factory_id == factory_id,
             SteelCustomerPayment.customer_id.in_(list(customer_ids)),
         )
+        .with_for_update()
         .limit(2000)
         .all()
         if customer_ids
@@ -1233,6 +1244,7 @@ def _refresh_invoice_payment_statuses(db: Session, *, factory_id: str, invoice_i
             SteelCustomerPaymentAllocation.factory_id == factory_id,
             SteelCustomerPaymentAllocation.invoice_id.in_(list(invoice_ids)),
         )
+        .with_for_update()
         .limit(2000)
         .all()
     )
@@ -1604,7 +1616,16 @@ def _create_dispatch_inventory_movements(
     dispatch_lines: list[SteelDispatchLine],
     current_user: User,
 ) -> None:
-    if _dispatch_has_posted_inventory(dispatch):
+    # Pessimistic lock on the dispatch row to prevent concurrent double-posting.
+    # Without FOR UPDATE, two threads could both pass the idempotency check
+    # before either commits, resulting in duplicate inventory transactions.
+    locked_dispatch = (
+        db.query(SteelDispatch)
+        .filter(SteelDispatch.id == dispatch.id)
+        .with_for_update()
+        .first()
+    )
+    if locked_dispatch is None or _dispatch_has_posted_inventory(locked_dispatch):
         return
     notes_suffix = f"Gate pass {dispatch.gate_pass_number}"
     for line in dispatch_lines:
@@ -2259,6 +2280,8 @@ def approve_steel_stock_reconciliation(
     row.rejected_at = None
     
     if abs(float(row.variance_kg or 0.0)) > 0.0001:
+        # Pessimistic lock the item before posting the ledger adjustment
+        db.query(SteelInventoryItem).filter(SteelInventoryItem.id == row.item_id).with_for_update().first()
         db.add(
             SteelInventoryTransaction(
                 org_id=factory.org_id,
@@ -2285,7 +2308,11 @@ def approve_steel_stock_reconciliation(
         ),
         request=request,
     )
-    db.commit()
+    try:
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to approve reconciliation: {error}") from error
     db.refresh(row)
 
     # Step 3: Notify approval system of completion
@@ -3455,7 +3482,11 @@ def create_steel_customer_payment(
         ),
         request=request,
     )
-    db.commit()
+    try:
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create payment: {error}") from error
     db.refresh(payment)
     for row in created_allocations:
         db.refresh(row)
@@ -3892,7 +3923,11 @@ def create_steel_invoice(
         ),
         request=request,
     )
-    db.commit()
+    try:
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create invoice: {error}") from error
     db.refresh(invoice)
     for row in line_rows:
         db.refresh(row)
@@ -4096,6 +4131,21 @@ def create_steel_dispatch(
         request_context=build_request_context(request),
     )
 
+    # Idempotency: if the caller supplies a client_request_id, return the
+    # existing dispatch instead of creating a duplicate.  This prevents double
+    # stock deductions when the client retries a timed-out request.
+    if payload.client_request_id:
+        existing_by_crid = (
+            db.query(SteelDispatch)
+            .filter(
+                SteelDispatch.factory_id == factory.factory_id,
+                SteelDispatch.client_request_id == payload.client_request_id,
+            )
+            .first()
+        )
+        if existing_by_crid:
+            return {"dispatch": existing_by_crid, "idempotent": True}
+
     invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=payload.invoice_id)
     requested_status = _normalize_dispatch_status(payload.status)
     dispatch_number = (
@@ -4235,6 +4285,7 @@ def create_steel_dispatch(
         delivered_at=datetime.now(timezone.utc) if requested_status == "delivered" else None,
         delivered_by_user_id=current_user.id if requested_status == "delivered" else None,
         created_by_user_id=current_user.id,
+        client_request_id=payload.client_request_id or None,
     )
     db.add(dispatch)
     db.flush()
@@ -4278,7 +4329,11 @@ def create_steel_dispatch(
         ),
         request=request,
     )
-    db.commit()
+    try:
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create dispatch: {error}") from error
     db.refresh(dispatch)
     for row in dispatch_line_rows:
         db.refresh(row)
@@ -4502,8 +4557,9 @@ def create_steel_batch(
     if payload.actual_output_kg > payload.input_quantity_kg:
         raise HTTPException(status_code=400, detail="Actual output cannot exceed input quantity.")
 
-    # Lock the input item row to prevent concurrent stock underflow (TOCTOU race)
+    # Lock both input and output item rows to prevent concurrent stock corruption
     db.query(SteelInventoryItem).filter(SteelInventoryItem.id == input_item.id).with_for_update().first()
+    db.query(SteelInventoryItem).filter(SteelInventoryItem.id == output_item.id).with_for_update().first()
     balances = stock_balances_for_factory(db, factory.factory_id)
     available_input = float(balances.get(input_item.id, 0.0))
     if available_input + 0.0001 < payload.input_quantity_kg:
@@ -4594,7 +4650,11 @@ def create_steel_batch(
         ),
         request=request,
     )
-    db.commit()
+    try:
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create batch: {error}") from error
     db.refresh(batch)
     return {
         "batch": serialize_batch(

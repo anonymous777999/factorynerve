@@ -57,9 +57,6 @@ from backend.metrics import (
 )
 from backend.middleware.security import apply_security
 from backend.middleware.response_envelope import apply_response_envelope
-from backend.middleware.csrf_cookie import apply_cookie_csrf
-from backend.auth_cookies import get_access_cookie
-from backend.security import decode_access_token
 import threading
 
 from backend.services.ops_alerts import (
@@ -132,6 +129,7 @@ async def lifespan(_app: FastAPI):
     try:
         logger.info("Starting backend initialization.")
         init_db()
+        register_approval_callbacks()
         try:
             with SessionLocal() as db:
                 normalized = normalize_subscription_states(db)
@@ -189,8 +187,7 @@ if sentry_sdk and os.getenv("SENTRY_DSN"):
 app.include_router(auth_router, prefix="/auth")
 app.include_router(auth_google_router, prefix="/auth")
 app.include_router(phone_auth_router, prefix="/auth")
-if os.getenv("ENABLE_AUTH_SECURE", "").strip().lower() in {"1", "true", "yes", "on"}:
-    app.include_router(auth_secure_router, prefix="/auth-secure")
+app.include_router(auth_secure_router, prefix="/auth-secure")
 app.include_router(auth_secure_router, prefix="/auth/v2")
 app.include_router(permissions_router, prefix="/auth")
 app.include_router(approvals_router, prefix="/api")
@@ -222,46 +219,6 @@ app.include_router(cron_router)
 
 apply_security(app)
 apply_response_envelope(app)
-apply_cookie_csrf(app)
-
-
-@app.middleware("http")
-async def attach_role_revision_header(request: Request, call_next: Callable) -> Response:
-    # Resolve role_revision from cache or DB before processing the request.
-    # Move this lookup before call_next so the header value is ready when
-    # the response is constructed, and to release the DB connection promptly.
-    role_revision: int | None = None
-    token: str | None = None
-    authorization = request.headers.get("Authorization") or ""
-    if authorization.startswith("Bearer "):
-        token = authorization.replace("Bearer ", "", 1).strip()
-    if not token:
-        token = get_access_cookie(request)
-    if token:
-        try:
-            payload = decode_access_token(token)
-            user_id = int(payload.get("sub", 0))
-            if user_id > 0:
-                role_revision = _get_cached_role_revision(user_id)
-                if role_revision is None:
-                    with SessionLocal() as db:
-                        current_user = (
-                            db.query(User)
-                            .filter(User.id == user_id, User.is_active.is_(True))
-                            .first()
-                        )
-                        if current_user and current_user.role_revision is not None:
-                            role_revision = current_user.role_revision
-                            _set_cached_role_revision(user_id, role_revision)
-        except Exception:
-            pass
-
-    response = await call_next(request)
-
-    if role_revision is not None:
-        response.headers["X-Role-Revision"] = str(role_revision)
-    return response
-
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable) -> Response:

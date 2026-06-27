@@ -298,7 +298,7 @@ def get_steel_fraud_intelligence(
     try:
         alert_counts = sync_fraud_alerts(db, factory.factory_id, factory.org_id, result)
         result["alert_counts"] = alert_counts
-    except Exception:
+    except Exception as error:
         result["alert_counts"] = {"new_count": 0, "total_active": 0, "by_domain": {}}
 
     return result

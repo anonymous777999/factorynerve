@@ -687,6 +687,7 @@ def list_my_feedback_updates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackReporterUpdatesResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="feedback.submit")
     org_id = resolve_org_id(current_user)
     if not org_id:
         raise HTTPException(status_code=400, detail="Organization could not be resolved.")
@@ -733,6 +734,7 @@ def export_feedback_csv(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
+    PDP(db=db).require_permission(actor=current_user, permission_key="feedback.manage")
     payload = list_feedback(
         status_value=status_value,
         feedback_type=feedback_type,

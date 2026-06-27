@@ -15,7 +15,6 @@ from backend.models.organization import Organization
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
 from backend.plans import normalize_plan
-from backend.security import create_access_token
 
 
 def _unwrap_response(data: dict) -> dict:
@@ -120,6 +119,7 @@ def register_user(
                     email=normalized_email,
                     password_hash=auth_hash_password(payload["password"]),
                     is_active=True,
+                    is_email_verified=True,
                     password_changed_at=datetime.now(timezone.utc),
                 )
             )
@@ -142,29 +142,21 @@ def register_user(
     finally:
         db.close()
 
-    access_token = create_access_token(
-        user_id=user.id,
-        role=str(user.role.value) if hasattr(user.role, "value") else str(user.role),
-        email=user.email,
-        org_id=org_id,
-        factory_id=factory_id,
-        mfa_verified=False,
+    # Log in via v2 to set session cookies on the test client
+    login_resp = client.post(
+        "/auth/v2/login",
+        json={"email": normalized_email, "password": payload["password"]},
     )
+    assert login_resp.status_code == 200, login_resp.text
 
-    if use_cookies:
-        # Log in via v2 to let the server set all cookies (dpr_access, dpr_refresh, dpr_csrf)
-        # through proper Set-Cookie headers. This ensures httpx's cookie jar manages them
-        # correctly and logout's delete_cookie() works reliably.
-        login_resp = client.post(
-            "/auth/v2/login",
-            json={"email": normalized_email, "password": payload["password"]},
-        )
-        assert login_resp.status_code == 200, login_resp.text
+    # Extract the session cookie for tests that need to switch between users
+    session_token = login_resp.cookies.get("auth_session", "")
 
     return {
         "email": user.email,
         "password": payload["password"],
-        "access_token": access_token,
+        "access_token": "",  # JWT removed — use v2 session cookies
+        "session_token": session_token,
         "user_id": user.id,
         "user_code": user.user_code,
         "company_code": user.factory_code,

@@ -43,6 +43,8 @@ os.environ["AI_PROVIDER_RETRY_BACKOFF_SECONDS"] = "0"
 os.environ["RATE_LIMIT_MAX_REQUESTS"] = "100000"
 os.environ["RATE_LIMIT_WINDOW_SECONDS"] = "1"
 os.environ["AUTH_RATE_LIMIT_MAX_ATTEMPTS"] = "100000"
+os.environ["REGISTER_RATE_LIMIT_MAX_REQUESTS"] = "100000"
+os.environ["LOGIN_RATE_LIMIT_MAX_REQUESTS"] = "100000"
 os.environ["OCR_RATE_LIMIT_MAX_REQUESTS"] = "100000"
 os.environ["EMAIL_VERIFICATION_EXPOSE_LINK"] = "1"
 os.environ["PASSWORD_RESET_EXPOSE_LINK"] = "1"
@@ -145,7 +147,7 @@ def base_url() -> str:
     return _SELECTED_BASE_URL
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def http_client(base_url: str):
     client = httpx.Client(
         base_url=base_url,

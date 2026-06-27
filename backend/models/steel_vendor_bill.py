@@ -18,6 +18,7 @@ class SteelVendorBill(Base):
         Index("ix_steel_vendor_bills_bill_date", "bill_date"),
         Index("ix_steel_vendor_bills_due_date", "due_date"),
         Index("ix_steel_vendor_bills_status", "status"),
+        Index("uq_steel_vendor_bills_factory_bill_number", "factory_id", "bill_number", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

@@ -11,13 +11,12 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.email_utils import queue_and_send_email
-from backend.auth_cookies import clear_auth_cookies, set_access_cookie
-from backend.security import create_access_token
 from backend.models.auth_audit_log import AuthAuditLog
 from backend.models.auth_password_reset import AuthPasswordReset
 from backend.models.auth_user import AuthUser
-from backend.models.user import User
+from backend.models.user import User, UserReadSchema
 from backend.models.user_factory_role import UserFactoryRole
+from backend.schemas.auth import PermissionsSchema
 from backend.auth_security.mfa import generate_secret, provisioning_uri, verify_totp
 from backend.auth_security.passwords import hash_password, validate_password_strength, verify_password
 from backend.auth_security.rate_limit import RateLimitError, check_rate_limit
@@ -29,6 +28,8 @@ from backend.auth_security.sessions import (
     revoke_all_sessions,
     revoke_session,
     touch_session,
+    CSRF_COOKIE,
+    CSRF_HEADER,
 )
 from backend.auth_security.tokens import build_reset_token, expires_at, generate_token, hash_token, verify_reset_token
 from backend.auth_security.lockout import (
@@ -101,35 +102,6 @@ def _generic_login_error() -> HTTPException:
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
 
 
-def _issue_legacy_access_cookie(
-    db: Session,
-    *,
-    auth_user: AuthUser,
-    request: Request,
-    response: Response,
-    mfa_verified: bool = False,
-) -> None:
-    legacy_user = db.query(User).filter(User.email == auth_user.email, User.is_active.is_(True)).first()
-    if not legacy_user:
-        return
-
-    role_row = (
-        db.query(UserFactoryRole)
-        .filter(UserFactoryRole.user_id == legacy_user.id)
-        .order_by(UserFactoryRole.assigned_at.asc())
-        .first()
-    )
-    access_token = create_access_token(
-        user_id=legacy_user.id,
-        role=role_row.role.value if role_row else legacy_user.role.value,
-        email=legacy_user.email,
-        org_id=role_row.org_id if role_row else legacy_user.org_id,
-        factory_id=role_row.factory_id if role_row else None,
-        mfa_verified=mfa_verified,
-    )
-    set_access_cookie(response=response, access_token=access_token, request=request)
-
-
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
     ip = request.client.host if request.client else "unknown"
@@ -176,23 +148,6 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
             detail="Account temporarily locked due to too many failed login attempts. Try again later.",
         )
 
-    # Legacy user migration: if no AuthUser record exists, look up the legacy User table
-    # and auto-create an AuthUser on-the-fly. This handles users registered via the
-    # legacy registration flow (bcrypt) who are logging in for the first time via v2.
-    if not user:
-        from backend.models.user import User as LegacyUser
-        from backend.security import verify_password as legacy_verify_password
-        legacy = db.query(LegacyUser).filter(LegacyUser.email == email, LegacyUser.is_active.is_(True)).first()
-        if legacy and legacy_verify_password(payload.password, legacy.password_hash):
-            user = AuthUser(
-                email=email,
-                password_hash=hash_password(payload.password),
-                is_active=True,
-                password_changed_at=datetime.now(timezone.utc),
-            )
-            db.add(user)
-            db.flush()
-
     if not user or not verify_password(payload.password, user.password_hash):
         if user:
             now_locked = increment_failed_login(db, user)
@@ -234,17 +189,21 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     # The login handler guards above ensure we only reach here when:
     #   1) MFA is not enabled (mfa_verified=False — PDP allows via _check_mfa), OR
     #   2) MFA is enabled AND a valid code was provided (mfa_verified=True).
+    # Resolve the user's active factory from the legacy User model
     mfa_verified = user.mfa_enabled
-    session = create_session(db, user=user, request=request, response=response)
+    legacy_user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
+    factory_id = None
+    if legacy_user:
+        role_row = (
+            db.query(UserFactoryRole)
+            .filter(UserFactoryRole.user_id == legacy_user.id)
+            .order_by(UserFactoryRole.assigned_at.asc())
+            .first()
+        )
+        if role_row:
+            factory_id = role_row.factory_id
+    session = create_session(db, user=user, request=request, response=response, factory_id=factory_id)
     touch_session(db, session)
-    _issue_legacy_access_cookie(
-        db, auth_user=user, request=request, response=response,
-        mfa_verified=mfa_verified,
-    )
-    # Set legacy CSRF cookie and header so cookie-session tests can verify the flow
-    from backend.auth_cookies import set_csrf_cookie
-    csrf_token = set_csrf_cookie(response=response, request=request)
-    response.headers["X-CSRF-Token"] = csrf_token
     _log_event(db, action="AUTH_LOGIN_SUCCESS", user_id=user.id, request=request)
     db.commit()
     return {"message": "Login successful."}
@@ -255,19 +214,121 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)) 
     session = get_current_session(db, request)
     require_csrf(request, session)
     revoke_session(db, session=session, response=response)
-    clear_auth_cookies(response=response)
     _log_event(db, action="AUTH_LOGOUT", user_id=session.auth_user_id, request=request)
     db.commit()
     return {"message": "Logged out."}
 
 
-@router.get("/me")
-def me(request: Request, db: Session = Depends(get_db)) -> dict:
+@router.post("/logout-all")
+def logout_all(request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
     session = get_current_session(db, request)
-    user = get_current_user(db, session)
-    touch_session(db, session)
+    require_csrf(request, session)
+
+    # Revoke all sessions for this AuthUser
+    auth_user_id = session.auth_user_id
+    revoke_all_sessions(db, user_id=auth_user_id)
+
+    # Clear cookies
+    response.delete_cookie(os.getenv("AUTH_SESSION_COOKIE", "auth_session"), path="/")
+    response.delete_cookie(os.getenv("AUTH_CSRF_COOKIE", "auth_csrf"), path="/")
+
+    _log_event(db, action="AUTH_LOGOUT_ALL", user_id=auth_user_id, request=request)
     db.commit()
-    return {"id": user.id, "email": user.email, "mfa_enabled": user.mfa_enabled}
+    return {"message": "Logged out from all devices successfully."}
+
+
+def _build_me_permissions(legacy_user: User) -> PermissionsSchema:
+    """Build permissions from the legacy User role, matching auth.py's _build_permissions."""
+    from backend.models.user import UserRole
+    from backend.models.user import role_rank
+    role_value = legacy_user.role.value if isinstance(legacy_user.role, UserRole) else str(legacy_user.role)
+    role = legacy_user.role if isinstance(legacy_user.role, UserRole) else None
+    return PermissionsSchema(
+        can_view_billing=role in {UserRole.ADMIN, UserRole.OWNER},
+        can_manage_users=bool(role and role_rank(role) >= role_rank(UserRole.MANAGER)),
+        can_view_analytics=bool(role and role_rank(role) >= role_rank(UserRole.SUPERVISOR)),
+        can_approve_entries=bool(role and role_rank(role) >= role_rank(UserRole.SUPERVISOR)),
+        can_export_data=role not in {UserRole.ATTENDANCE, UserRole.OPERATOR},
+        can_manage_billing=role == UserRole.OWNER,
+        can_view_admin_panel=role_value == "superadmin",
+    )
+
+
+@router.get("/context")
+def get_context(request: Request, db: Session = Depends(get_db)) -> dict:
+    """Return the full auth context (user, factories, active factory, org).
+
+    Mirrors the legacy GET /auth/context endpoint using v2 session auth.
+    """
+    from backend.routers.auth import _build_auth_context, _resolve_active_factory_id
+
+    session = get_current_session(db, request)
+    auth_user = get_current_user(db, session)
+    touch_session(db, session)
+
+    # Resolve the legacy User for context building.
+    legacy_user = db.query(User).filter(
+        User.email == auth_user.email,
+        User.is_active.is_(True),
+    ).first()
+    if not legacy_user:
+        db.commit()
+        return {
+            "user": {"id": auth_user.id, "email": auth_user.email},
+            "active_factory_id": None,
+            "active_factory": None,
+            "factories": [],
+            "organization": None,
+        }
+
+    active_factory_id = getattr(legacy_user, "active_factory_id", None)
+    if not active_factory_id:
+        active_factory_id = _resolve_active_factory_id(
+            db, user_id=legacy_user.id, preferred_factory_id=None
+        )
+    context = _build_auth_context(db, user=legacy_user, active_factory_id=active_factory_id)
+    # Serialize the User object for JSON response (Pydantic can't serialize raw SQLAlchemy models)
+    context["user"] = UserReadSchema.model_validate(legacy_user)
+    db.commit()
+    return context
+
+
+@router.get("/me")
+def me(request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
+    session = get_current_session(db, request)
+    auth_user = get_current_user(db, session)
+    touch_session(db, session)
+
+    # Restore CSRF cookie if missing from the request
+    csrf_cookie_value = request.cookies.get(CSRF_COOKIE)
+    if not csrf_cookie_value:
+        new_csrf_token = generate_token(16)
+        session.csrf_hash = hash_token(new_csrf_token)
+        db.add(session)
+        response.set_cookie(
+            CSRF_COOKIE, new_csrf_token,
+            httponly=False,
+            path="/",
+        )
+        csrf_cookie_value = new_csrf_token
+    response.headers[CSRF_HEADER] = csrf_cookie_value
+
+    db.commit()
+
+    # Try to resolve the legacy User for full profile + permissions data.
+    legacy_user = db.query(User).filter(
+        User.email == auth_user.email,
+        User.is_active.is_(True),
+    ).first()
+    if legacy_user:
+        user_payload = UserReadSchema.model_validate(legacy_user)
+        return {
+            **user_payload.model_dump(),
+            "permissions": _build_me_permissions(legacy_user),
+        }
+
+    # Fallback for v2-only users (no legacy User record yet).
+    return {"id": auth_user.id, "email": auth_user.email, "mfa_enabled": auth_user.mfa_enabled}
 
 
 @router.post("/password/forgot")
@@ -295,7 +356,7 @@ def password_forgot(payload: PasswordForgotRequest, request: Request, db: Sessio
             ).first()
             if legacy is not None:
                 legacy_user_id = legacy.id
-        except Exception:
+        except Exception as error:
             logger.warning("Could not resolve legacy user_id for password reset email.")
 
         try:

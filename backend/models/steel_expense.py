@@ -22,6 +22,7 @@ class SteelExpense(Base):
         Index("ix_steel_expenses_expense_date", "expense_date"),
         Index("ix_steel_expenses_category", "category"),
         Index("ix_steel_expenses_payment_status", "payment_status"),
+        Index("uq_steel_expenses_factory_expense_number", "factory_id", "expense_number", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

@@ -10,9 +10,7 @@ from typing import Any, Callable
 
 from fastapi import HTTPException, Request
 
-from backend.auth_cookies import get_access_cookie
 from backend.middleware.rate_limit_middleware import extract_client_ip
-from backend.security import decode_access_token
 
 try:
     from slowapi import Limiter
@@ -34,19 +32,7 @@ _fallback_last_prune = 0.0
 
 
 def authenticated_user_key(request: Request) -> str:
-    token = None
-    auth_header = request.headers.get("authorization") or ""
-    if auth_header.lower().startswith("bearer "):
-        token = auth_header.split(" ", 1)[1].strip()
-    if not token:
-        token = get_access_cookie(request)
-    if not token:
-        return "anonymous"
-    try:
-        payload = decode_access_token(token)
-    except HTTPException:
-        return "anonymous"
-    return str(payload.get("sub") or "anonymous")
+    return extract_client_ip(request)
 
 
 def webhook_ip_key(request: Request) -> str:

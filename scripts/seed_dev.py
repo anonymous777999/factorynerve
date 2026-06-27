@@ -49,7 +49,7 @@ from backend.models.entry import Entry, ShiftType
 from backend.models.steel_inventory_item import SteelInventoryItem
 from backend.models.steel_inventory_transaction import SteelInventoryTransaction
 from backend.models.steel_production_batch import SteelProductionBatch
-from backend.security import hash_password, create_access_token
+from backend.security import hash_password
 from backend.services.user_code_service import next_user_code
 from backend.models.auth_user import AuthUser as BackendAuthUser
 from backend.auth_security.passwords import hash_password as auth_hash_password
@@ -212,12 +212,6 @@ def seed():
             _p("  Done.")
         else:
             _p("  Already exists.")
-
-        # -- Auth token for API testing --
-        token = create_access_token(
-            user_id=user.id, role=UserRole.OWNER.value,
-            email=TEST_EMAIL, org_id=org_id, factory_id=factory_id,
-        )
 
         # -- DPR Entries --
         _p("")
@@ -384,8 +378,7 @@ def seed():
         _p("")
         _p("  LOGIN:  owner@example.com / TestOwner@123456")
         _p("")
-        _p("  API TOKEN (for curl/testing):")
-        _p(f"    {token}")
+        _p("  AUTH: Login at frontend or use /auth/v2/login for API access")
         _p("")
         _p("  WHAT TO TEST:")
         _p("    1. Login at frontend with above credentials")

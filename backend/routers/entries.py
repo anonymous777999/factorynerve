@@ -52,7 +52,30 @@ from backend.utils import (
 )
 from backend.services import ai_router
 from backend.services.background_jobs import create_job, register_retry_handler, start_job
+import threading
 from backend.tenancy import resolve_factory_id, resolve_org_id
+
+# ── Per-user rate limiting for smart input (Bug #26) ──────────────────
+_SMART_INPUT_RATE_LIMIT = {}  # user_id -> [timestamp, ...]
+_SMART_INPUT_MAX_PER_MINUTE = 5
+_SMART_INPUT_LOCK = threading.Lock()
+
+
+def _check_smart_input_rate_limit(user_id: int) -> None:
+    """Check if user has exceeded the smart input rate limit (5 requests/minute)."""
+    now = time.time()
+    with _SMART_INPUT_LOCK:
+        timestamps = _SMART_INPUT_RATE_LIMIT.get(user_id, [])
+        # Remove timestamps older than 60 seconds
+        timestamps = [t for t in timestamps if now - t < 60]
+        if len(timestamps) >= _SMART_INPUT_MAX_PER_MINUTE:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit exceeded. Maximum {_SMART_INPUT_MAX_PER_MINUTE} requests per minute.",
+            )
+        timestamps.append(now)
+        _SMART_INPUT_RATE_LIMIT[user_id] = timestamps
+
 from backend.query_helpers import apply_role_scope, can_view_entry, factory_user_ids_query, get_org_record_or_404_sync
 
 
@@ -459,11 +482,10 @@ async def parse_smart_input(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SmartInputResponse:
+    # Per-user rate limit check — max 5 requests/minute (Bug #26)
+    _check_smart_input_rate_limit(current_user.id)
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.create")
     started = time.perf_counter()
-    if current_user.role == UserRole.ACCOUNTANT:
-        raise HTTPException(status_code=403, detail="Accountant role cannot use smart input.")
-    if current_user.role == UserRole.ATTENDANCE:
-        raise HTTPException(status_code=403, detail="Attendance role cannot use smart input.")
     text_data = (raw_text or "").strip()
     if upload_file is not None:
         if not upload_file.filename.lower().endswith(".txt"):
@@ -579,10 +601,7 @@ def create_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
-    if current_user.role == UserRole.ACCOUNTANT:
-        raise HTTPException(status_code=403, detail="Accountant role cannot create entries.")
-    if current_user.role == UserRole.ATTENDANCE:
-        raise HTTPException(status_code=403, detail="Attendance role cannot create entries.")
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.create")
     org_id = resolve_org_id(current_user)
     factory_id = resolve_factory_id(db, current_user)
     request.state.org_id = org_id
@@ -705,6 +724,7 @@ def list_entries(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryListResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     query = db.query(Entry).options(selectinload(Entry.user)).filter(Entry.is_active.is_(True))
     org_id = resolve_org_id(current_user)
     if org_id:
@@ -794,6 +814,7 @@ def list_defect_reasons(
     current_user: User = Depends(get_current_user),
 ) -> list[dict[str, Any]]:
     """List active defect reasons for the entry form dropdown."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     reasons = db.query(DefectReason).filter(DefectReason.is_active.is_(True)).order_by(DefectReason.code).all()
     return [
         {
@@ -953,6 +974,7 @@ def reject_entry(
 
 @router.get("/today", response_model=list[EntryResponse])
 def get_today_entries(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[EntryResponse]:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     today = date.today()
     query = db.query(Entry).options(selectinload(Entry.user)).filter(Entry.date == today, Entry.is_active.is_(True))
     org_id = resolve_org_id(current_user)
@@ -969,6 +991,7 @@ def get_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
@@ -987,6 +1010,7 @@ def get_entry_summary_meta(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntrySummaryMeta:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
@@ -1013,6 +1037,7 @@ def queue_entry_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
@@ -1044,6 +1069,7 @@ def regenerate_entry_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.edit")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
@@ -1097,11 +1123,10 @@ def update_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.edit")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
-    if current_user.role == UserRole.ACCOUNTANT:
-        raise HTTPException(status_code=403, detail="Accountant role cannot edit entries.")
     if entry.user_id != current_user.id:
         if current_user.role in {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER}:
             if not _can_view_entry(db, current_user, entry):

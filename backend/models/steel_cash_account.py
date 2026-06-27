@@ -16,6 +16,7 @@ class SteelCashAccount(Base):
         Index("ix_steel_cash_accounts_factory_id", "factory_id"),
         Index("ix_steel_cash_accounts_account_type", "account_type"),
         Index("ix_steel_cash_accounts_is_active", "is_active"),
+        Index("uq_steel_cash_accounts_factory_name", "factory_id", "account_name", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

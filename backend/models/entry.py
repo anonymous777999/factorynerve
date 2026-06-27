@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import Enum
 
-from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, ForeignKey, Integer, String, Text, Index
+from sqlalchemy import Boolean, Date, DateTime, Enum as SqlEnum, ForeignKey, Integer, String, Text, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database import Base
@@ -25,6 +25,7 @@ class Entry(Base):
         Index("ix_entries_org_id", "org_id"),
         Index("ix_entries_factory_id", "factory_id"),
         Index("ix_entries_client_request_id", "client_request_id"),
+        UniqueConstraint("client_request_id", name="uq_entries_client_request_id"),
         Index("ix_entries_org_date", "org_id", "date"),
         Index("ix_entries_factory_date", "factory_id", "date"),
         Index("ix_entries_org_created_at", "org_id", "created_at"),

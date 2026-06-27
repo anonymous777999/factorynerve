@@ -65,7 +65,7 @@ def _set_user_role(email: str, role: str) -> None:
 
 
 def _create_item(
-    http_client, headers: dict, item_code: str, name: str, category: str, rate: float = 50.0
+    http_client,  item_code: str, name: str, category: str, rate: float = 50.0
 ) -> int:
     resp = http_client.post(
         "/steel/inventory/items",
@@ -76,13 +76,12 @@ def _create_item(
             "display_unit": "kg",
             "current_rate_per_kg": rate,
         },
-        headers=headers,
     )
-    assert resp.status_code == HTTPStatus.OK, resp.text
+    assert resp.status_code in (HTTPStatus.OK, HTTPStatus.CREATED), resp.text
     return resp.json()["item"]["id"]
 
 
-def _create_inward(http_client, headers: dict, item_id: int, qty_kg: float) -> None:
+def _create_inward(http_client,  item_id: int, qty_kg: float) -> None:
     resp = http_client.post(
         "/steel/inventory/transactions",
         json={
@@ -91,34 +90,31 @@ def _create_inward(http_client, headers: dict, item_id: int, qty_kg: float) -> N
             "quantity_kg": qty_kg,
             "notes": "Test inward",
         },
-        headers=headers,
     )
-    assert resp.status_code == HTTPStatus.OK, resp.text
+    assert resp.status_code in (HTTPStatus.OK, HTTPStatus.CREATED), resp.text
 
 
-def _create_production_line(http_client, headers: dict, code: str, name: str) -> dict:
+def _create_production_line(http_client,  code: str, name: str) -> dict:
     resp = http_client.post(
         "/steel/production/lines",
         json={"code": code, "name": name, "description": f"Test {name}"},
-        headers=headers,
     )
-    assert resp.status_code == HTTPStatus.OK, resp.text
+    assert resp.status_code in (HTTPStatus.OK, HTTPStatus.CREATED), resp.text
     return resp.json()["line"]
 
 
-def _create_machine(http_client, headers: dict, line_id: int, code: str, name: str) -> dict:
+def _create_machine(http_client,  line_id: int, code: str, name: str) -> dict:
     resp = http_client.post(
         "/steel/production/machines",
         json={"line_id": line_id, "machine_code": code, "name": name, "machine_type": "rolling"},
-        headers=headers,
     )
-    assert resp.status_code == HTTPStatus.OK, resp.text
+    assert resp.status_code in (HTTPStatus.OK, HTTPStatus.CREATED), resp.text
     return resp.json()["machine"]
 
 
 def _create_batch(
     http_client,
-    headers: dict,
+    
     input_id: int,
     output_id: int,
     input_kg: float,
@@ -149,14 +145,14 @@ def _create_batch(
     if machine_id is not None:
         payload["machine_id"] = machine_id
 
-    resp = http_client.post("/steel/batches", json=payload, headers=headers)
-    assert resp.status_code == HTTPStatus.OK, f"Batch creation: {resp.status_code}: {resp.text[:300]}"
+    resp = http_client.post("/steel/batches", json=payload)
+    assert resp.status_code in (HTTPStatus.OK, HTTPStatus.CREATED), f"Batch creation: {resp.status_code}: {resp.text[:300]}"
     return resp.json()["batch"]["id"]
 
 
 def _create_entry(
     http_client,
-    headers: dict,
+    
     *,
     shift: str = "morning",
     department: str = "Production",
@@ -178,7 +174,7 @@ def _create_entry(
         "quality_details": None,
         "notes": "Test entry for scrap attribution",
     }
-    resp = http_client.post("/entries", json=payload, headers=headers)
+    resp = http_client.post("/entries", json=payload)
     assert resp.status_code in (HTTPStatus.OK, HTTPStatus.CREATED), f"Entry creation: {resp.status_code}: {resp.text[:300]}"
     data = resp.json()
     return data["id"]
@@ -190,9 +186,7 @@ def _create_entry(
 def test_scrap_loss_rejects_non_steel_factory(http_client):
     """Non-steel factory should get 400."""
     user = register_user(http_client, role="admin")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "steel factory" in response.text.lower()
 
@@ -201,9 +195,7 @@ def test_scrap_loss_empty_factory(http_client):
     """A factory with no batches should return all-zero analytics."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -239,24 +231,22 @@ def test_scrap_loss_basic_summary_with_scrap(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")  # owner has financial access
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Create items
-    raw_id = _create_item(http_client, headers, "SCR-RAW", "Scrap Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "SCR-OUT", "Scrap Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
+    raw_id = _create_item(http_client,  "SCR-RAW", "Scrap Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "SCR-OUT", "Scrap Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
     # Create batches with scrap
-    _create_batch(http_client, headers, raw_id, prod_id, 10000, 9200, scrap_kg=500, rejection_kg=100)
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600, scrap_kg=200, rejection_kg=50)
-    _create_batch(http_client, headers, raw_id, prod_id, 2000, 1800, scrap_kg=0, rejection_kg=0)
+    _create_batch(http_client,  raw_id, prod_id, 10000, 9200, scrap_kg=500, rejection_kg=100)
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600, scrap_kg=200, rejection_kg=50)
+    _create_batch(http_client,  raw_id, prod_id, 2000, 1800, scrap_kg=0, rejection_kg=0)
 
     # Total scrap = 500 + 200 = 700 KG
     # Total rejection = 100 + 50 = 150 KG
     # Total output = 9200 + 4600 + 1800 = 15600 KG
     # Scrap rate = 700/15600 * 100 ≈ 4.49%
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -279,19 +269,20 @@ def test_scrap_loss_financial_redaction_for_non_finance_role(http_client):
     """
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "FR-RAW", "FinRedact Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "FR-OUT", "FinRedact Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 10000)
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600, scrap_kg=300)
+    raw_id = _create_item(http_client,  "FR-RAW", "FinRedact Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "FR-OUT", "FinRedact Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 10000)
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600, scrap_kg=300)
 
     # Switch to supervisor (has scrap_intelligence.view but NOT scrap_cost.view)
     # Update BOTH the user's global role and the factory role membership
     from backend.database import SessionLocal, init_db
     from backend.models.user import User
     from backend.models.user_factory_role import UserFactoryRole
-    from backend.security import create_access_token
+    from backend.models.auth_user import AuthUser
+    from backend.models.auth_session import AuthSession
+    from backend.auth_security.tokens import generate_token, hash_token
+    from datetime import timedelta
     init_db()
     db = SessionLocal()
     try:
@@ -303,17 +294,39 @@ def test_scrap_loss_financial_redaction_for_non_finance_role(http_client):
         db.commit()
         membership = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == refreshed.id).first()
         fid = membership.factory_id if membership else None
-        new_token = create_access_token(
-            user_id=refreshed.id, role="supervisor",
-            email=refreshed.email, org_id=refreshed.org_id,
-            factory_id=fid, mfa_verified=False,
+        
+        # Create a v2 session for the supervisor
+        auth_user = db.query(AuthUser).filter(AuthUser.email == refreshed.email).first()
+        if not auth_user:
+            from backend.security import hash_password as hp
+            auth_user = AuthUser(
+                email=refreshed.email,
+                password_hash=hp("test-password"),
+                is_email_verified=True,
+                is_active=True,
+            )
+            db.add(auth_user)
+            db.flush()
+        now = datetime.now(timezone.utc)
+        raw_token = generate_token(32)
+        token_hash = hash_token(raw_token)
+        session = AuthSession(
+            auth_user_id=auth_user.id,
+            token_hash=token_hash,
+            csrf_hash=hash_token(generate_token(16)),
+            created_at=now,
+            expires_at=now + timedelta(days=30),
+            factory_id=fid,
         )
+        db.add(session)
+        db.commit()
+        new_token = raw_token
     finally:
         db.close()
 
-    headers = {"Authorization": f"Bearer {new_token}"}
+    headers = {"Cookie": "auth_session=" + new_token}
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -331,14 +344,12 @@ def test_scrap_loss_financial_access_for_owner(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    raw_id = _create_item(http_client,  "FA-RAW", "FinAccess Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "FA-OUT", "FinAccess Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 10000)
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600, scrap_kg=300)
 
-    raw_id = _create_item(http_client, headers, "FA-RAW", "FinAccess Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "FA-OUT", "FinAccess Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 10000)
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600, scrap_kg=300)
-
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -359,26 +370,24 @@ def test_scrap_loss_by_machine(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "MAC-RAW", "Machine Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "MAC-OUT", "Machine Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
+    raw_id = _create_item(http_client,  "MAC-RAW", "Machine Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "MAC-OUT", "Machine Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
     # Create a line + 2 machines
-    line = _create_production_line(http_client, headers, "SCRAP-LINE", "Scrap Test Line")
-    machine_a = _create_machine(http_client, headers, line["id"], "MAC-A", "Machine A")
-    machine_b = _create_machine(http_client, headers, line["id"], "MAC-B", "Machine B")
+    line = _create_production_line(http_client,  "SCRAP-LINE", "Scrap Test Line")
+    machine_a = _create_machine(http_client,  line["id"], "MAC-A", "Machine A")
+    machine_b = _create_machine(http_client,  line["id"], "MAC-B", "Machine B")
 
     # Create batches for different machines
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=500, line_id=line["id"], machine_id=machine_a["id"])
-    _create_batch(http_client, headers, raw_id, prod_id, 3000, 2800,
+    _create_batch(http_client,  raw_id, prod_id, 3000, 2800,
                   scrap_kg=200, line_id=line["id"], machine_id=machine_a["id"])
-    _create_batch(http_client, headers, raw_id, prod_id, 4000, 3700,
+    _create_batch(http_client,  raw_id, prod_id, 4000, 3700,
                   scrap_kg=800, line_id=line["id"], machine_id=machine_b["id"])
 
-    response = http_client.get("/steel/scrap-loss/intelligence?days=30", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence?days=30")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -404,21 +413,19 @@ def test_scrap_loss_by_line(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    raw_id = _create_item(http_client,  "LN-RAW", "Line Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "LN-OUT", "Line Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
-    raw_id = _create_item(http_client, headers, "LN-RAW", "Line Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "LN-OUT", "Line Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
+    line_a = _create_production_line(http_client,  "LINE-A", "Line A")
+    line_b = _create_production_line(http_client,  "LINE-B", "Line B")
 
-    line_a = _create_production_line(http_client, headers, "LINE-A", "Line A")
-    line_b = _create_production_line(http_client, headers, "LINE-B", "Line B")
-
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=600, line_id=line_a["id"])
-    _create_batch(http_client, headers, raw_id, prod_id, 4000, 3700,
+    _create_batch(http_client,  raw_id, prod_id, 4000, 3700,
                   scrap_kg=300, line_id=line_b["id"])
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -436,22 +443,20 @@ def test_scrap_loss_daily_trend(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "TR-RAW", "Trend Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "TR-OUT", "Trend Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
+    raw_id = _create_item(http_client,  "TR-RAW", "Trend Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "TR-OUT", "Trend Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
     today = date.today()
     yesterday = (today - timedelta(days=1)).isoformat()
 
     # Create batches on different days
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=400, production_date=today.isoformat())
-    _create_batch(http_client, headers, raw_id, prod_id, 3000, 2700,
+    _create_batch(http_client,  raw_id, prod_id, 3000, 2700,
                   scrap_kg=150, production_date=yesterday)
 
-    response = http_client.get("/steel/scrap-loss/intelligence?days=30", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence?days=30")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -476,26 +481,24 @@ def test_scrap_loss_increase_drivers(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "DRV-RAW", "Driver Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "DRV-OUT", "Driver Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 100000)
+    raw_id = _create_item(http_client,  "DRV-RAW", "Driver Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "DRV-OUT", "Driver Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 100000)
 
     # Create batches in the current period (within last 10 days)
     today = date.today()
     # Also create a machine to get driver analysis
-    line = _create_production_line(http_client, headers, "DRV-LINE", "Driver Line")
-    machine = _create_machine(http_client, headers, line["id"], "DRV-MAC", "Driver Machine")
+    line = _create_production_line(http_client,  "DRV-LINE", "Driver Line")
+    machine = _create_machine(http_client,  line["id"], "DRV-MAC", "Driver Machine")
 
     # Current period: batches with scrap
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=500, line_id=line["id"], machine_id=machine["id"])
 
     # Baseline period: batches with less scrap (15 days ago — which is within
     # the baseline window: today-20 to today-10 when days=10, baseline_days=10)
     baseline_date = (today - timedelta(days=15)).isoformat()
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=200, line_id=line["id"], machine_id=machine["id"],
                   production_date=baseline_date)
 
@@ -504,7 +507,6 @@ def test_scrap_loss_increase_drivers(http_client):
     # Baseline period: the 10 days before that (today-20 to today-10)
     response = http_client.get(
         "/steel/scrap-loss/intelligence?days=10&baseline_days=10",
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
@@ -522,21 +524,19 @@ def test_scrap_loss_by_process(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_a = _create_item(http_client, headers, "PA-RAW", "Process Input A", "raw_material", rate=30.0)
-    raw_b = _create_item(http_client, headers, "PB-RAW", "Process Input B", "raw_material", rate=40.0)
-    out_a = _create_item(http_client, headers, "PA-OUT", "Process Output A", "finished_goods", rate=100.0)
-    out_b = _create_item(http_client, headers, "PB-OUT", "Process Output B", "finished_goods", rate=80.0)
-    _create_inward(http_client, headers, raw_a, 50000)
-    _create_inward(http_client, headers, raw_b, 50000)
+    raw_a = _create_item(http_client,  "PA-RAW", "Process Input A", "raw_material", rate=30.0)
+    raw_b = _create_item(http_client,  "PB-RAW", "Process Input B", "raw_material", rate=40.0)
+    out_a = _create_item(http_client,  "PA-OUT", "Process Output A", "finished_goods", rate=100.0)
+    out_b = _create_item(http_client,  "PB-OUT", "Process Output B", "finished_goods", rate=80.0)
+    _create_inward(http_client,  raw_a, 50000)
+    _create_inward(http_client,  raw_b, 50000)
 
     # Process 1: raw_a -> out_a
-    _create_batch(http_client, headers, raw_a, out_a, 5000, 4600, scrap_kg=400)
+    _create_batch(http_client,  raw_a, out_a, 5000, 4600, scrap_kg=400)
     # Process 2: raw_b -> out_b
-    _create_batch(http_client, headers, raw_b, out_b, 3000, 2800, scrap_kg=150)
+    _create_batch(http_client,  raw_b, out_b, 3000, 2800, scrap_kg=150)
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -555,26 +555,23 @@ def test_scrap_loss_with_filters(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    raw_id = _create_item(http_client,  "FLT-RAW", "Filter Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "FLT-OUT", "Filter Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
-    raw_id = _create_item(http_client, headers, "FLT-RAW", "Filter Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "FLT-OUT", "Filter Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
-
-    line = _create_production_line(http_client, headers, "FLT-LINE", "Filter Line")
-    machine = _create_machine(http_client, headers, line["id"], "FLT-MAC", "Filter Machine")
+    line = _create_production_line(http_client,  "FLT-LINE", "Filter Line")
+    machine = _create_machine(http_client,  line["id"], "FLT-MAC", "Filter Machine")
 
     # Batch assigned to line/machine
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=500, line_id=line["id"], machine_id=machine["id"])
 
     # Batch without machine (should be excluded when filtering by machine_id)
-    _create_batch(http_client, headers, raw_id, prod_id, 3000, 2700, scrap_kg=200)
+    _create_batch(http_client,  raw_id, prod_id, 3000, 2700, scrap_kg=200)
 
     # Filter by machine
     response = http_client.get(
         f"/steel/scrap-loss/intelligence?machine_id={machine['id']}",
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
@@ -586,7 +583,6 @@ def test_scrap_loss_with_filters(http_client):
     # Filter by line
     response2 = http_client.get(
         f"/steel/scrap-loss/intelligence?line_id={line['id']}",
-        headers=headers,
     )
     assert response2.status_code == HTTPStatus.OK, response2.text
     payload2 = response2.json()
@@ -595,7 +591,6 @@ def test_scrap_loss_with_filters(http_client):
     # Limited days filter: 0 days should not error, return all-zero
     response3 = http_client.get(
         "/steel/scrap-loss/intelligence?days=1",
-        headers=headers,
     )
     assert response3.status_code == HTTPStatus.OK, response3.text
 
@@ -611,16 +606,14 @@ def test_scrap_loss_data_confidence_section(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "DC-RAW", "Confidence Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "DC-OUT", "Confidence Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 10000)
+    raw_id = _create_item(http_client,  "DC-RAW", "Confidence Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "DC-OUT", "Confidence Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 10000)
 
     # Create batch WITH scrap data
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600, scrap_kg=300)
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600, scrap_kg=300)
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -646,21 +639,19 @@ def test_scrap_loss_by_shift_inferred(http_client):
     """Verify shift attribution via Entry records works."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "SH-RAW", "Shift Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "SH-OUT", "Shift Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
+    raw_id = _create_item(http_client,  "SH-RAW", "Shift Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "SH-OUT", "Shift Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
     # Get the user_id from the registered user
     user_id = user["user_id"]
 
     # Create entry records for the user to enable shift attribution
-    _create_entry(http_client, headers, shift="morning", entry_date=date.today().isoformat())
+    _create_entry(http_client,  shift="morning", entry_date=date.today().isoformat())
 
     # Since the batch creation API doesn't expose operator_user_id directly
     # through the public API, we'll create a batch and update operator_user_id via DB
-    batch_id = _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600, scrap_kg=300)
+    batch_id = _create_batch(http_client,  raw_id, prod_id, 5000, 4600, scrap_kg=300)
 
     # Assign batch to user via DB
     from backend.database import SessionLocal, init_db
@@ -677,7 +668,7 @@ def test_scrap_loss_by_shift_inferred(http_client):
     finally:
         db.close()
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -696,18 +687,16 @@ def test_scrap_loss_by_team_proxy(http_client):
     """Verify team/department attribution via Entry records works."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "TE-RAW", "Team Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "TE-OUT", "Team Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
+    raw_id = _create_item(http_client,  "TE-RAW", "Team Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "TE-OUT", "Team Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
     user_id = user["user_id"]
 
     # Create entry with department set
-    _create_entry(http_client, headers, department="Rolling Mill", entry_date=date.today().isoformat())
+    _create_entry(http_client,  department="Rolling Mill", entry_date=date.today().isoformat())
 
-    batch_id = _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600, scrap_kg=300)
+    batch_id = _create_batch(http_client,  raw_id, prod_id, 5000, 4600, scrap_kg=300)
 
     # Assign batch operator via DB
     from backend.database import SessionLocal, init_db
@@ -724,7 +713,7 @@ def test_scrap_loss_by_team_proxy(http_client):
     finally:
         db.close()
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -745,25 +734,23 @@ def test_scrap_loss_multiple_batches_aggregation(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "AGG-RAW", "Agg Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "AGG-OUT", "Agg Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 100000)
+    raw_id = _create_item(http_client,  "AGG-RAW", "Agg Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "AGG-OUT", "Agg Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 100000)
 
     today = date.today()
 
     # Batch 1: scrap 1000, rejection 200
-    _create_batch(http_client, headers, raw_id, prod_id, 10000, 9200,
+    _create_batch(http_client,  raw_id, prod_id, 10000, 9200,
                   scrap_kg=1000, rejection_kg=200, production_date=today.isoformat())
     # Batch 2: scrap 500, rejection 50
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=500, rejection_kg=50, production_date=today.isoformat())
     # Batch 3: scrap 0, rejection 0 (no scrap)
-    _create_batch(http_client, headers, raw_id, prod_id, 3000, 2800,
+    _create_batch(http_client,  raw_id, prod_id, 3000, 2800,
                   scrap_kg=0, rejection_kg=0, production_date=today.isoformat())
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -804,22 +791,20 @@ def test_scrap_loss_financial_impact_structure(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    raw_id = _create_item(http_client,  "FI-RAW", "FinImp Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "FI-OUT", "FinImp Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
-    raw_id = _create_item(http_client, headers, "FI-RAW", "FinImp Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "FI-OUT", "FinImp Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
-
-    line = _create_production_line(http_client, headers, "FI-LINE", "Financial Line")
-    machine = _create_machine(http_client, headers, line["id"], "FI-MAC", "Financial Machine")
+    line = _create_production_line(http_client,  "FI-LINE", "Financial Line")
+    machine = _create_machine(http_client,  line["id"], "FI-MAC", "Financial Machine")
 
     # Create batches with scrap for financial impact analysis
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=400, line_id=line["id"], machine_id=machine["id"])
-    _create_batch(http_client, headers, raw_id, prod_id, 3000, 2700,
+    _create_batch(http_client,  raw_id, prod_id, 3000, 2700,
                   scrap_kg=200, line_id=line["id"], machine_id=machine["id"])
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -847,14 +832,12 @@ def test_scrap_loss_operator_breakdown(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "OP-RAW", "Op Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "OP-OUT", "Op Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
+    raw_id = _create_item(http_client,  "OP-RAW", "Op Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "OP-OUT", "Op Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
     # Create a batch and assign operator_user_id via DB
-    batch_id = _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600, scrap_kg=350)
+    batch_id = _create_batch(http_client,  raw_id, prod_id, 5000, 4600, scrap_kg=350)
 
     from backend.database import SessionLocal, init_db
     from backend.models.steel_production_batch import SteelProductionBatch
@@ -870,7 +853,7 @@ def test_scrap_loss_operator_breakdown(http_client):
     finally:
         db.close()
 
-    response = http_client.get("/steel/scrap-loss/intelligence", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -889,24 +872,22 @@ def test_scrap_loss_mtd_calculation(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "MTD-RAW", "MTD Input", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "MTD-OUT", "MTD Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
+    raw_id = _create_item(http_client,  "MTD-RAW", "MTD Input", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "MTD-OUT", "MTD Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
     today = date.today()
     last_month = (today.replace(day=1) - timedelta(days=5)).replace(day=15)
 
     # Batch in current month
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=700, production_date=today.isoformat())
 
     # Batch in last month (should NOT be counted in MTD)
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=300, production_date=last_month.isoformat())
 
-    response = http_client.get("/steel/scrap-loss/intelligence?days=60", headers=headers)
+    response = http_client.get("/steel/scrap-loss/intelligence?days=60")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 

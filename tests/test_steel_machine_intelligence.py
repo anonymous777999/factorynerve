@@ -83,9 +83,7 @@ def _seed_production_line_and_machine(email: str) -> int:
 def test_machine_intelligence_rejects_non_steel_factory(http_client):
     """Non-steel factories should get a 400 response."""
     user = register_user(http_client, role="admin")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/production/machine-intelligence", headers=headers)
+    response = http_client.get("/steel/production/machine-intelligence")
 
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "steel factory" in response.text.lower()
@@ -95,9 +93,7 @@ def test_machine_intelligence_summary_with_no_data(http_client):
     """Intelligence summary returns machine list even with zero events."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/production/machine-intelligence", headers=headers)
+    response = http_client.get("/steel/production/machine-intelligence")
 
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
@@ -112,8 +108,6 @@ def test_machine_intelligence_with_data(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     machine_id = _seed_production_line_and_machine(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Create a downtime event
     now = datetime.now(timezone.utc)
     create_event = http_client.post(
@@ -127,14 +121,12 @@ def test_machine_intelligence_with_data(http_client):
             "reason_detail": "Belt snapped",
             "shift": "morning",
         },
-        headers=headers,
     )
     assert create_event.status_code == HTTPStatus.OK, create_event.text
 
     # Get intelligence
     response = http_client.get(
         "/steel/production/machine-intelligence",
-        headers=headers,
     )
 
     assert response.status_code == HTTPStatus.OK, response.text
@@ -155,7 +147,6 @@ def test_machine_intelligence_with_data(http_client):
     # Per-machine query
     per_machine = http_client.get(
         f"/steel/production/machine-intelligence?machine_id={machine_id}",
-        headers=headers,
     )
     assert per_machine.status_code == HTTPStatus.OK, per_machine.text
     assert per_machine.json()["machine_count"] == 1
@@ -166,8 +157,6 @@ def test_create_and_list_downtime_events(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     machine_id = _seed_production_line_and_machine(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     now = datetime.now(timezone.utc)
 
     # Create
@@ -181,7 +170,6 @@ def test_create_and_list_downtime_events(http_client):
             "shift": "evening",
             "notes": "Power cut from grid",
         },
-        headers=headers,
     )
     assert create_resp.status_code == HTTPStatus.OK, create_resp.text
     event = create_resp.json()["event"]
@@ -192,7 +180,6 @@ def test_create_and_list_downtime_events(http_client):
     # List all
     list_resp = http_client.get(
         "/steel/production/machines/downtime-events",
-        headers=headers,
     )
     assert list_resp.status_code == HTTPStatus.OK, list_resp.text
     events = list_resp.json()["events"]
@@ -202,7 +189,6 @@ def test_create_and_list_downtime_events(http_client):
     # List by machine
     per_machine = http_client.get(
         f"/steel/production/machines/downtime-events?machine_id={machine_id}",
-        headers=headers,
     )
     assert per_machine.status_code == HTTPStatus.OK, per_machine.text
     assert len(per_machine.json()["events"]) >= 1
@@ -213,8 +199,6 @@ def test_create_and_list_maintenance_tasks(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     machine_id = _seed_production_line_and_machine(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     future = datetime.now(timezone.utc) + timedelta(days=7)
 
     # Create
@@ -229,7 +213,6 @@ def test_create_and_list_maintenance_tasks(http_client):
             "scheduled_date": future.isoformat(),
             "notes": "Requires 2 technicians",
         },
-        headers=headers,
     )
     assert create_resp.status_code == HTTPStatus.OK, create_resp.text
     task = create_resp.json()["task"]
@@ -240,7 +223,6 @@ def test_create_and_list_maintenance_tasks(http_client):
     # List all
     list_resp = http_client.get(
         "/steel/production/machines/maintenance-tasks",
-        headers=headers,
     )
     assert list_resp.status_code == HTTPStatus.OK, list_resp.text
     tasks = list_resp.json()["tasks"]
@@ -251,7 +233,6 @@ def test_create_and_list_maintenance_tasks(http_client):
     update_resp = http_client.patch(
         f"/steel/production/machines/maintenance-tasks/{task_id}/status",
         json={"status": "in_progress"},
-        headers=headers,
     )
     assert update_resp.status_code == HTTPStatus.OK, update_resp.text
     assert update_resp.json()["task"]["status"] == "in_progress"
@@ -260,7 +241,6 @@ def test_create_and_list_maintenance_tasks(http_client):
     complete_resp = http_client.patch(
         f"/steel/production/machines/maintenance-tasks/{task_id}/status",
         json={"status": "completed", "notes": "Maintenance completed successfully"},
-        headers=headers,
     )
     assert complete_resp.status_code == HTTPStatus.OK, complete_resp.text
     assert complete_resp.json()["task"]["status"] == "completed"
@@ -269,7 +249,6 @@ def test_create_and_list_maintenance_tasks(http_client):
     # Filter by status
     completed_list = http_client.get(
         "/steel/production/machines/maintenance-tasks?status=completed",
-        headers=headers,
     )
     assert completed_list.status_code == HTTPStatus.OK, completed_list.text
     completed_tasks = completed_list.json()["tasks"]
@@ -281,8 +260,6 @@ def test_machine_intelligence_with_maintenance_data(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     machine_id = _seed_production_line_and_machine(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     now = datetime.now(timezone.utc)
 
     # Create overdue maintenance task
@@ -294,7 +271,6 @@ def test_machine_intelligence_with_maintenance_data(http_client):
             "scheduled_date": (now - timedelta(days=2)).isoformat(),
             "priority": "critical",
         },
-        headers=headers,
     )
 
     # Create upcoming maintenance
@@ -305,13 +281,11 @@ def test_machine_intelligence_with_maintenance_data(http_client):
             "title": "Routine check",
             "scheduled_date": (now + timedelta(days=3)).isoformat(),
         },
-        headers=headers,
     )
 
     # Intelligence summary
     response = http_client.get(
         "/steel/production/machine-intelligence",
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
@@ -334,8 +308,6 @@ def test_machine_endpoints_work_with_manager_role(http_client):
     user = register_user(http_client, role="manager")
     _promote_factory_to_steel(user["email"])
     machine_id = _seed_production_line_and_machine(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Create a downtime event
     now = datetime.now(timezone.utc)
     create_event = http_client.post(
@@ -347,21 +319,18 @@ def test_machine_endpoints_work_with_manager_role(http_client):
             "reason_category": "setup_change",
             "shift": "morning",
         },
-        headers=headers,
     )
     assert create_event.status_code == HTTPStatus.OK, create_event.text
 
     # Intelligence
     intelligence = http_client.get(
         "/steel/production/machine-intelligence",
-        headers=headers,
     )
     assert intelligence.status_code == HTTPStatus.OK, intelligence.text
 
     # List machines
     machines = http_client.get(
         "/steel/production/machines",
-        headers=headers,
     )
     assert machines.status_code == HTTPStatus.OK, machines.text
     machine_list = machines.json()["machines"]
@@ -372,12 +341,9 @@ def test_update_maintenance_task_status_404_for_wrong_task(http_client):
     """Updating a non-existent maintenance task returns 404."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     response = http_client.patch(
         "/steel/production/machines/maintenance-tasks/99999/status",
         json={"status": "completed"},
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.NOT_FOUND
     assert "not found" in response.text.lower()

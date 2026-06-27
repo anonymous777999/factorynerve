@@ -26,8 +26,18 @@ from tests.utils import register_user
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+
+def _auth_headers(user: dict) -> dict[str, str]:
+    """Return Cookie-based auth headers for multi-user tests.
+
+    The http_client cookie jar holds the *last* logged-in user's session.
+    Use this helper to make requests as a *different* user without losing
+    the current jar.
+    """
+    session = user.get("session_token", "")
+    if session:
+        return {"Cookie": f"auth_session={session}"}
+    return {}
 
 
 def _promote_factory_to_steel(email: str) -> None:
@@ -124,7 +134,6 @@ def _seed_stock(
             "display_unit": "kg",
             "current_rate_per_kg": rate,
         },
-        headers=headers,
     )
     assert created.status_code == HTTPStatus.OK, created.text
     item_id = created.json()["item"]["id"]
@@ -137,7 +146,6 @@ def _seed_stock(
             "quantity_kg": quantity_kg,
             "notes": "Test seed stock",
         },
-        headers=headers,
     )
     assert inward.status_code == HTTPStatus.OK, inward.text
     txn_id = inward.json()["transaction"]["id"]
@@ -166,7 +174,7 @@ class TestProductionBatchWorkflow:
 
     @pytest.fixture
     def headers(self, owner: dict) -> dict[str, str]:
-        return _auth_headers(owner["access_token"])
+        return _auth_headers(owner)  # Use owner's session (fixture ensures owner is registered)
 
     def test_create_batch_full_flow(
         self, http_client: httpx.Client, headers: dict[str, str]
@@ -174,17 +182,17 @@ class TestProductionBatchWorkflow:
         """Create a complete production batch and verify inventory transactions."""
         # Seed raw material stock
         raw_id, _ = _seed_stock(
-            http_client, headers, item_code="BATCH-RAW",
+            http_client, headers=headers, item_code="BATCH-RAW",
             quantity_kg=10000, rate=45.0, category="raw_material",
         )
         # Seed finished goods stock (some pre-existing)
         fin_id, _ = _seed_stock(
-            http_client, headers, item_code="BATCH-FIN",
+            http_client, headers=headers, item_code="BATCH-FIN",
             quantity_kg=5000, rate=70.0, category="finished_goods",
         )
 
         # Check stock before batch
-        stock_before = http_client.get("/steel/inventory/stock", headers=headers)
+        stock_before = http_client.get("/steel/inventory/stock")
         assert stock_before.status_code == HTTPStatus.OK, stock_before.text
         stock_map_before = {s["item_code"]: s["stock_balance_kg"] for s in stock_before.json()["items"]}
         raw_before = float(stock_map_before.get("BATCH-RAW", 0))
@@ -204,7 +212,6 @@ class TestProductionBatchWorkflow:
                 "rejection_qty_kg": 100,
                 "notes": "Test production batch with scrap and rejection",
             },
-            headers=headers,
         )
         assert batch.status_code == HTTPStatus.OK, batch.text
         batch_payload = batch.json()["batch"]
@@ -226,7 +233,7 @@ class TestProductionBatchWorkflow:
         assert batch_payload["status"] == "recorded"
 
         # Verify stock was updated correctly
-        stock_after = http_client.get("/steel/inventory/stock", headers=headers)
+        stock_after = http_client.get("/steel/inventory/stock")
         assert stock_after.status_code == HTTPStatus.OK, stock_after.text
         stock_map_after = {s["item_code"]: s["stock_balance_kg"] for s in stock_after.json()["items"]}
         raw_after = float(stock_map_after.get("BATCH-RAW", 0))
@@ -242,7 +249,7 @@ class TestProductionBatchWorkflow:
         )
 
         # Verify batch detail endpoint
-        detail = http_client.get(f"/steel/batches/{batch_id}", headers=headers)
+        detail = http_client.get(f"/steel/batches/{batch_id}")
         assert detail.status_code == HTTPStatus.OK, detail.text
         detail_payload = detail.json()
         assert detail_payload["batch"]["id"] == batch_id
@@ -255,7 +262,7 @@ class TestProductionBatchWorkflow:
         assert "production_output" in movement_types, f"Should have production_output entry, got {movement_types}"
 
         # Verify batch listing
-        listing = http_client.get("/steel/batches?limit=10", headers=headers)
+        listing = http_client.get("/steel/batches?limit=10")
         assert listing.status_code == HTTPStatus.OK, listing.text
         batch_ids = [b["id"] for b in listing.json()["items"]]
         assert batch_id in batch_ids, "Batch should appear in listing"
@@ -265,7 +272,7 @@ class TestProductionBatchWorkflow:
     ) -> None:
         """Batch creation must be blocked when input stock is insufficient."""
         raw_id, _ = _seed_stock(
-            http_client, headers, item_code="BATCH-NEG",
+            http_client, headers=headers, item_code="BATCH-NEG",
             quantity_kg=100, rate=45.0, category="raw_material",
         )
         # Create a finished goods item without seeding stock (just need the item ID)
@@ -278,7 +285,6 @@ class TestProductionBatchWorkflow:
                 "display_unit": "kg",
                 "current_rate_per_kg": 70,
             },
-            headers=headers,
         )
         assert created.status_code == HTTPStatus.OK, created.text
         fin_id = created.json()["item"]["id"]
@@ -294,7 +300,6 @@ class TestProductionBatchWorkflow:
                 "expected_output_kg": 400,
                 "actual_output_kg": 390,
             },
-            headers=headers,
         )
         assert blocked.status_code == HTTPStatus.BAD_REQUEST, blocked.text
         assert "Not enough input stock" in blocked.text
@@ -304,7 +309,7 @@ class TestProductionBatchWorkflow:
     ) -> None:
         """Batch input and output items must be different."""
         item_id, _ = _seed_stock(
-            http_client, headers, item_code="BATCH-SAME",
+            http_client, headers=headers, item_code="BATCH-SAME",
             quantity_kg=1000, rate=50.0, category="raw_material",
         )
 
@@ -318,7 +323,6 @@ class TestProductionBatchWorkflow:
                 "expected_output_kg": 90,
                 "actual_output_kg": 85,
             },
-            headers=headers,
         )
         assert blocked.status_code == HTTPStatus.BAD_REQUEST, blocked.text
         assert "must be different" in blocked.text
@@ -363,18 +367,18 @@ class TestDispatchWorkflow:
 
     @pytest.fixture
     def maker_headers(self, maker: dict) -> dict[str, str]:
-        return _auth_headers(maker["access_token"])
+        return _auth_headers(maker)  # Explicitly use maker's session (checker fixture changes cookie jar later)
 
     @pytest.fixture
     def checker_headers(self, http_client: httpx.Client, maker_context: dict) -> dict[str, str]:
         """Checker approves status changes (different user, manager role)."""
         checker = _create_checker_user(http_client, maker_factory_context=maker_context)
-        return _auth_headers(checker["access_token"])
+        return _auth_headers(checker)
 
     def _seed_invoice(self, http_client: httpx.Client, headers: dict[str, str]) -> dict[str, Any]:
         """Helper to create an invoice with seeded stock for dispatch testing."""
         fin_id, _ = _seed_stock(
-            http_client, headers, item_code="DISP-INV",
+            http_client, headers=headers, item_code="DISP-INV",
             quantity_kg=10000, rate=70.0, category="finished_goods",
         )
 
@@ -388,7 +392,6 @@ class TestDispatchWorkflow:
                     {"item_id": fin_id, "weight_kg": 5000, "rate_per_kg": 70},
                 ],
             },
-            headers=headers,
         )
         assert invoice.status_code == HTTPStatus.OK, invoice.text
         inv = invoice.json()["invoice"]
@@ -572,7 +575,7 @@ class TestDispatchWorkflow:
         data = self._seed_invoice(http_client, maker_headers)
 
         # Check stock before
-        stock_before = http_client.get("/steel/inventory/stock", headers=maker_headers)
+        stock_before = http_client.get("/steel/inventory/stock")
         assert stock_before.status_code == HTTPStatus.OK, stock_before.text
         fin_before = next(
             (s["stock_balance_kg"] for s in stock_before.json()["items"]
@@ -599,7 +602,7 @@ class TestDispatchWorkflow:
         )
 
         # Verify stock decreased
-        stock_after = http_client.get("/steel/inventory/stock", headers=maker_headers)
+        stock_after = http_client.get("/steel/inventory/stock")
         assert stock_after.status_code == HTTPStatus.OK, stock_after.text
         fin_after = next(
             (s["stock_balance_kg"] for s in stock_after.json()["items"]
@@ -629,7 +632,7 @@ class TestFullSteelLifecycle:
 
     @pytest.fixture
     def maker_headers(self, maker: dict) -> dict[str, str]:
-        return _auth_headers(maker["access_token"])
+        return _auth_headers(maker)  # Explicitly use maker's session (checker fixture changes cookie jar later)
 
     @pytest.fixture
     def factory_context(self, maker: dict) -> dict:
@@ -642,7 +645,7 @@ class TestFullSteelLifecycle:
     def checker_headers(self, http_client: httpx.Client, factory_context: dict) -> dict[str, str]:
         """Checker approves dispatch status transitions."""
         checker = _create_checker_user(http_client, maker_factory_context=factory_context)
-        return _auth_headers(checker["access_token"])
+        return _auth_headers(checker)
 
     def test_complete_lifecycle(
         self, http_client: httpx.Client, maker_headers: dict[str, str], checker_headers: dict[str, str]
@@ -717,14 +720,14 @@ class TestFullSteelLifecycle:
         dispatch_id = dispatch.json()["dispatch"]["id"]
 
         # Verify invoice shows remaining weight
-        invoice_detail = http_client.get(f"/steel/invoices/{invoice_id}", headers=maker_headers)
+        invoice_detail = http_client.get(f"/steel/invoices/{invoice_id}")
         assert invoice_detail.status_code == HTTPStatus.OK, invoice_detail.text
         remaining = invoice_detail.json().get("dispatch_summary", {}).get("remaining_weight_kg")
         if remaining is not None:
             assert remaining == 2000
 
         # -- Step 5: Verify dispatch detail shows created state --
-        detail = http_client.get(f"/steel/dispatches/{dispatch_id}", headers=maker_headers)
+        detail = http_client.get(f"/steel/dispatches/{dispatch_id}")
         assert detail.status_code == HTTPStatus.OK, detail.text
         assert detail.json()["dispatch"]["status"] == "pending"
         assert len(detail.json()["audit_events"]) >= 1  # created event
@@ -734,11 +737,11 @@ class TestFullSteelLifecycle:
         # is verified through Step 1-4 above.)
 
         # -- Step 6: Verify overview shows the lifecycle --
-        overview = http_client.get("/steel/overview", headers=maker_headers)
+        overview = http_client.get("/steel/overview")
         assert overview.status_code == HTTPStatus.OK, overview.text
 
         # -- Step 7: Verify batch detail shows traceability --
-        batch_detail = http_client.get(f"/steel/batches/{batch_id}", headers=maker_headers)
+        batch_detail = http_client.get(f"/steel/batches/{batch_id}")
         assert batch_detail.status_code == HTTPStatus.OK, batch_detail.text
         assert batch_detail.json()["batch"]["id"] == batch_id
         assert batch_detail.json()["traceability"]["input_item"]["id"] == raw_id

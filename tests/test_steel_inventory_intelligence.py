@@ -60,7 +60,7 @@ def _set_user_role(email: str, role: str) -> None:
 
 
 def _create_item(
-    http_client, headers: dict, item_code: str, name: str, category: str, rate: float = 50.0
+    http_client,  item_code: str, name: str, category: str, rate: float = 50.0
 ) -> int:
     resp = http_client.post(
         "/steel/inventory/items",
@@ -71,13 +71,12 @@ def _create_item(
             "display_unit": "kg",
             "current_rate_per_kg": rate,
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
     return resp.json()["item"]["id"]
 
 
-def _create_inward(http_client, headers: dict, item_id: int, qty_kg: float) -> None:
+def _create_inward(http_client,  item_id: int, qty_kg: float) -> None:
     resp = http_client.post(
         "/steel/inventory/transactions",
         json={
@@ -86,12 +85,11 @@ def _create_inward(http_client, headers: dict, item_id: int, qty_kg: float) -> N
             "quantity_kg": qty_kg,
             "notes": "Test inward",
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
 
 
-def _create_outward(http_client, headers: dict, item_id: int, qty_kg: float) -> None:
+def _create_outward(http_client,  item_id: int, qty_kg: float) -> None:
     """Create an outward (consumption) transaction.
 
     The API automatically negates quantity_kg for production_issue/dispatch_out,
@@ -105,13 +103,12 @@ def _create_outward(http_client, headers: dict, item_id: int, qty_kg: float) -> 
             "quantity_kg": qty_kg,
             "notes": "Test outward",
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
 
 
 def _create_adjustment(
-    http_client, headers: dict, item_id: int, qty_kg: float, notes: str = "Adjustment",
+    http_client,  item_id: int, qty_kg: float, notes: str = "Adjustment",
     direction: str = "increase",
 ) -> None:
     """Create an inventory adjustment.
@@ -127,12 +124,11 @@ def _create_adjustment(
             "direction": direction,
             "notes": notes,
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
 
 
-def _approve_reconciliation(http_client, headers: dict, reconciliation_id: int) -> None:
+def _approve_reconciliation(http_client,  reconciliation_id: int) -> None:
     """Approve a reconciliation via direct DB update to bypass maker-checker."""
     from backend.database import SessionLocal, init_db
     from backend.models.steel_stock_reconciliation import SteelStockReconciliation
@@ -156,7 +152,7 @@ def _approve_reconciliation(http_client, headers: dict, reconciliation_id: int) 
 
 
 def _reconcile_stock(
-    http_client, headers: dict, item_id: int, physical_qty_kg: float, notes: str = "Test count",
+    http_client,  item_id: int, physical_qty_kg: float, notes: str = "Test count",
     mismatch_cause: str | None = None,
 ) -> dict:
     """Reconcile stock. When physical != system, mismatch_cause is required."""
@@ -170,7 +166,6 @@ def _reconcile_stock(
     resp = http_client.post(
         "/steel/inventory/reconciliations",
         json=payload,
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
     return resp.json()["reconciliation"]
@@ -182,9 +177,7 @@ def _reconcile_stock(
 def test_intelligence_endpoint_rejects_non_steel(http_client):
     """Non-steel factory should get 400."""
     user = register_user(http_client, role="admin")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "steel factory" in response.text.lower()
 
@@ -193,9 +186,7 @@ def test_intelligence_empty_factory(http_client):
     """A factory with no items should return all-zero analytics."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -227,17 +218,15 @@ def test_intelligence_basic_valuation(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Item A: 10000 KG at 50/KG = 500,000
-    item_a = _create_item(http_client, headers, "VAL-A", "Valuation Item A", "finished_goods", rate=50.0)
-    _create_inward(http_client, headers, item_a, 10000)
+    item_a = _create_item(http_client,  "VAL-A", "Valuation Item A", "finished_goods", rate=50.0)
+    _create_inward(http_client,  item_a, 10000)
 
     # Item B: 5000 KG at 80/KG = 400,000
-    item_b = _create_item(http_client, headers, "VAL-B", "Valuation Item B", "raw_material", rate=80.0)
-    _create_inward(http_client, headers, item_b, 5000)
+    item_b = _create_item(http_client,  "VAL-B", "Valuation Item B", "raw_material", rate=80.0)
+    _create_inward(http_client,  item_b, 5000)
 
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -262,22 +251,20 @@ def test_intelligence_low_stock_alerts(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Item: moderate usage (200 KG/day) with low remaining stock (barely above 30% coverage)
     # Coverage threshold = 200 * 14 = 2800 KG. 30% = 840 KG.
     # With 1000 KG initial stock - 5 * 200 = 0 KG. 0 < 840 → alert fires
-    item_id = _create_item(http_client, headers, "LOW-01", "Low Stock Item", "raw_material", rate=60.0)
+    item_id = _create_item(http_client,  "LOW-01", "Low Stock Item", "raw_material", rate=60.0)
 
     # Add 1000 KG stock
-    _create_inward(http_client, headers, item_id, 1000)
+    _create_inward(http_client,  item_id, 1000)
 
     # Use 200 KG/day for 5 days = 1000 KG outward → balance = 0
     for _ in range(5):
-        _create_outward(http_client, headers, item_id, 200)
+        _create_outward(http_client,  item_id, 200)
 
     # Now balance ≈ 0, which is below 30% of 2800 coverage → alert should fire
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -296,13 +283,11 @@ def test_intelligence_dead_stock(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Item with balance but no outbound transactions
-    item_id = _create_item(http_client, headers, "DEAD-01", "Dead Stock Item", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, item_id, 5000)
+    item_id = _create_item(http_client,  "DEAD-01", "Dead Stock Item", "finished_goods", rate=100.0)
+    _create_inward(http_client,  item_id, 5000)
 
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -320,15 +305,13 @@ def test_intelligence_slow_moving_and_overstock(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Large stock, tiny usage
-    item_id = _create_item(http_client, headers, "SLOW-01", "Slow Mover", "wip", rate=40.0)
-    _create_inward(http_client, headers, item_id, 100_000)  # 100,000 KG stock
+    item_id = _create_item(http_client,  "SLOW-01", "Slow Mover", "wip", rate=40.0)
+    _create_inward(http_client,  item_id, 100_000)  # 100,000 KG stock
     # Only 5 KG/day outward → very slow
-    _create_outward(http_client, headers, item_id, 5)
+    _create_outward(http_client,  item_id, 5)
 
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -349,21 +332,19 @@ def test_intelligence_abc_analysis(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # High-value item: 10000 KG at 200/KG = 2,000,000
-    item_a = _create_item(http_client, headers, "ABC-A", "High Value Item", "finished_goods", rate=200.0)
-    _create_inward(http_client, headers, item_a, 10000)
+    item_a = _create_item(http_client,  "ABC-A", "High Value Item", "finished_goods", rate=200.0)
+    _create_inward(http_client,  item_a, 10000)
 
     # Medium-value item: 5000 KG at 50/KG = 250,000
-    item_b = _create_item(http_client, headers, "ABC-B", "Medium Value Item", "finished_goods", rate=50.0)
-    _create_inward(http_client, headers, item_b, 5000)
+    item_b = _create_item(http_client,  "ABC-B", "Medium Value Item", "finished_goods", rate=50.0)
+    _create_inward(http_client,  item_b, 5000)
 
     # Low-value item: 1000 KG at 10/KG = 10,000
-    item_c = _create_item(http_client, headers, "ABC-C", "Low Value Item", "raw_material", rate=10.0)
-    _create_inward(http_client, headers, item_c, 1000)
+    item_c = _create_item(http_client,  "ABC-C", "Low Value Item", "raw_material", rate=10.0)
+    _create_inward(http_client,  item_c, 1000)
 
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -383,19 +364,17 @@ def test_intelligence_turnover_analysis(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Fast mover: high outward, adequate stock
-    fast = _create_item(http_client, headers, "TURN-FAST", "Fast Mover", "finished_goods", rate=70.0)
+    fast = _create_item(http_client,  "TURN-FAST", "Fast Mover", "finished_goods", rate=70.0)
     # 2000 inward - 500 outward = 1500 balance, which is positive
-    _create_inward(http_client, headers, fast, 2000)
-    _create_outward(http_client, headers, fast, 500)
+    _create_inward(http_client,  fast, 2000)
+    _create_outward(http_client,  fast, 500)
 
     # Slow mover
-    slow = _create_item(http_client, headers, "TURN-SLOW", "Slow Mover", "raw_material", rate=30.0)
-    _create_inward(http_client, headers, slow, 5000)
+    slow = _create_item(http_client,  "TURN-SLOW", "Slow Mover", "raw_material", rate=30.0)
+    _create_inward(http_client,  slow, 5000)
 
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -416,18 +395,16 @@ def test_intelligence_suspicious_movements(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    item_id = _create_item(http_client, headers, "SUS-01", "Suspicious Item", "raw_material", rate=50.0)
-    _create_inward(http_client, headers, item_id, 10000)
+    item_id = _create_item(http_client,  "SUS-01", "Suspicious Item", "raw_material", rate=50.0)
+    _create_inward(http_client,  item_id, 10000)
 
     # Create more than 3 adjustments (threshold is >3)
     for i in range(5):
         direction = "increase" if i % 2 == 0 else "decrease"
-        _create_adjustment(http_client, headers, item_id, 100,
+        _create_adjustment(http_client,  item_id, 100,
                            direction=direction, notes=f"Test adjustment {i}")
 
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -443,20 +420,18 @@ def test_intelligence_reconciliation_risk(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    item_id = _create_item(http_client, headers, "REC-01", "Recon Item", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, item_id, 10000)
+    item_id = _create_item(http_client,  "REC-01", "Recon Item", "finished_goods", rate=100.0)
+    _create_inward(http_client,  item_id, 10000)
 
     # Create a reconciliation with high variance (>5%)
     # System says 10000 KG, physical says 8000 KG → variance = 20%
     recon = _reconcile_stock(
-        http_client, headers, item_id, 8000.0,
+        http_client,  item_id, 8000.0,
         notes="Big mismatch", mismatch_cause="counting_error",
     )
-    _approve_reconciliation(http_client, headers, recon["id"])
+    _approve_reconciliation(http_client,  recon["id"])
 
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -479,13 +454,11 @@ def test_intelligence_category_summary_extended(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    item_id = _create_item(http_client,  "CAT-01", "Category Test", "finished_goods", rate=50.0)
+    _create_inward(http_client,  item_id, 1000)
+    _create_outward(http_client,  item_id, 10)  # Very slow
 
-    item_id = _create_item(http_client, headers, "CAT-01", "Category Test", "finished_goods", rate=50.0)
-    _create_inward(http_client, headers, item_id, 1000)
-    _create_outward(http_client, headers, item_id, 10)  # Very slow
-
-    response = http_client.get("/steel/inventory/intelligence", headers=headers)
+    response = http_client.get("/steel/inventory/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 

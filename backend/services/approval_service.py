@@ -20,6 +20,7 @@ Key responsibilities:
 
 from __future__ import annotations
 
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -33,7 +34,10 @@ from collections.abc import Callable
 
 from backend.database import get_db
 from backend.models.approval_instance import ApprovalInstance
+from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
+
+logger = logging.getLogger(__name__)
 
 # ── Type Aliases ────────────────────────────────────────────────────────────────
 
@@ -534,8 +538,45 @@ class ApprovalService:
         if instance is None:
             return  # Silently ignore unknown instances (idempotent)
 
+        was_bypass = instance.status == "no_approval_required"
         instance.status = outcome or "completed"
         instance.completed_at = datetime.now(timezone.utc)
+
+        # Audit trail for IP-2 conditional bypass: write a DB audit log row
+        # BEFORE committing so the record is part of the same transaction.
+        # Without this, the callback fires and mutates state (status updates,
+        # inventory adjustments, etc.) with no traceable record of who triggered
+        # the bypass or why approval was skipped.
+        if was_bypass:
+            logger.warning(
+                "APPROVAL_BYPASS instance_id=%s workflow=%s action=%s "
+                "resource_type=%s resource_id=%s actor_user_id=%s "
+                "subject_user_id=%s org_id=%s factory_id=%s",
+                instance.instance_id,
+                instance.workflow_key,
+                instance.action_key,
+                instance.resource_type,
+                instance.resource_id,
+                instance.actor_user_id,
+                instance.subject_user_id,
+                instance.org_id,
+                instance.factory_id,
+            )
+            db.add(
+                AuditLog(
+                    user_id=instance.actor_user_id,
+                    org_id=instance.org_id,
+                    factory_id=instance.factory_id,
+                    action="APPROVAL_BYPASS",
+                    details=(
+                        f"IP-2 conditional bypass: workflow={instance.workflow_key} "
+                        f"action={instance.action_key} resource_type={instance.resource_type} "
+                        f"resource_id={instance.resource_id} instance_id={instance.instance_id}"
+                    ),
+                    timestamp=datetime.now(timezone.utc),
+                )
+            )
+
         # Commit state change BEFORE firing callback so callback failures
         # don't roll back the completion (Bug #39 fix).
         db.commit()
@@ -580,8 +621,12 @@ class ApprovalService:
                 reason=f"Approval instance is in state '{instance.status}' and cannot be advanced.",
             )
 
-        # Self-approval check: the person advancing must NOT be the maker (subject)
-        if instance.subject_user_id is not None and instance.subject_user_id == actor_user_id:
+        # Self-approval check: the person advancing must NOT be the maker (subject).
+        # When subject_user_id is None (IP-2 conditional workflows that don't record a
+        # separate subject), fall back to instance.actor_user_id — the user who created
+        # the instance — so the bypass via a NULL subject_user_id is closed.
+        _maker_id = instance.subject_user_id if instance.subject_user_id is not None else instance.actor_user_id
+        if _maker_id is not None and _maker_id == actor_user_id:
             return ApprovalDecision(
                 result="denied",
                 reason="Self-approval is not allowed at any stage.",
@@ -680,7 +725,7 @@ class ApprovalService:
         db: Session,
         user_id: int,
         *,
-        org_id: str | None = None,
+        org_id: str,
     ) -> list[dict[str, Any]]:
         """List pending approval instances visible to a user.
 
@@ -688,30 +733,40 @@ class ApprovalService:
         (i.e., items they did NOT initiate themselves) that are not yet
         completed and not expired.
 
+        TENANT ISOLATION: org_id is now REQUIRED (was optional — Bug #48).
+        The previous optional behaviour allowed callers that omitted org_id
+        to receive pending approvals across ALL organisations, which is a
+        cross-tenant data leak.  Platform admins must explicitly pass their
+        own org_id or use list_pending_for_org() for cross-org admin views.
+
         Args:
             db: Active database session.
             user_id: The user ID to find pending instances for.
-            org_id: Optional org scope filter (Bug #48) to prevent
-                cross-org exposure for platform admins.
+            org_id: Org scope — REQUIRED.  Raises ValueError if empty.
 
         Returns:
             List of instance dicts, newest first.
         """
+        if not org_id:
+            raise ValueError(
+                "list_pending_for_user() requires a non-empty org_id. "
+                "Pass the caller's org_id to enforce tenant isolation."
+            )
         now = datetime.now(timezone.utc)
-        query = db.query(ApprovalInstance).filter(
-            ApprovalInstance.status.in_(["pending_l1", "pending_l2"]),
-            ApprovalInstance.actor_user_id != user_id,
-            or_(
-                ApprovalInstance.expires_at.is_(None),
-                ApprovalInstance.expires_at > now,
-            ),
+        rows = (
+            db.query(ApprovalInstance)
+            .filter(
+                ApprovalInstance.org_id == org_id,
+                ApprovalInstance.status.in_(["pending_l1", "pending_l2"]),
+                ApprovalInstance.actor_user_id != user_id,
+                or_(
+                    ApprovalInstance.expires_at.is_(None),
+                    ApprovalInstance.expires_at > now,
+                ),
+            )
+            .order_by(ApprovalInstance.created_at.desc())
+            .all()
         )
-        if org_id:
-            query = query.filter(ApprovalInstance.org_id == org_id)
-        else:
-            # Safety limit when querying across all orgs to prevent OOM
-            query = query.limit(200)
-        rows = query.order_by(ApprovalInstance.created_at.desc()).all()
         return [row.to_dict() for row in rows]
 
     def list_pending_for_org(

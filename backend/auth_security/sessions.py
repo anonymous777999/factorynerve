@@ -59,7 +59,7 @@ def _csrf_cookie_kwargs(*, request: Request) -> dict:
     }
 
 
-def create_session(db: Session, *, user: AuthUser, request: Request, response: Response) -> AuthSession:
+def create_session(db: Session, *, user: AuthUser, request: Request, response: Response, factory_id: str | None = None) -> AuthSession:
     raw_token = generate_token(32)
     csrf_token = generate_token(16)
     token_hash = hash_token(raw_token)
@@ -73,6 +73,7 @@ def create_session(db: Session, *, user: AuthUser, request: Request, response: R
         expires_at=_expires_at(),
         ip_hash=_hash_value(request.client.host if request.client else None),
         user_agent_hash=_hash_value(request.headers.get("user-agent")),
+        factory_id=factory_id,
     )
     db.add(session)
     db.flush()

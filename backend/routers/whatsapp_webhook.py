@@ -178,7 +178,7 @@ def _process_webhook_payload(payload: dict[str, Any]) -> dict[str, int]:
             failure_reason=failure_reason,
             payload_excerpt=_payload_excerpt(status_item),
         )
-        except Exception:
+        except Exception as error:
             # IntegrityError or other DB failure — remember the event to prevent
             # double-activation on retry, since the in-memory dedup cache is the
             # only reliable guard when the DB transaction rolls back.
@@ -216,14 +216,14 @@ async def verify_whatsapp_webhook(request: Request) -> Response:
     verify_token = _webhook_verify_token()
     if not verify_token:
         logger.warning("whatsapp_webhook_verify_rejected reason=verify_token_missing")
-        raise HTTPException(status_code=403, detail="Webhook verification denied.")
+        raise HTTPException(status_code=403, detail="Webhook verification denied.") from error
 
     mode = request.query_params.get("hub.mode", "").strip()
     challenge = request.query_params.get("hub.challenge", "")
     provided_token = request.query_params.get("hub.verify_token", "").strip()
     if mode != "subscribe" or not hmac.compare_digest(provided_token, verify_token):
         logger.warning("whatsapp_webhook_verify_rejected reason=token_mismatch mode=%s", mode or "-")
-        raise HTTPException(status_code=403, detail="Webhook verification denied.")
+        raise HTTPException(status_code=403, detail="Webhook verification denied.") from error
 
     logger.info("whatsapp_webhook_verified mode=%s", mode)
     return Response(content=challenge, media_type="text/plain")
@@ -236,13 +236,13 @@ async def receive_whatsapp_webhook(request: Request) -> dict[str, Any]:
 
     if not _app_secret():
         logger.error("whatsapp_webhook_rejected reason=app_secret_missing")
-        raise HTTPException(status_code=503, detail="Webhook secret not configured.")
+        raise HTTPException(status_code=503, detail="Webhook secret not configured.") from error
     if not signature_header:
         logger.warning("whatsapp_webhook_rejected reason=signature_missing")
-        raise HTTPException(status_code=401, detail="Invalid webhook signature.")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature.") from error
     if not _verify_signature(payload=raw_body, signature_header=signature_header):
         logger.warning("whatsapp_webhook_rejected reason=signature_invalid")
-        raise HTTPException(status_code=401, detail="Invalid webhook signature.")
+        raise HTTPException(status_code=401, detail="Invalid webhook signature.") from error
 
     try:
         payload = json.loads(raw_body.decode("utf-8"))

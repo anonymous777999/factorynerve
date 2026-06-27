@@ -15,11 +15,17 @@ from backend.models.organization import Organization
 from backend.models.subscription import Subscription
 from backend.models.user import User, UserRole
 from backend.routers.billing import _reset_org_ocr_quota_period
-from backend.security import create_access_token, hash_password
+from backend.auth_security.tokens import generate_token, hash_token
+from backend.models.auth_session import AuthSession
+from backend.models.auth_user import AuthUser
+from backend.security import hash_password
 
 
-def _headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+COOKIE_NAME = "auth_session"
+
+
+def _headers(session_token: str) -> dict[str, str]:
+    return {"Cookie": f"{COOKIE_NAME}={session_token}"}
 
 
 def _create_authenticated_user(*, role: UserRole = UserRole.OWNER) -> dict[str, object]:
@@ -28,6 +34,7 @@ def _create_authenticated_user(*, role: UserRole = UserRole.OWNER) -> dict[str, 
     try:
         org_id = str(uuid4())
         email = f"phase4_{uuid4().hex[:10]}@example.com"
+        now = datetime.now(timezone.utc)
         org = Organization(org_id=org_id, name=f"Phase4 Org {uuid4().hex[:6]}", plan="operator", is_active=True)
         user = User(
             org_id=org_id,
@@ -41,15 +48,32 @@ def _create_authenticated_user(*, role: UserRole = UserRole.OWNER) -> dict[str, 
         )
         db.add(org)
         db.add(user)
-        db.commit()
-        db.refresh(user)
-        token = create_access_token(
-            user_id=user.id,
-            role=user.role.value,
-            email=user.email,
-            org_id=user.org_id,
+        db.flush()
+
+        # Create a matching AuthUser for v2 session auth
+        auth_user = AuthUser(
+            email=email,
+            password_hash=hash_password("StrongPassw0rd!"),
+            is_email_verified=True,
+            is_active=True,
         )
-        return {"email": user.email, "access_token": token, "user_id": user.id, "org_id": user.org_id}
+        db.add(auth_user)
+        db.flush()
+
+        # Create a v2 session directly and return the raw token
+        raw_token = generate_token(32)
+        token_hash = hash_token(raw_token)
+        session = AuthSession(
+            auth_user_id=auth_user.id,
+            token_hash=token_hash,
+            csrf_hash=hash_token(generate_token(16)),
+            created_at=now,
+            expires_at=now + timedelta(days=30),
+        )
+        db.add(session)
+        db.commit()
+
+        return {"email": user.email, "access_token": raw_token, "user_id": user.id, "org_id": user.org_id}
     finally:
         db.close()
 

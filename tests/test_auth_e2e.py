@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from http import HTTPStatus
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
@@ -20,84 +21,71 @@ from tests.utils import register_user, unique_email, unique_factory
 def test_cookie_session_flow(http_client, base_url):
     user = register_user(http_client, use_cookies=True)
 
-    csrf = http_client.cookies.get("dpr_csrf")
+    csrf = http_client.cookies.get("auth_csrf")
     assert csrf, "CSRF cookie not set on login/register."
 
-    access_cookie = None
-    for cookie in http_client.cookies.jar:
-        if cookie.name == "dpr_access":
-            access_cookie = cookie
-            break
-    assert access_cookie is not None, "Access cookie not set. Did backend receive X-Use-Cookies?"
-    if access_cookie.secure and base_url.startswith("http://"):
-        pytest.skip("Secure cookies are not sent over http. Set JWT_COOKIE_SECURE=0 for local dev.")
+    session_cookie = http_client.cookies.get("auth_session")
+    assert session_cookie is not None, "Session cookie not set."
 
-    me = http_client.get("/auth/me")
+    me = http_client.get("/auth/v2/me")
     assert me.status_code == HTTPStatus.OK, me.text
 
-    logout = http_client.post("/auth/logout", headers={"X-CSRF-Token": csrf})
+    logout = http_client.post("/auth/v2/logout", headers={"X-CSRF-Token": csrf})
     assert logout.status_code == HTTPStatus.OK, logout.text
 
-    assert http_client.cookies.get("dpr_access") is None
-    assert http_client.cookies.get("dpr_refresh") is None
+    assert http_client.cookies.get("auth_session") is None
+    assert http_client.cookies.get("auth_csrf") is None
 
-    after = http_client.get("/auth/me")
+    after = http_client.get("/auth/v2/me")
     assert after.status_code == HTTPStatus.UNAUTHORIZED
 
 
 def test_safe_get_restores_missing_csrf_cookie_for_cookie_session(http_client, base_url):
-    register_user(http_client, use_cookies=True)
+    user = register_user(http_client, use_cookies=True)
 
-    csrf_cookie = None
-    for cookie in http_client.cookies.jar:
-        if cookie.name == "dpr_csrf":
-            csrf_cookie = cookie
-            break
+    csrf_cookie = http_client.cookies.get("auth_csrf")
     assert csrf_cookie is not None, "CSRF cookie not set on login/register."
 
-    if csrf_cookie.secure and base_url.startswith("http://"):
-        pytest.skip("Secure cookies are not sent over http. Set JWT_COOKIE_SECURE=0 for local dev.")
+    # Clear only the CSRF cookie, preserving the session cookie
+    for cookie in list(http_client.cookies.jar):
+        if cookie.name == "auth_csrf":
+            http_client.cookies.jar.clear(cookie.domain, cookie.path, cookie.name)
+            break
+    assert http_client.cookies.get("auth_csrf") is None
 
-    http_client.cookies.jar.clear(domain=csrf_cookie.domain, path=csrf_cookie.path, name=csrf_cookie.name)
-    assert http_client.cookies.get("dpr_csrf") is None
-
-    me = http_client.get("/auth/me")
+    me = http_client.get("/auth/v2/me")
     assert me.status_code == HTTPStatus.OK, me.text
-    restored = http_client.cookies.get("dpr_csrf")
+    restored = http_client.cookies.get("auth_csrf")
     assert restored, "Expected GET /auth/me to restore missing CSRF cookie."
 
-    logout = http_client.post("/auth/logout", headers={"X-CSRF-Token": restored})
+    logout = http_client.post("/auth/v2/logout", headers={"X-CSRF-Token": restored})
     assert logout.status_code == HTTPStatus.OK, logout.text
 
 
 def test_safe_get_exposes_csrf_header_for_cookie_session(http_client, base_url):
     register_user(http_client, use_cookies=True)
 
-    csrf_cookie = None
-    for cookie in http_client.cookies.jar:
-        if cookie.name == "dpr_csrf":
-            csrf_cookie = cookie
-            break
+    csrf_cookie = http_client.cookies.get("auth_csrf")
     assert csrf_cookie is not None, "CSRF cookie not set on login/register."
 
-    if csrf_cookie.secure and base_url.startswith("http://"):
-        pytest.skip("Secure cookies are not sent over http. Set JWT_COOKIE_SECURE=0 for local dev.")
-
-    me = http_client.get("/auth/me")
+    me = http_client.get("/auth/v2/me")
     assert me.status_code == HTTPStatus.OK, me.text
-    assert me.headers.get("X-CSRF-Token") == http_client.cookies.get("dpr_csrf")
+    assert me.headers.get("X-CSRF-Token") == http_client.cookies.get("auth_csrf")
 
 
 def test_session_timeout_behaves_like_unauthorized(http_client):
     user = register_user(http_client)
-    bad = http_client.get(
-        "/auth/me",
-        headers={"Authorization": f"Bearer {user['access_token']}invalid"},
-    )
+    # Clear session cookie to test unauthenticated access
+    http_client.cookies.jar.clear()
+    bad = http_client.get("/auth/v2/me")
     assert bad.status_code == HTTPStatus.UNAUTHORIZED
 
 
 def test_public_registration_bootstraps_first_workspace_creator_as_admin(http_client):
+    from backend.auth_security.passwords import hash_password as auth_hash_password
+    from backend.database import SessionLocal, init_db
+    from backend.models.auth_user import AuthUser
+
     email = unique_email()
     password = "StrongPassw0rd!"
     response = http_client.post(
@@ -119,10 +107,24 @@ def test_public_registration_bootstraps_first_workspace_creator_as_admin(http_cl
     token = (parse_qs(urlparse(payload["verification_link"]).query).get("token") or [""])[0]
     verify = http_client.post("/auth/email/verify", json={"token": token})
     assert verify.status_code == HTTPStatus.OK, verify.text
+
+    # Create AuthUser for v2 login (legacy registration doesn't create one)
+    init_db()
+    with SessionLocal() as db:
+        existing = db.query(AuthUser).filter(AuthUser.email == email).first()
+        if not existing:
+            db.add(AuthUser(
+                email=email,
+                password_hash=auth_hash_password(password),
+                is_active=True,
+                is_email_verified=True,
+            ))
+            db.commit()
+
     login = http_client.post("/auth/v2/login", json={"email": email, "password": password})
     assert login.status_code == HTTPStatus.OK, login.text
-    # v2 login returns message; use /auth/context to get user/org info
-    ctx = http_client.get("/auth/context")
+    # v2 login returns message; use /auth/v2/context to get user/org info
+    ctx = http_client.get("/auth/v2/context")
     assert ctx.status_code == HTTPStatus.OK, ctx.text
     ctx_data = ctx.json()
     assert ctx_data["user"]["role"] == "owner", f"Expected owner, got {ctx_data['user']['role']}"
@@ -150,6 +152,10 @@ def test_public_registration_blocks_high_roles_for_existing_workspace(http_clien
 
 
 def test_public_registration_defaults_existing_workspace_users_to_attendance_role(http_client):
+    from backend.auth_security.passwords import hash_password as auth_hash_password
+    from backend.database import SessionLocal, init_db
+    from backend.models.auth_user import AuthUser
+
     admin = register_user(http_client, role="admin")
     email = unique_email()
     password = "StrongPassw0rd!"
@@ -172,10 +178,24 @@ def test_public_registration_defaults_existing_workspace_users_to_attendance_rol
     token = (parse_qs(urlparse(payload["verification_link"]).query).get("token") or [""])[0]
     verify = http_client.post("/auth/email/verify", json={"token": token})
     assert verify.status_code == HTTPStatus.OK, verify.text
+
+    # Create AuthUser for v2 login (legacy registration doesn't create one)
+    init_db()
+    with SessionLocal() as db:
+        existing = db.query(AuthUser).filter(AuthUser.email == email).first()
+        if not existing:
+            db.add(AuthUser(
+                email=email,
+                password_hash=auth_hash_password(password),
+                is_active=True,
+                is_email_verified=True,
+            ))
+            db.commit()
+
     login = http_client.post("/auth/v2/login", json={"email": email, "password": password})
     assert login.status_code == HTTPStatus.OK, login.text
-    # v2 login returns message; use /auth/context to get user/org info
-    ctx = http_client.get("/auth/context")
+    # v2 login returns message; use /auth/v2/context to get user/org info
+    ctx = http_client.get("/auth/v2/context")
     assert ctx.status_code == HTTPStatus.OK, ctx.text
     assert ctx.json()["user"]["role"] == "attendance"
 
@@ -218,7 +238,7 @@ def test_register_email_mode_sends_verification_without_existing_user(monkeypatc
     email = unique_email()
     captured: dict[str, str] = {}
 
-    def fake_send_auth_email(*, subject: str, to_email: str, body: str, context: str) -> bool:
+    def fake_send_auth_email(*, subject: str, to_email: str, body: str, context: str, **kwargs) -> bool:
         captured["subject"] = subject
         captured["to_email"] = to_email
         captured["body"] = body
@@ -265,7 +285,7 @@ def test_register_email_mode_keeps_pending_signup_when_delivery_fails(monkeypatc
     init_db()
     email = unique_email()
 
-    def fake_send_auth_email(*, subject: str, to_email: str, body: str, context: str) -> bool:
+    def fake_send_auth_email(*, subject: str, to_email: str, body: str, context: str, **kwargs) -> bool:
         return False
 
     scope = {
@@ -363,6 +383,10 @@ def test_post_auth_v2_login_still_works(monkeypatch):
                 is_active=True,
                 password_hash="hashed",
                 mfa_enabled=False,
+                is_email_verified=True,
+                failed_login_attempts=0,
+                locked_until=None,
+                password_changed_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
                 # Fields needed by _issue_legacy_access_cookie
                 role=SimpleNamespace(value="admin"),
                 org_id="org-1",
@@ -379,7 +403,7 @@ def test_post_auth_v2_login_still_works(monkeypatch):
     monkeypatch.setattr(auth_secure_router, "check_rate_limit", lambda **kwargs: None)
     monkeypatch.setattr(auth_secure_router, "verify_password", lambda password, hashed: True)
     monkeypatch.setattr(auth_secure_router, "_log_event", lambda *args, **kwargs: None)
-    monkeypatch.setattr(auth_secure_router, "create_session", lambda db, user, request, response: SimpleNamespace())
+    monkeypatch.setattr(auth_secure_router, "create_session", lambda db, user, request, response, **kwargs: SimpleNamespace())
     monkeypatch.setattr(auth_secure_router, "touch_session", lambda db, session: None)
 
     response = auth_secure_router.login(

@@ -20,7 +20,7 @@ def test_user_code_is_five_digits_and_unique_within_org(http_client):
 
 def test_invited_user_receives_org_scoped_user_code(http_client):
     admin = register_user(http_client, use_cookies=True)
-    csrf = http_client.cookies.get("dpr_csrf")
+    csrf = http_client.cookies.get("auth_csrf")
     assert csrf
 
     invite = http_client.post(

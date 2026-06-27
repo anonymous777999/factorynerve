@@ -1,4 +1,4 @@
-"""Tests for workforce intelligence endpoints — overview, workers, trends, costs."""
+"""Tests for workforce intelligence endpoints â€” overview, workers, trends, costs."""
 
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ from backend.models.workforce_cost_rate import WorkforceCostRate
 from tests.utils import register_user
 
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
-def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+def _auth_headers() -> dict[str, str]:
+    return {}
 
 
 def _promote_factory_to_steel(email: str) -> None:
@@ -161,7 +161,7 @@ def _seed_cost_rate(org_id: str, factory_id: str) -> None:
         db.close()
 
 
-# ── Test Class ──────────────────────────────────────────────────────────────
+# â”€â”€ Test Class â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 
 class TestWorkforceIntelligence:
@@ -187,14 +187,13 @@ class TestWorkforceIntelligence:
         finally:
             db.close()
 
-    # ── Overview ─────────────────────────────────────────────────────────
+    # â”€â”€ Overview â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def test_overview_returns_kpis(self, http_client: httpx.Client, owner: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(owner["access_token"])
+        headers = {}
         resp = http_client.get(
             "/intelligence/workforce/overview?days=30",
-            headers=headers,
         )
         assert resp.status_code == HTTPStatus.OK, f"Body: {resp.text[:500]}"
         data = resp.json()
@@ -205,21 +204,19 @@ class TestWorkforceIntelligence:
 
     def test_overview_blocks_operator(self, http_client: httpx.Client, owner: dict, operator: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(operator["access_token"])
+        headers = {}
         resp = http_client.get(
             "/intelligence/workforce/overview?days=30",
-            headers=headers,
         )
         assert resp.status_code == HTTPStatus.FORBIDDEN
 
-    # ── Workers ─────────────────────────────────────────────────────────
+    # â”€â”€ Workers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def test_workers_returns_ranked_list(self, http_client: httpx.Client, owner: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(owner["access_token"])
+        headers = {}
         resp = http_client.get(
             "/intelligence/workforce/workers?days=30&sort_by=worked_minutes&limit=50",
-            headers=headers,
         )
         assert resp.status_code == HTTPStatus.OK, f"Body: {resp.text[:500]}"
         data = resp.json()
@@ -232,10 +229,9 @@ class TestWorkforceIntelligence:
 
     def test_workers_shows_cost_for_owner(self, http_client: httpx.Client, owner: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(owner["access_token"])
+        headers = {}
         resp = http_client.get(
             "/intelligence/workforce/workers?days=30",
-            headers=headers,
         )
         assert resp.status_code == HTTPStatus.OK, f"Body: {resp.text[:500]}"
         data = resp.json()
@@ -243,7 +239,7 @@ class TestWorkforceIntelligence:
         if data["workers"]:
             assert "total_cost_inr" in data["workers"][0]
 
-    # ── Worker Trend ────────────────────────────────────────────────────
+    # â”€â”€ Worker Trend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def test_worker_trend_returns_daily(self, http_client: httpx.Client, owner: dict) -> None:
         self._seed(owner)
@@ -256,10 +252,9 @@ class TestWorkforceIntelligence:
         finally:
             db.close()
 
-        headers = _auth_headers(owner["access_token"])
+        headers = {}
         resp = http_client.get(
             f"/intelligence/workforce/workers/{user_id}/trend?days=30",
-            headers=headers,
         )
         assert resp.status_code == HTTPStatus.OK, f"Body: {resp.text[:500]}"
         data = resp.json()
@@ -269,23 +264,21 @@ class TestWorkforceIntelligence:
 
     def test_worker_trend_empty_for_unknown_user(self, http_client: httpx.Client, owner: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(owner["access_token"])
+        headers = {}
         resp = http_client.get(
             "/intelligence/workforce/workers/999999/trend?days=30",
-            headers=headers,
         )
         assert resp.status_code == HTTPStatus.OK
         data = resp.json()
         assert data["daily"] == []
 
-    # ── Cost Summary ────────────────────────────────────────────────────
+    # â”€â”€ Cost Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def test_cost_summary_returns_financial_data(self, http_client: httpx.Client, owner: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(owner["access_token"])
+        headers = {}
         resp = http_client.get(
             "/intelligence/workforce/costs/summary?days=30",
-            headers=headers,
         )
         assert resp.status_code == HTTPStatus.OK, f"Body: {resp.text[:500]}"
         data = resp.json()
@@ -295,35 +288,32 @@ class TestWorkforceIntelligence:
 
     def test_cost_summary_requires_cost_permission(self, http_client: httpx.Client, owner: dict, operator: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(operator["access_token"])
+        headers = {}
         resp = http_client.get(
             "/intelligence/workforce/costs/summary?days=30",
-            headers=headers,
         )
         # Operator doesn't have workforce.cost.view
         assert resp.status_code in (HTTPStatus.FORBIDDEN, HTTPStatus.BAD_REQUEST), f"Body: {resp.text[:500]}"
 
-    # ── Shift Comparison ────────────────────────────────────────────────
+    # â”€â”€ Shift Comparison â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def test_shift_comparison_works(self, http_client: httpx.Client, owner: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(owner["access_token"])
+        headers = {}
         resp = http_client.get(
             "/intelligence/workforce/shifts/comparison?days=30",
-            headers=headers,
         )
         assert resp.status_code == HTTPStatus.OK, f"Body: {resp.text[:500]}"
         data = resp.json()
         assert "shifts" in data
 
-    # ── Cost Rates CRUD ─────────────────────────────────────────────────
+    # â”€â”€ Cost Rates CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
     def test_list_cost_rates(self, http_client: httpx.Client, owner: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(owner["access_token"])
+        headers = {}
         resp = http_client.get(
             "/intelligence/workforce/costs/rates",
-            headers=headers,
         )
         assert resp.status_code == HTTPStatus.OK, f"Body: {resp.text[:500]}"
         data = resp.json()
@@ -331,10 +321,9 @@ class TestWorkforceIntelligence:
 
     def test_create_cost_rate(self, http_client: httpx.Client, owner: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(owner["access_token"])
+        headers = {}
         resp = http_client.post(
             "/intelligence/workforce/costs/rates",
-            headers=headers,
             json={
                 "effective_from": str(date.today()),
                 "regular_hourly_rate_inr": 300.0,
@@ -350,10 +339,9 @@ class TestWorkforceIntelligence:
 
     def test_create_cost_rate_requires_admin(self, http_client: httpx.Client, owner: dict, operator: dict) -> None:
         self._seed(owner)
-        headers = _auth_headers(operator["access_token"])
+        headers = {}
         resp = http_client.post(
             "/intelligence/workforce/costs/rates",
-            headers=headers,
             json={
                 "effective_from": str(date.today()),
                 "regular_hourly_rate_inr": 250.0,

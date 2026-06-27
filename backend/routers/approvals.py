@@ -166,7 +166,7 @@ def get_my_approval_queue(
                 actor=current_user,
                 permission_key=action_key,
             )
-        except Exception:
+        except Exception as error:
             can_approve = False
 
         items.append(
@@ -220,7 +220,15 @@ def advance_approval(
     # Verify the instance exists
     instance = APPROVAL_SERVICE.get_instance(db, instance_id)
     if not instance:
-        raise HTTPException(status_code=404, detail="Approval instance not found.")
+        raise HTTPException(status_code=404, detail="Approval instance not found.") from error
+
+    # Self-approval guard: the person who created the request cannot also advance it
+    subject_user_id = instance.get("subject_user_id")
+    if subject_user_id is not None and subject_user_id == current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Self-approval is not allowed at any stage. A different user must review this request.",
+        )
 
     # Check that the current user has the required permission
     action_key = instance.get("action_key", "")

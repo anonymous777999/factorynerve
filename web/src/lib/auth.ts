@@ -413,14 +413,21 @@ export async function register(payload: {
 }
 
 export async function logout(): Promise<void> {
-  await withBackendWakeRetry(() => apiFetch("/auth/logout", { method: "POST" }), {
-    retryMessage: "DPR.ai is waking up. Please wait a few seconds before signing out again.",
-  });
+  await withBackendWakeRetry(
+    () => apiFetch("/auth/v2/logout", { method: "POST" }, { cookieAuth: true }),
+    {
+      retryMessage: "DPR.ai is waking up. Please wait a few seconds before signing out again.",
+    },
+  );
   clearSession();
 }
 
 export async function logoutAllDevices(): Promise<{ message: string }> {
-  const response = await apiFetch<{ message: string }>("/auth/logout-all", { method: "POST" });
+  const response = await apiFetch<{ message: string }>(
+    "/auth/v2/logout-all",
+    { method: "POST" },
+    { cookieAuth: true },
+  );
   clearSession();
   return response;
 }
@@ -554,7 +561,7 @@ export async function getMe(options?: {
     async () =>
       mergeCurrentUserWithPermissions(
         await apiFetch<CurrentUser>(
-        "/auth/me",
+        "/auth/v2/me",
         { signal: options?.signal },
         { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:me" },
         ),
@@ -577,7 +584,7 @@ export async function getAuthContext(options?: {
     async () => {
       try {
         const context = await apiFetch<AuthContext>(
-          "/auth/context",
+          "/auth/v2/context",
           { signal: options?.signal },
           { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
         );

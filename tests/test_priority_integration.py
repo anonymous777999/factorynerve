@@ -16,24 +16,21 @@ from httpx import Client
 # ---------------------------------------------------------------------------
 
 def _auth_headers(client: Client, *, email: str, password: str) -> dict[str, str]:
-    """Register *or* login, then return bearer auth headers."""
-    # Try login first
+    """Register *or* login, then return auth headers.
+
+    The backend now uses v2 session cookies for authentication.
+    The login/register endpoints set the cookies on the client.
+    """
+    # Try login first (sets session cookie on http_client)
     resp = client.post(
         "/auth/v2/login",
         json={"email": email, "password": password},
     )
     if resp.status_code == 200:
-        data = resp.json()
-        token = data.get("token") or data.get("access_token")
-        if token:
-            return {"Authorization": f"Bearer {token}"}
+        # Session cookie is already set on the client
+        return {}
 
-        # Cookie-based auth — extract CSRF + session from cookies
-        csrf = resp.cookies.get("csrf_token")
-        if csrf:
-            return {"X-CSRF-Token": csrf}
-
-    # Register if login fails
+    # Register if login fails (sets session cookie on http_client)
     resp = client.post(
         "/auth/v2/register",
         json={
@@ -43,36 +40,21 @@ def _auth_headers(client: Client, *, email: str, password: str) -> dict[str, str
             "factory_name": "Test Steel Factory",
         },
     )
-    # If user already exists (409), try login again - the user was created
-    # by a previous test class in the same session
+    # If user already exists (409), try login again
     if resp.status_code == 409:
         resp = client.post(
             "/auth/v2/login",
             json={"email": email, "password": password},
         )
-        resp.raise_for_status()
-        data = resp.json()
-        token = data.get("token") or data.get("access_token")
-        if token:
-            return {"Authorization": f"Bearer {token}"}
-        csrf = resp.cookies.get("csrf_token")
-        if csrf:
-            return {"X-CSRF-Token": csrf}
+        assert resp.status_code == 200, f"Login after 409 failed: {resp.text}"
         return {}
-    resp.raise_for_status()
-    data = resp.json()
-    token = data.get("token") or data.get("access_token")
-    if token:
-        return {"Authorization": f"Bearer {token}"}
-    csrf = resp.cookies.get("csrf_token")
-    if csrf:
-        return {"X-CSRF-Token": csrf}
+    assert resp.status_code in (200, 201), f"Register failed: {resp.text}"
     return {}
 
 
 def _steel_setup(http_client: Client, headers: dict[str, str]) -> str | None:
     """Ensure a steel factory exists and return its factory_id."""
-    resp = http_client.get("/factories", headers=headers)
+    resp = http_client.get("/factories")
     if resp.status_code == 200:
         factories = resp.json()
         if isinstance(factories, list) and factories:
@@ -88,7 +70,6 @@ def _steel_setup(http_client: Client, headers: dict[str, str]) -> str | None:
     # Create a steel factory
     resp = http_client.post(
         "/factories",
-        headers=headers,
         json={"name": "Test Steel Factory", "industry_type": "steel", "timezone": "Asia/Kolkata"},
     )
     if resp.status_code in (200, 201):

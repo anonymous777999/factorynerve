@@ -16,6 +16,7 @@ class SteelVendorPayment(Base):
         Index("ix_steel_vendor_payments_factory_id", "factory_id"),
         Index("ix_steel_vendor_payments_vendor_id", "vendor_id"),
         Index("ix_steel_vendor_payments_payment_date", "payment_date"),
+        Index("uq_steel_vendor_payments_factory_reference", "factory_id", "reference_number", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

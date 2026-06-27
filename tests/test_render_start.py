@@ -48,7 +48,9 @@ def test_skip_bootstrap_when_alembic_history_exists(tmp_path):
     )
 
 
-def test_init_db_ensures_structured_ocr_columns_on_legacy_table(tmp_path, monkeypatch: pytest.MonkeyPatch):
+def test_init_db_does_not_crash_on_legacy_table(tmp_path, monkeypatch: pytest.MonkeyPatch):
+    """init_db() should handle legacy tables without crashing now that
+    _ensure_* functions are removed and schema repair is in Alembic."""
     database_path = Path(tmp_path) / "legacy_ocr.db"
     legacy_engine = create_engine(f"sqlite:///{database_path}", future=True)
     with legacy_engine.begin() as connection:
@@ -89,16 +91,13 @@ def test_init_db_ensures_structured_ocr_columns_on_legacy_table(tmp_path, monkey
     original_engine = database_module.engine
     try:
         monkeypatch.setattr(database_module, "engine", legacy_engine)
-        database_module._ensure_ocr_verification_columns()
+        # init_db should not crash — it should just log and return
+        database_module.init_db()
     finally:
         monkeypatch.setattr(database_module, "engine", original_engine)
+        legacy_engine.dispose()
 
+    # Verify the table still exists and init_db didn't break anything
     inspector = database_module.inspect(legacy_engine)
-    columns = {column["name"] for column in inspector.get_columns("ocr_verifications")}
-    legacy_engine.dispose()
-
-    assert "scan_quality" in columns
-    assert "document_hash" in columns
-    assert "doc_type_hint" in columns
-    assert "routing_meta" in columns
-    assert "raw_text" in columns
+    table_names = set(inspector.get_table_names())
+    assert "ocr_verifications" in table_names

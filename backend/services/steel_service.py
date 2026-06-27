@@ -95,8 +95,17 @@ def locked_stock_balance_for_item(db: Session, factory_id: str, item_id: int) ->
     from reading a stale balance (race condition).  The aggregation is performed
     inside the database so only one row is returned, avoiding a full table fetch.
 
+    SAFETY: ``FOR UPDATE`` is silently ignored outside an explicit transaction.
+    This function enforces that a transaction is active and raises immediately
+    if not, preventing silent race conditions that would corrupt stock balances.
+
     Call within a transaction before any write that depends on an accurate balance.
     """
+    if not db.in_transaction():
+        raise RuntimeError(
+            "locked_stock_balance_for_item() must be called within a database transaction. "
+            "Wrap the caller in ``with db.begin():`` or ensure ``autocommit`` is disabled."
+        )
     result = (
         db.query(func.sum(SteelInventoryTransaction.quantity_kg))
         .filter(
@@ -236,12 +245,18 @@ def normalized_steel_factory_code(factory: Factory) -> str:
 def generate_batch_code(db: Session, factory: Factory, when: datetime | None = None) -> str:
     current = when or datetime.now(timezone.utc)
     prefix = f"ST-{normalized_steel_factory_code(factory)}-{current.year}-"
+    # Use FOR UPDATE to prevent concurrent duplicate codes (Bug #17)
+    # The with_for_update locks the row so two callers can't both read
+    # the same max sequence and generate the same next number.
+    if not db.in_transaction():
+        raise RuntimeError("generate_batch_code() must be called within a transaction.")
     existing = (
         db.query(SteelProductionBatch.batch_code)
         .filter(
             SteelProductionBatch.batch_code.like(f"{prefix}%"),
         )
         .order_by(SteelProductionBatch.id.desc())
+        .with_for_update()
         .first()
     )
     sequence = 1
@@ -257,10 +272,13 @@ def generate_invoice_number(db: Session, factory: Factory, when: datetime | None
     prefix = f"SINV-{normalized_steel_factory_code(factory)}-{current.year}-"
     from backend.models.steel_sales_invoice import SteelSalesInvoice
 
+    if not db.in_transaction():
+        raise RuntimeError("generate_invoice_number() must be called within a transaction.")
     existing = (
         db.query(SteelSalesInvoice.invoice_number)
         .filter(SteelSalesInvoice.invoice_number.like(f"{prefix}%"))
         .order_by(SteelSalesInvoice.id.desc())
+        .with_for_update()
         .first()
     )
     sequence = 1
@@ -276,10 +294,13 @@ def generate_dispatch_number(db: Session, factory: Factory, when: datetime | Non
     prefix = f"SDISP-{normalized_steel_factory_code(factory)}-{current.year}-"
     from backend.models.steel_dispatch import SteelDispatch
 
+    if not db.in_transaction():
+        raise RuntimeError("generate_dispatch_number() must be called within a transaction.")
     existing = (
         db.query(SteelDispatch.dispatch_number)
         .filter(SteelDispatch.dispatch_number.like(f"{prefix}%"))
         .order_by(SteelDispatch.id.desc())
+        .with_for_update()
         .first()
     )
     sequence = 1
@@ -295,10 +316,13 @@ def generate_gate_pass_number(db: Session, factory: Factory, when: datetime | No
     prefix = f"GP-{normalized_steel_factory_code(factory)}-{current.year}-"
     from backend.models.steel_dispatch import SteelDispatch
 
+    if not db.in_transaction():
+        raise RuntimeError("generate_gate_pass_number() must be called within a transaction.")
     existing = (
         db.query(SteelDispatch.gate_pass_number)
         .filter(SteelDispatch.gate_pass_number.like(f"{prefix}%"))
         .order_by(SteelDispatch.id.desc())
+        .with_for_update()
         .first()
     )
     sequence = 1

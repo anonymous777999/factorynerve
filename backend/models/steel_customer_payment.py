@@ -17,6 +17,7 @@ class SteelCustomerPayment(Base):
         Index("ix_steel_customer_payments_customer_id", "customer_id"),
         Index("ix_steel_customer_payments_invoice_id", "invoice_id"),
         Index("ix_steel_customer_payments_payment_date", "payment_date"),
+        Index("uq_steel_customer_payments_factory_reference", "factory_id", "reference_number", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

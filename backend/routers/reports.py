@@ -858,7 +858,11 @@ def download_pdf_job(
 
 
 @router.get("/sample-pdf")
-def sample_pdf() -> Response:
+def sample_pdf(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     sample = Entry(
         id=0,
         user_id=0,

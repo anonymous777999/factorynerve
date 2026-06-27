@@ -49,7 +49,7 @@ def _set_user_role(email: str, role: str) -> None:
 # ── Helpers to create test data ─────────────────────────────────────────────
 
 
-def _create_item(http_client, headers: dict, item_code: str, name: str, category: str, rate: float = 50.0) -> int:
+def _create_item(http_client,  item_code: str, name: str, category: str, rate: float = 50.0) -> int:
     resp = http_client.post(
         "/steel/inventory/items",
         json={
@@ -59,23 +59,21 @@ def _create_item(http_client, headers: dict, item_code: str, name: str, category
             "display_unit": "kg",
             "current_rate_per_kg": rate,
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
     return resp.json()["item"]["id"]
 
 
-def _create_inward(http_client, headers: dict, item_id: int, qty_kg: float) -> None:
+def _create_inward(http_client,  item_id: int, qty_kg: float) -> None:
     resp = http_client.post(
         "/steel/inventory/transactions",
         json={"item_id": item_id, "transaction_type": "inward", "quantity_kg": qty_kg, "notes": "Test inward"},
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
 
 
 def _create_batch(
-    http_client, headers: dict, input_id: int, output_id: int, input_kg: float, output_kg: float, production_date: str | None = None
+    http_client,  input_id: int, output_id: int, input_kg: float, output_kg: float, production_date: str | None = None
 ) -> int:
     resp = http_client.post(
         "/steel/batches",
@@ -88,14 +86,13 @@ def _create_batch(
             "actual_output_kg": output_kg,
             "notes": "Test batch",
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
     return resp.json()["batch"]["id"]
 
 
 def _create_invoice(
-    http_client, headers: dict, customer_name: str, lines: list[dict], invoice_date: str | None = None
+    http_client,  customer_name: str, lines: list[dict], invoice_date: str | None = None
 ) -> dict:
     payload = {
         "invoice_date": invoice_date or date.today().isoformat(),
@@ -103,13 +100,13 @@ def _create_invoice(
         "notes": "Test invoice",
         "lines": lines,
     }
-    resp = http_client.post("/steel/invoices", json=payload, headers=headers)
+    resp = http_client.post("/steel/invoices", json=payload)
     assert resp.status_code == HTTPStatus.OK, resp.text
     return resp.json()["invoice"]
 
 
 def _create_payment(
-    http_client, headers: dict, customer_id: int, invoice_id: int, amount: float, payment_date: str | None = None
+    http_client,  customer_id: int, invoice_id: int, amount: float, payment_date: str | None = None
 ) -> dict:
     resp = http_client.post(
         "/steel/customers/payments",
@@ -121,14 +118,13 @@ def _create_payment(
             "payment_mode": "bank_transfer",
             "reference_number": "TEST-UTR",
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
     return resp.json()["payment"]
 
 
 def _create_dispatch(
-    http_client, headers: dict, invoice_id: int, invoice_line_id: int, weight_kg: float
+    http_client,  invoice_id: int, invoice_line_id: int, weight_kg: float
 ) -> dict:
     resp = http_client.post(
         "/steel/dispatches",
@@ -139,7 +135,6 @@ def _create_dispatch(
             "driver_name": "Test Driver",
             "lines": [{"invoice_line_id": invoice_line_id, "weight_kg": weight_kg}],
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
     return resp.json()["dispatch"]
@@ -151,9 +146,7 @@ def _create_dispatch(
 def test_finance_overview_rejects_non_steel_factory(http_client):
     """Non-steel factory should get 400."""
     user = register_user(http_client, role="admin")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/finance/overview", headers=headers)
+    response = http_client.get("/steel/finance/overview")
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "steel factory" in response.text.lower()
 
@@ -162,9 +155,7 @@ def test_finance_overview_empty_factory(http_client):
     """A factory with no data should return zeros, not error."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/finance/overview", headers=headers)
+    response = http_client.get("/steel/finance/overview")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -186,21 +177,19 @@ def test_finance_overview_with_revenue_and_receivables(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Create item + stock
-    item_id = _create_item(http_client, headers, "FIN-TEST", "Finance Test Item", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, item_id, 5000)
+    item_id = _create_item(http_client,  "FIN-TEST", "Finance Test Item", "finished_goods", rate=100.0)
+    _create_inward(http_client,  item_id, 5000)
 
     # Create an invoice
     invoice = _create_invoice(
-        http_client, headers, "Finance Buyer", [{"item_id": item_id, "weight_kg": 1000, "rate_per_kg": 100}]
+        http_client,  "Finance Buyer", [{"item_id": item_id, "weight_kg": 1000, "rate_per_kg": 100}]
     )
     invoice_id = invoice["id"]
     customer_id = invoice["customer_id"]
 
     # Get overview before payment
-    response = http_client.get("/steel/finance/overview", headers=headers)
+    response = http_client.get("/steel/finance/overview")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -213,10 +202,10 @@ def test_finance_overview_with_revenue_and_receivables(http_client):
     assert payload["receivables"]["total_outstanding_inr"] > 0
 
     # Now make a partial payment
-    _create_payment(http_client, headers, customer_id, invoice_id, 50000)
+    _create_payment(http_client,  customer_id, invoice_id, 50000)
 
     # Verify collected cash updated
-    response2 = http_client.get("/steel/finance/overview", headers=headers)
+    response2 = http_client.get("/steel/finance/overview")
     assert response2.status_code == HTTPStatus.OK, response2.text
     payload2 = response2.json()
     assert payload2["collected_cash"]["today"] == 50000.0
@@ -227,26 +216,24 @@ def test_finance_overview_realized_metrics(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "FIN-RAW", "Raw Input", "raw_material", rate=40.0)
-    fin_id = _create_item(http_client, headers, "FIN-OUT", "Finished Output", "finished_goods", rate=80.0)
-    _create_inward(http_client, headers, raw_id, 10000)
+    raw_id = _create_item(http_client,  "FIN-RAW", "Raw Input", "raw_material", rate=40.0)
+    fin_id = _create_item(http_client,  "FIN-OUT", "Finished Output", "finished_goods", rate=80.0)
+    _create_inward(http_client,  raw_id, 10000)
 
     # Create batch with known cost/revenue
-    batch_id = _create_batch(http_client, headers, raw_id, fin_id, 10000, 9200)
+    batch_id = _create_batch(http_client,  raw_id, fin_id, 10000, 9200)
 
     # Invoice 2000 KG at 80/KG = 160000
     invoice = _create_invoice(
-        http_client, headers, "Margin Buyer", [{"item_id": fin_id, "batch_id": batch_id, "weight_kg": 2000, "rate_per_kg": 80}]
+        http_client,  "Margin Buyer", [{"item_id": fin_id, "batch_id": batch_id, "weight_kg": 2000, "rate_per_kg": 80}]
     )
     invoice_line_id = invoice["lines"][0]["id"]
 
     # Dispatch 1500 KG
-    _create_dispatch(http_client, headers, invoice["id"], invoice_line_id, 1500)
+    _create_dispatch(http_client,  invoice["id"], invoice_line_id, 1500)
 
     # Check realized metrics
-    response = http_client.get("/steel/finance/overview", headers=headers)
+    response = http_client.get("/steel/finance/overview")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
     rm = payload["realized_metrics"]
@@ -262,14 +249,12 @@ def test_product_profitability_basic(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    raw_id = _create_item(http_client, headers, "PP-RAW", "Profit Raw", "raw_material", rate=30.0)
-    prod_id = _create_item(http_client, headers, "PP-OUT", "Profit Product", "finished_goods", rate=60.0)
-    _create_inward(http_client, headers, raw_id, 5000)
+    raw_id = _create_item(http_client,  "PP-RAW", "Profit Raw", "raw_material", rate=30.0)
+    prod_id = _create_item(http_client,  "PP-OUT", "Profit Product", "finished_goods", rate=60.0)
+    _create_inward(http_client,  raw_id, 5000)
 
     # Batch: raw cost = 5000 * 30 = 150000, output 4600 KG => cost per output kg ≈ 32.61
-    batch_id = _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600)
+    batch_id = _create_batch(http_client,  raw_id, prod_id, 5000, 4600)
 
     # Invoice 1000 KG at 60/KG = 60000, WITH batch_id so cost derivation works
     inv_resp = http_client.post(
@@ -280,11 +265,10 @@ def test_product_profitability_basic(http_client):
             "notes": "Profit test",
             "lines": [{"item_id": prod_id, "batch_id": batch_id, "weight_kg": 1000, "rate_per_kg": 60}],
         },
-        headers=headers,
     )
     assert inv_resp.status_code == HTTPStatus.OK, f"Invoice creation: {inv_resp.status_code}: {inv_resp.text[:200]}"
 
-    response = http_client.get("/steel/finance/product-profitability?days=90", headers=headers)
+    response = http_client.get("/steel/finance/product-profitability?days=90")
     assert response.status_code == HTTPStatus.OK, (
         f"Product-profitability endpoint returned {response.status_code}: {response.text[:500]}"
     )
@@ -311,9 +295,7 @@ def test_product_profitability_empty(http_client):
     """No invoices should return empty profitability."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/finance/product-profitability", headers=headers)
+    response = http_client.get("/steel/finance/product-profitability")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -328,9 +310,7 @@ def test_receivables_empty(http_client):
     """No invoices should return empty receivables."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/finance/receivables", headers=headers)
+    response = http_client.get("/steel/finance/receivables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -347,20 +327,18 @@ def test_receivables_with_paid_invoice(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    item_id = _create_item(http_client, headers, "REC-PAID", "Receivable Paid", "finished_goods", rate=50.0)
-    _create_inward(http_client, headers, item_id, 2000)
+    item_id = _create_item(http_client,  "REC-PAID", "Receivable Paid", "finished_goods", rate=50.0)
+    _create_inward(http_client,  item_id, 2000)
 
     invoice = _create_invoice(
-        http_client, headers, "Paid Buyer", [{"item_id": item_id, "weight_kg": 500, "rate_per_kg": 50}]
+        http_client,  "Paid Buyer", [{"item_id": item_id, "weight_kg": 500, "rate_per_kg": 50}]
     )
     total = invoice["total_amount"]
 
     # Pay in full
-    _create_payment(http_client, headers, invoice["customer_id"], invoice["id"], total)
+    _create_payment(http_client,  invoice["customer_id"], invoice["id"], total)
 
-    response = http_client.get("/steel/finance/receivables", headers=headers)
+    response = http_client.get("/steel/finance/receivables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -376,18 +354,16 @@ def test_receivables_with_partial_payment(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    item_id = _create_item(http_client, headers, "REC-PART", "Receivable Partial", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, item_id, 3000)
+    item_id = _create_item(http_client,  "REC-PART", "Receivable Partial", "finished_goods", rate=100.0)
+    _create_inward(http_client,  item_id, 3000)
 
     invoice = _create_invoice(
-        http_client, headers, "Partial Buyer", [{"item_id": item_id, "weight_kg": 1000, "rate_per_kg": 100}]
+        http_client,  "Partial Buyer", [{"item_id": item_id, "weight_kg": 1000, "rate_per_kg": 100}]
     )
     # Invoice total = 100000, pay 30000
-    _create_payment(http_client, headers, invoice["customer_id"], invoice["id"], 30000)
+    _create_payment(http_client,  invoice["customer_id"], invoice["id"], 30000)
 
-    response = http_client.get("/steel/finance/receivables", headers=headers)
+    response = http_client.get("/steel/finance/receivables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -405,10 +381,8 @@ def test_receivables_overdue_aging(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    item_id = _create_item(http_client, headers, "REC-AGE", "Aging Test", "finished_goods", rate=70.0)
-    _create_inward(http_client, headers, item_id, 2000)
+    item_id = _create_item(http_client,  "REC-AGE", "Aging Test", "finished_goods", rate=70.0)
+    _create_inward(http_client,  item_id, 2000)
 
     # Create invoice with today's date, then force due_date into the past
     resp = http_client.post(
@@ -420,7 +394,6 @@ def test_receivables_overdue_aging(http_client):
             "notes": "Overdue test invoice",
             "lines": [{"item_id": item_id, "weight_kg": 800, "rate_per_kg": 70}],
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
     invoice_payload = resp.json()["invoice"]
@@ -442,7 +415,7 @@ def test_receivables_overdue_aging(http_client):
     finally:
         db.close()
 
-    response = http_client.get("/steel/finance/receivables", headers=headers)
+    response = http_client.get("/steel/finance/receivables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -469,24 +442,22 @@ def test_receivables_collection_efficiency(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    item_id = _create_item(http_client, headers, "REC-EFF", "Efficiency Item", "finished_goods", rate=60.0)
-    _create_inward(http_client, headers, item_id, 5000)
+    item_id = _create_item(http_client,  "REC-EFF", "Efficiency Item", "finished_goods", rate=60.0)
+    _create_inward(http_client,  item_id, 5000)
 
     # Invoice 1: 1500 KG at 60 = 90000 - paid fully = 90000
     inv1 = _create_invoice(
-        http_client, headers, "Eff Buyer", [{"item_id": item_id, "weight_kg": 1500, "rate_per_kg": 60}]
+        http_client,  "Eff Buyer", [{"item_id": item_id, "weight_kg": 1500, "rate_per_kg": 60}]
     )
-    _create_payment(http_client, headers, inv1["customer_id"], inv1["id"], inv1["total_amount"])
+    _create_payment(http_client,  inv1["customer_id"], inv1["id"], inv1["total_amount"])
 
     # Invoice 2: 1000 KG at 60 = 60000 - unpaid
     inv2 = _create_invoice(
-        http_client, headers, "Eff Buyer", [{"item_id": item_id, "weight_kg": 1000, "rate_per_kg": 60}]
+        http_client,  "Eff Buyer", [{"item_id": item_id, "weight_kg": 1000, "rate_per_kg": 60}]
     )
 
     # Total invoiced = 150000, paid = 90000
-    response = http_client.get("/steel/finance/receivables", headers=headers)
+    response = http_client.get("/steel/finance/receivables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -518,19 +489,18 @@ def test_finance_endpoints_require_authentication(http_client):
 
 
 def _create_vendor(
-    http_client, headers: dict, name: str, terms: int = 30
+    http_client,  name: str, terms: int = 30
 ) -> dict:
     resp = http_client.post(
         "/steel/vendors",
         json={"name": name, "payment_terms_days": terms, "notes": "Test vendor"},
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
     return resp.json()["vendor"]
 
 
 def _create_vendor_bill(
-    http_client, headers: dict, vendor_id: int, total: float, bill_date: str | None = None, due_date: str | None = None
+    http_client,  vendor_id: int, total: float, bill_date: str | None = None, due_date: str | None = None
 ) -> dict:
     import time as _time
     import random as _random
@@ -546,13 +516,13 @@ def _create_vendor_bill(
         "total_amount": round(total, 2),
         "notes": "Test bill",
     }
-    resp = http_client.post("/steel/vendor-bills", json=payload, headers=headers)
+    resp = http_client.post("/steel/vendor-bills", json=payload)
     assert resp.status_code == HTTPStatus.OK, f"Bill creation: {resp.status_code}: {resp.text[:300]}"
     return resp.json()["bill"]
 
 
 def _create_expense(
-    http_client, headers: dict, category: str, description: str, total: float, expense_date: str | None = None
+    http_client,  category: str, description: str, total: float, expense_date: str | None = None
 ) -> dict:
     payload = {
         "expense_date": expense_date or date.today().isoformat(),
@@ -562,7 +532,7 @@ def _create_expense(
         "total_amount": round(total, 2),
         "payment_status": "unpaid",
     }
-    resp = http_client.post("/steel/expenses", json=payload, headers=headers)
+    resp = http_client.post("/steel/expenses", json=payload)
     assert resp.status_code == HTTPStatus.OK, f"Expense creation: {resp.status_code}: {resp.text[:300]}"
     return resp.json()["expense"]
 
@@ -574,9 +544,7 @@ def test_payables_empty(http_client):
     """No vendor bills should return empty payables."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/finance/payables", headers=headers)
+    response = http_client.get("/steel/finance/payables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -593,12 +561,10 @@ def test_payables_with_bill(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    vendor = _create_vendor(http_client,  "Supply Co")
+    _create_vendor_bill(http_client,  vendor["id"], 50000.0)
 
-    vendor = _create_vendor(http_client, headers, "Supply Co")
-    _create_vendor_bill(http_client, headers, vendor["id"], 50000.0)
-
-    response = http_client.get("/steel/finance/payables", headers=headers)
+    response = http_client.get("/steel/finance/payables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -614,17 +580,15 @@ def test_payables_with_paid_bill(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    vendor = _create_vendor(http_client, headers, "Paid Vendor")
-    bill = _create_vendor_bill(http_client, headers, vendor["id"], 30000.0)
+    vendor = _create_vendor(http_client,  "Paid Vendor")
+    bill = _create_vendor_bill(http_client,  vendor["id"], 30000.0)
 
     # Pay the bill in full - note: the payment endpoint uses /steel/customers/payments
     # which doesn't support vendor bills directly. So we'll leave it unpaid for now
     # since the vendor payment allocation system requires separate endpoints.
     # Just verify the bill appears correctly.
 
-    response = http_client.get("/steel/finance/payables", headers=headers)
+    response = http_client.get("/steel/finance/payables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -639,10 +603,8 @@ def test_payables_overdue_via_db(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    vendor = _create_vendor(http_client, headers, "Slow Pay Co")
-    bill = _create_vendor_bill(http_client, headers, vendor["id"], 25000.0)
+    vendor = _create_vendor(http_client,  "Slow Pay Co")
+    bill = _create_vendor_bill(http_client,  vendor["id"], 25000.0)
     bill_id = bill["id"]
 
     # Force due_date into the past via direct DB update
@@ -661,7 +623,7 @@ def test_payables_overdue_via_db(http_client):
     finally:
         db.close()
 
-    response = http_client.get("/steel/finance/payables", headers=headers)
+    response = http_client.get("/steel/finance/payables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -688,16 +650,14 @@ def test_payables_multiple_bills(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    vendor = _create_vendor(http_client, headers, "Multi Bill Co")
+    vendor = _create_vendor(http_client,  "Multi Bill Co")
 
     # Create 3 bills: 10000, 20000, 30000 = 60000 total outstanding
-    _create_vendor_bill(http_client, headers, vendor["id"], 10000.0)
-    _create_vendor_bill(http_client, headers, vendor["id"], 20000.0)
-    _create_vendor_bill(http_client, headers, vendor["id"], 30000.0)
+    _create_vendor_bill(http_client,  vendor["id"], 10000.0)
+    _create_vendor_bill(http_client,  vendor["id"], 20000.0)
+    _create_vendor_bill(http_client,  vendor["id"], 30000.0)
 
-    response = http_client.get("/steel/finance/payables", headers=headers)
+    response = http_client.get("/steel/finance/payables")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -708,9 +668,7 @@ def test_payables_multiple_bills(http_client):
 def test_payables_endpoint_rejects_non_steel(http_client):
     """Non-steel factory should get 400."""
     user = register_user(http_client, role="admin")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/finance/payables", headers=headers)
+    response = http_client.get("/steel/finance/payables")
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "steel factory" in response.text.lower()
 
@@ -722,9 +680,7 @@ def test_expenses_empty(http_client):
     """No expenses should return empty summary."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/finance/expenses", headers=headers)
+    response = http_client.get("/steel/finance/expenses")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -739,13 +695,11 @@ def test_expenses_basic(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    _create_expense(http_client,  "electricity", "Monthly electricity bill", 15000.0)
+    _create_expense(http_client,  "labour", "Weekly labour payment", 8000.0)
+    _create_expense(http_client,  "maintenance", "Machine repair", 12000.0)
 
-    _create_expense(http_client, headers, "electricity", "Monthly electricity bill", 15000.0)
-    _create_expense(http_client, headers, "labour", "Weekly labour payment", 8000.0)
-    _create_expense(http_client, headers, "maintenance", "Machine repair", 12000.0)
-
-    response = http_client.get("/steel/finance/expenses?days=90", headers=headers)
+    response = http_client.get("/steel/finance/expenses?days=90")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -768,16 +722,14 @@ def test_expenses_with_vendor_bills(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Create a direct expense
-    _create_expense(http_client, headers, "admin", "Office supplies", 5000.0)
+    _create_expense(http_client,  "admin", "Office supplies", 5000.0)
 
     # Create a vendor and bill (should appear as vendor_bills category)
-    vendor = _create_vendor(http_client, headers, "Raw Supply Inc")
-    _create_vendor_bill(http_client, headers, vendor["id"], 100000.0)
+    vendor = _create_vendor(http_client,  "Raw Supply Inc")
+    _create_vendor_bill(http_client,  vendor["id"], 100000.0)
 
-    response = http_client.get("/steel/finance/expenses?days=90", headers=headers)
+    response = http_client.get("/steel/finance/expenses?days=90")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -797,19 +749,17 @@ def test_expenses_monthly_trend(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Create expenses on different dates to get different months
     today = date.today()
     # Current month expense
-    _create_expense(http_client, headers, "electricity", "Current month power", 20000.0,
+    _create_expense(http_client,  "electricity", "Current month power", 20000.0,
                     expense_date=today.isoformat())
     # Last month expense
     last_month = today.replace(day=1) - timedelta(days=5)
-    _create_expense(http_client, headers, "rent", "Last month rent", 50000.0,
+    _create_expense(http_client,  "rent", "Last month rent", 50000.0,
                     expense_date=last_month.isoformat())
 
-    response = http_client.get("/steel/finance/expenses?days=365", headers=headers)
+    response = http_client.get("/steel/finance/expenses?days=365")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -823,8 +773,6 @@ def test_expenses_monthly_trend(http_client):
 def test_expenses_endpoint_rejects_non_steel(http_client):
     """Non-steel factory should get 400."""
     user = register_user(http_client, role="admin")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/finance/expenses", headers=headers)
+    response = http_client.get("/steel/finance/expenses")
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "steel factory" in response.text.lower()

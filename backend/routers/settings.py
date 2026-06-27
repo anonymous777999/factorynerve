@@ -475,6 +475,7 @@ def _serialize_factory_summaries(
 def get_factory_profiles(
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
+    # factory-profiles is a public lookup — no PDP needed, just auth
     del current_user
     return [
         {
@@ -1511,6 +1512,7 @@ def deactivate_user(
 
 @router.get("/users/lookup")
 def lookup_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[dict]:
+    PDP(db=db).require_permission(actor=current_user, permission_key="user.directory.view")
     query = _scoped_users_query(db, current_user)
     return [{"id": user.id, "user_code": user.user_code, "name": user.name} for user in query.all()]
 
@@ -1520,6 +1522,7 @@ def get_usage(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.status.view")
     org_id = resolve_org_id(current_user)
     if org_id:
         plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
@@ -1532,6 +1535,7 @@ def last_plan_upgrade(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.status.view")
     org_id = resolve_org_id(current_user)
     query = db.query(AuditLog).filter(AuditLog.action == "PLAN_UPGRADED")
     if org_id:

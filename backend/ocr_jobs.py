@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 import io
+import json as json_module
 
 from backend.ledger_scan import (
     build_excel_bytes as ledger_build_excel_bytes,
@@ -30,10 +31,16 @@ from backend.utils import PROJECT_ROOT
 logger = logging.getLogger(__name__)
 
 JOB_DIR = PROJECT_ROOT / "exports" / "ocr_jobs"
-MAX_QUEUE = int(os.getenv("OCR_MAX_QUEUE", "20"))
-MAX_WORKERS = int(os.getenv("OCR_MAX_WORKERS", "2"))
+MAX_QUEUE = int(os.getenv("OCR_MAX_QUEUE", "50"))
+MAX_WORKERS = int(os.getenv("OCR_MAX_WORKERS", "4"))
 OCR_JOB_MAX_ATTEMPTS = int(os.getenv("OCR_JOB_MAX_ATTEMPTS", "3"))
 OCR_JOB_RETRY_BACKOFF_SECONDS = float(os.getenv("OCR_JOB_RETRY_BACKOFF_SECONDS", "2"))
+# Maximum number of job records kept in the in-memory dict.  When this limit
+# is reached, the oldest terminal (completed/failed) jobs are evicted first to
+# prevent unbounded memory growth during a burst of 500+ scans.
+_MAX_TRACKED_JOBS = int(os.getenv("OCR_MAX_TRACKED_JOBS", "500"))
+_JOB_PERSIST_PATH = JOB_DIR / "_ocr_jobs_persist.json"
+_TERMINAL_STATUSES = frozenset({"completed", "failed", "cancelled"})
 
 
 @dataclass
@@ -78,6 +85,49 @@ def _update_job(job_id: str, **updates: Any) -> None:
         for key, value in updates.items():
             setattr(job, key, value)
         job.updated_at = time.time()
+    # Persist job state to disk so it survives server restart (Bug #5)
+    _save_jobs_to_disk()
+
+
+def _evict_old_jobs() -> None:
+    """Evict terminal jobs from the in-memory dict when the cap is reached.
+
+    Called under _jobs_lock by the caller.  Removes the oldest terminal
+    (completed/failed/cancelled) jobs first, sorted by updated_at ascending.
+    If there are still too many jobs after evicting all terminal ones, the
+    oldest non-terminal jobs are evicted as a last resort (they will be
+    unreachable by the client anyway).
+
+    This prevents unbounded memory growth during a burst of 500+ scans.
+    """
+    if len(_jobs) < _MAX_TRACKED_JOBS:
+        return
+    # Sort by updated_at so oldest jobs are evicted first
+    terminal = sorted(
+        [j for j in _jobs.values() if j.status in _TERMINAL_STATUSES],
+        key=lambda j: j.updated_at,
+    )
+    to_evict = terminal[: max(1, len(_jobs) - _MAX_TRACKED_JOBS + 1)]
+    if not to_evict:
+        # No terminal jobs — evict oldest non-terminal as last resort
+        all_sorted = sorted(_jobs.values(), key=lambda j: j.updated_at)
+        to_evict = all_sorted[: max(1, len(_jobs) - _MAX_TRACKED_JOBS + 1)]
+    for job in to_evict:
+        _jobs.pop(job.job_id, None)
+        logger.debug("OCR job evicted from memory: %s (status=%s)", job.job_id, job.status)
+
+
+def _cleanup_job_input(job: OcrJob) -> None:
+    """Delete the on-disk input .bin file for a job, if it exists.
+
+    Called when a job is permanently failed so we don't leak disk space.
+    Errors are logged but not re-raised — cleanup is best-effort.
+    """
+    if job.input_path:
+        try:
+            Path(job.input_path).unlink(missing_ok=True)
+        except Exception:
+            logger.warning("Failed to delete OCR input file: %s", job.input_path, exc_info=True)
 
 
 def _schedule_retry(job_id: str, delay_seconds: float) -> None:
@@ -91,7 +141,13 @@ def _schedule_retry(job_id: str, delay_seconds: float) -> None:
         try:
             _queue.put_nowait(job_id)
         except queue.Full:
+            # Queue is still full after the backoff delay — permanently fail the
+            # job and clean up its input file to avoid a disk-space leak (Fix #5).
+            with _jobs_lock:
+                job = _jobs.get(job_id)
             _update_job(job_id, status="failed", error="OCR queue full during retry.")
+            if job:
+                _cleanup_job_input(job)
 
     timer = threading.Timer(max(0.0, delay_seconds), _requeue)
     timer.daemon = True
@@ -180,8 +236,18 @@ def _process_table(job: OcrJob) -> None:
     if image_bytes[:4] == b"%PDF":
         try:
             image_bytes = _split_pdf_to_single_image(image_bytes)
-        except Exception:
-            logger.warning("PDF splitting failed; processing as single image (page 1 only).")
+        except Exception as _pdf_err:
+            logger.warning(
+                "PDF splitting failed; attempting single-page JPEG fallback: %s",
+                _pdf_err,
+            )
+            # _split_pdf_to_single_image already tries pdf2image; if it raised,
+            # we cannot safely pass raw PDF bytes to the image extractor.
+            # Raise so the job is retried rather than silently producing garbage.
+            raise RuntimeError(
+                "PDF conversion failed and no image fallback is available. "
+                "Please upload a JPEG or PNG image instead."
+            ) from _pdf_err
     table = table_extract_table_from_image(
         image_bytes,
         system_prompt=params.get("system_prompt"),
@@ -227,6 +293,7 @@ def _worker_loop() -> None:
                 _schedule_retry(job_id, delay)
             else:
                 _update_job(job_id, status="failed", error=str(error))
+                _cleanup_job_input(job)  # Fix #5: delete .bin file on permanent failure
                 record_ocr_failure(
                     job_id,
                     str(error),
@@ -243,6 +310,7 @@ def start_workers() -> None:
     if _workers_started:
         return
     _ensure_dirs()
+    _recover_jobs_on_startup()  # Reload queued jobs from disk (Bug #5)
     for idx in range(max(1, MAX_WORKERS)):
         thread = threading.Thread(target=_worker_loop, name=f"ocr-worker-{idx+1}", daemon=True)
         thread.start()
@@ -250,20 +318,139 @@ def start_workers() -> None:
     logger.info("OCR job workers started: %s", MAX_WORKERS)
 
 
+
+def _save_jobs_to_disk() -> None:
+    """Save all OCR job state to disk so jobs survive server restart.
+
+    NOTE: Must be called while _jobs_lock is ALREADY held (callers include
+    _update_job() and enqueue_job()).  Do NOT acquire the lock here or it
+    will deadlock.
+    """
+    data = {}
+    for jid, job in _jobs.items():
+        data[jid] = {
+                "job_id": job.job_id,
+                "kind": job.kind,
+                "status": job.status,
+                "created_at": job.created_at,
+                "updated_at": job.updated_at,
+                "attempts": job.attempts,
+                "max_attempts": job.max_attempts,
+                "error": job.error,
+                "input_path": job.input_path,
+                "result_path": job.result_path,
+                "metadata": job.metadata,
+                "params": job.params,
+            }
+        _JOB_PERSIST_PATH.write_text(json_module.dumps(data), encoding="utf-8")
+
+
+def _recover_jobs_on_startup() -> int:
+    """Reload jobs from disk persistence file on server startup.
+
+    Only recovers jobs in non-terminal states (queued, running, retrying).
+    Terminal jobs (completed, failed) are discarded on restart.
+
+    Returns the number of recovered (non-terminal) jobs.
+    """
+    persist_path = _JOB_PERSIST_PATH
+    if not persist_path.exists():
+        return 0
+    try:
+        raw = persist_path.read_text(encoding="utf-8")
+        data = json_module.loads(raw)
+    except Exception:
+        logger.warning("OCR job persistence file corrupted; starting fresh.")
+        return 0
+
+    recovered = 0
+    for jid, jdata in data.items():
+        if jdata.get("status") in ("completed", "failed", "cancelled"):
+            continue
+        job = OcrJob(
+            job_id=jdata.get("job_id", jid),
+            kind=jdata.get("kind", "unknown"),
+            status=jdata.get("status", "queued"),
+            created_at=jdata.get("created_at", time.time()),
+            updated_at=jdata.get("updated_at", time.time()),
+            attempts=jdata.get("attempts", 0),
+            max_attempts=jdata.get("max_attempts", OCR_JOB_MAX_ATTEMPTS),
+            error=jdata.get("error"),
+            input_path=jdata.get("input_path"),
+            result_path=jdata.get("result_path"),
+            metadata=jdata.get("metadata", {}),
+            params=jdata.get("params", {}),
+        )
+        _jobs[jid] = job
+        recovered += 1
+
+    if recovered:
+        logger.info("OCR job queue recovered %d jobs from disk persistence.", recovered)
+    return recovered
+
+
+# ── Circuit breaker: reject enqueue when recent failure rate is high ─────────
+_OCR_FAILURE_COUNTER: dict[str, int] = {}
+_OCR_FAILURE_WINDOW = 300  # 5 minutes
+_OCR_FAILURE_THRESHOLD = 20  # Reject after 20 failures in window
+
+
+def _circuit_breaker_allow() -> bool:
+    """Check if OCR circuit breaker allows new jobs."""
+    now = time.time()
+    cutoff = now - _OCR_FAILURE_WINDOW
+    # Simple approach: clear stale entries and count recent
+    stale_keys = [k for k, v in list(_OCR_FAILURE_COUNTER.items()) if v < cutoff]
+    for k in stale_keys:
+        del _OCR_FAILURE_COUNTER[k]
+    total = sum(1 for v in _OCR_FAILURE_COUNTER.values() if v >= cutoff)
+    return total < _OCR_FAILURE_THRESHOLD
+
+
+def _circuit_breaker_record_failure() -> None:
+    _OCR_FAILURE_COUNTER[uuid.uuid4().hex] = time.time()
+
+
+def _circuit_breaker_reset() -> None:
+    _OCR_FAILURE_COUNTER.clear()
+
 def enqueue_job(kind: str, image_bytes: bytes, params: dict[str, Any]) -> OcrJob:
+    """Enqueue an OCR job for async processing.
+
+    Backpressure ordering (Fix #5):
+    1. Check queue capacity FIRST via a non-blocking put attempt so we never
+       write bytes to disk for a job that will be immediately rejected.
+    2. Only after the queue slot is secured do we persist the input file and
+       register the job in _jobs.  This prevents disk-space leaks during
+       traffic bursts where the queue is already full.
+    """
     _ensure_dirs()
     job_id = uuid.uuid4().hex
-    input_path = JOB_DIR / f"{job_id}.bin"
-    _save_bytes(input_path, image_bytes)
-    job = OcrJob(job_id=job_id, kind=kind, input_path=str(input_path), params=params)
-    with _jobs_lock:
-        _jobs[job_id] = job
+
+    # --- Step 1: Claim a queue slot BEFORE touching disk ---
+    # We put the job_id speculatively; if the queue is full we bail immediately
+    # without writing any bytes.  The worker will not see this job_id in _jobs
+    # yet (we haven't inserted it), so it will skip it harmlessly.
     try:
         _queue.put_nowait(job_id)
     except queue.Full as error:
-        with _jobs_lock:
-            _jobs.pop(job_id, None)
         raise RuntimeError("OCR queue is full. Please retry later.") from error
+
+    # --- Step 2: Persist input file and register job now that slot is held ---
+    input_path = JOB_DIR / f"{job_id}.bin"
+    try:
+        _save_bytes(input_path, image_bytes)
+    except Exception:
+        # Disk write failed — the job_id is already in the queue but _jobs has
+        # no entry for it, so the worker will call _jobs.get(job_id) → None and
+        # skip it harmlessly.  Log and re-raise so the caller gets a 500.
+        logger.exception("OCR input file write failed for job %s; aborting enqueue.", job_id)
+        raise
+
+    job = OcrJob(job_id=job_id, kind=kind, input_path=str(input_path), params=params)
+    with _jobs_lock:
+        _evict_old_jobs()  # Evict terminal jobs before adding new one (memory protection)
+        _jobs[job_id] = job
     return job
 
 

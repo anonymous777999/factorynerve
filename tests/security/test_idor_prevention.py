@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from fastapi import HTTPException
@@ -14,8 +14,13 @@ from backend.models.ocr_verification import OcrVerification
 from backend.models.organization import Organization
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
+from backend.models.auth_user import AuthUser
+from backend.models.auth_session import AuthSession
+from backend.auth_security.tokens import generate_token, hash_token
 from backend.query_helpers import get_org_record_or_404
-from backend.security import create_access_token
+from backend.security import hash_password
+
+COOKIE_NAME = "auth_session"
 
 
 def _seed_org_user_data():
@@ -123,18 +128,42 @@ def _seed_org_user_data():
             "entry_b_id": entry_b.id,
             "verification_b_id": verification_b.id,
             "factory_a": factory_a,
+            "factory_b": factory_b,
         }
 
 
 def _auth_headers(user: User, factory_id: str) -> dict[str, str]:
-    token = create_access_token(
-        user_id=user.id,
-        role=user.role.value,
-        email=user.email,
-        org_id=user.org_id,
-        factory_id=factory_id,
-    )
-    return {"Authorization": f"Bearer {token}"}
+    """Create a v2 session for the user and return Cookie headers."""
+    email = user.email
+    with SessionLocal() as db:
+        # Find or create matching AuthUser
+        auth_user = db.query(AuthUser).filter(AuthUser.email == email).first()
+        if not auth_user:
+            auth_user = AuthUser(
+                email=email,
+                password_hash=hash_password("test-password"),
+                is_email_verified=True,
+                is_active=True,
+            )
+            db.add(auth_user)
+            db.flush()
+
+        # Create a session
+        now = datetime.now(timezone.utc)
+        raw_token = generate_token(32)
+        token_hash = hash_token(raw_token)
+        session = AuthSession(
+            auth_user_id=auth_user.id,
+            token_hash=token_hash,
+            csrf_hash=hash_token(generate_token(16)),
+            created_at=now,
+            expires_at=now + timedelta(days=30),
+            factory_id=factory_id,
+        )
+        db.add(session)
+        db.commit()
+
+    return {"Cookie": f"{COOKIE_NAME}={raw_token}"}
 
 
 def test_user_from_org_a_cannot_fetch_entry_belonging_to_org_b(http_client):

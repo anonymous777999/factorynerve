@@ -68,6 +68,8 @@ def _cache_key(db: Session, current_user: User, *parts: Any) -> str:
         resolve_factory_id(db, current_user) or "all",
         "analytics",
         current_user.id,
+        "role",
+        current_user.role.value,
         *parts,
     )
 

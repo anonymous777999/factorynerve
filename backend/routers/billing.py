@@ -238,6 +238,18 @@ def _get_payment_order(db: Session, *, order_id: str | None, for_update: bool = 
 
 
 def _resolve_event_id(data: dict, payload: bytes) -> str:
+    """Build a stable idempotency key for a Razorpay webhook event.
+
+    Priority:
+    1. event_type + payment_id  (most stable — payment IDs are immutable)
+    2. event_type + order_id    (stable — order IDs are immutable)
+    3. event_type + subscription_id (stable for subscription events)
+    4. Fallback: hash of ONLY the stable structural fields (event_type +
+       all entity IDs found in the payload), NOT the full raw bytes.
+       Using raw bytes caused duplicate WebhookEvent rows when Razorpay
+       retried the same event with slightly different metadata (timestamps,
+       attempt counts, etc.).
+    """
     event_type = str(data.get("event", ""))
     payment_entity = _extract_payment_entity(data)
     payment_id = payment_entity.get("id")
@@ -247,7 +259,21 @@ def _resolve_event_id(data: dict, payload: bytes) -> str:
     order_id = order_entity.get("id") or _extract_order_id(data)
     if order_id:
         return f"{event_type}:order:{order_id}"
-    digest = hashlib.sha256(payload).hexdigest()[:16]
+    # Check for subscription entity
+    payload_data = data.get("payload", {})
+    subscription_entity = (payload_data.get("subscription") or {}).get("entity", {})
+    subscription_id = subscription_entity.get("id")
+    if subscription_id:
+        return f"{event_type}:sub:{subscription_id}"
+    # Fallback: hash only stable structural fields, not raw bytes.
+    # Collect all entity IDs present in the payload to form a stable fingerprint.
+    stable_parts = [event_type]
+    for entity_key in sorted(payload_data.keys()):
+        entity_obj = (payload_data.get(entity_key) or {}).get("entity", {})
+        if isinstance(entity_obj, dict) and entity_obj.get("id"):
+            stable_parts.append(f"{entity_key}:{entity_obj['id']}")
+    stable_str = "|".join(stable_parts)
+    digest = hashlib.sha256(stable_str.encode()).hexdigest()[:16]
     return f"{event_type}:hash:{digest}"
 
 
@@ -262,13 +288,13 @@ def _fetch_order_entity(order_id: str | None) -> dict | None:
         import razorpay  # type: ignore
     except ModuleNotFoundError:
         return None
-    except Exception:
+    except Exception as error:
         logger.exception("Razorpay import failed while fetching order entity.")
         return None
     try:
         client = razorpay.Client(auth=(key_id, key_secret))
         return client.order.fetch(order_id) or None
-    except Exception:
+    except Exception as error:
         logger.exception("Razorpay initialization or order fetch failed for order_id=%s.", order_id)
         return None
 
@@ -430,7 +456,7 @@ def _activate_paid_order(
             existing_invoice.amount = float(amount_paise or 0) / 100.0
             existing_invoice.issued_at = existing_invoice.issued_at or datetime.now(timezone.utc)
             db.add(existing_invoice)
-    except Exception:
+    except Exception as error:
         logger.exception("Failed to record or update invoice for user_id=%s order_id=%s", user_id, provider_order_id)
     db.flush()
 
@@ -595,11 +621,11 @@ def _resolve_checkout_quote(
 ) -> dict:
     plan_info = get_plan(plan)
     if is_sales_only_plan(plan):
-        raise HTTPException(status_code=400, detail=f"{plan_info.get('name', 'This plan')} is sales-assisted and cannot be self-checked out.")
+        raise HTTPException(status_code=400, detail=f"{plan_info.get('name', 'This plan')} is sales-assisted and cannot be self-checked out.") from error
     monthly_price = int(plan_info.get("monthly_price", 0) or 0)
     cycle = (billing_cycle or "monthly").strip().lower()
     if cycle not in {"monthly", "yearly"}:
-        raise HTTPException(status_code=400, detail="Invalid billing cycle.")
+        raise HTTPException(status_code=400, detail="Invalid billing cycle.") from error
     multiplier = 1 if cycle == "monthly" else int(PRICING_META.get("yearly_multiplier", 12) or 12)
     included_users = int(plan_info.get("user_limit", 0) or 0)
     included_factories = int(plan_info.get("factory_limit", 0) or 0)
@@ -655,7 +681,7 @@ def _resolve_checkout_quote(
         addon_monthly_total += addon_payload["price"] * incremental_quantity
     monthly_total = monthly_price + extra_user_monthly + extra_factory_monthly + addon_monthly_total
     if monthly_total <= 0:
-        raise HTTPException(status_code=400, detail="Selected configuration is not billable.")
+        raise HTTPException(status_code=400, detail="Selected configuration is not billable.") from error
     return {
         "billing_cycle": cycle,
         "amount_paise": monthly_total * multiplier * 100,
@@ -720,7 +746,7 @@ def get_billing_status(
     db.commit()
     try:
         from backend.ocr_limits import get_org_usage_summary, get_usage_summary
-    except Exception:
+    except Exception as error:
         get_org_usage_summary = None
         get_usage_summary = None
     usage = None
@@ -744,7 +770,7 @@ def get_billing_status(
             get_feature_usage_summary,
             get_org_feature_usage_summary,
         )
-    except Exception:
+    except Exception as error:
         get_feature_usage_summary = None
         get_org_feature_usage_summary = None
     ai_usage = None
@@ -815,9 +841,10 @@ def download_invoice_pdf(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     """Generate and download a GST-compliant PDF invoice."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.invoice.view")
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found.")
+        raise HTTPException(status_code=404, detail="Invoice not found.") from error
     # Access check: user must own the invoice or belong to its org
     user_owns = invoice.user_id is not None and invoice.user_id == current_user.id
     if not user_owns:
@@ -825,7 +852,7 @@ def download_invoice_pdf(
         org = db.query(OrgModel).filter(OrgModel.org_id == invoice.org_id).first()
         user_org_id = resolve_org_id(current_user)
         if not org or not user_org_id or org.org_id != user_org_id:
-            raise HTTPException(status_code=403, detail="Access denied to this invoice.")
+            raise HTTPException(status_code=403, detail="Access denied to this invoice.") from error
     try:
         pdf_bytes = generate_invoice_pdf(db, invoice)
     except Exception as error:

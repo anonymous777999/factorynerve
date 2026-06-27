@@ -25,8 +25,10 @@ from tests.utils import register_user, set_org_plan_for_user_email
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+
+def _auth_headers(user: dict) -> dict[str, str]:
+    session_token = user.get("session_token", "")
+    return {"Cookie": f"auth_session={session_token}"}
 
 
 def _promote_factory_to_steel(email: str) -> None:
@@ -102,7 +104,6 @@ def _seed_stock(
             "display_unit": "kg",
             "current_rate_per_kg": rate,
         },
-        headers=headers,
     )
     assert created.status_code == HTTPStatus.OK, created.text
     item_id = created.json()["item"]["id"]
@@ -115,16 +116,15 @@ def _seed_stock(
             "quantity_kg": quantity_kg,
             "notes": "Test seed stock",
         },
-        headers=headers,
     )
     assert inward.status_code == HTTPStatus.OK, inward.text
     txn_id = inward.json()["transaction"]["id"]
     return item_id, txn_id
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 # SECTION 1: End-to-End Steel Corporate Workflow
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 
 class TestSteelCorporateEndToEnd:
     """Complete steel factory corporate lifecycle across multiple roles.
@@ -172,9 +172,9 @@ class TestSteelCorporateEndToEnd:
         → Manager creates invoice → Manager dispatches → Accountant records payment
         → Manager reconciles → Owner approves reconciliation.
         """
-        owner_headers = _auth_headers(owner["access_token"])
-        manager_headers = _auth_headers(manager["access_token"])
-        accountant_headers = _auth_headers(accountant["access_token"])
+        owner_headers = {"Cookie": f"auth_session={owner['session_token']}"}
+        manager_headers = {"Cookie": f"auth_session={manager['session_token']}"}
+        accountant_headers = {"Cookie": f"auth_session={accountant['session_token']}"}
 
         # ── Step 1: MANAGER creates inventory items ──────────────────────
         raw_item = http_client.post(
@@ -364,9 +364,9 @@ class TestSteelCorporateEndToEnd:
         assert invoice_detail.json()["invoice"]["outstanding_amount_inr"] == 150000
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 # SECTION 2: Role Hierarchy Security — Every Role × Every Steel Permission
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 
 class TestSteelRoleHierarchySecurity:
     """Verify every role in the hierarchy enforces correct steel permissions.
@@ -410,7 +410,7 @@ class TestSteelRoleHierarchySecurity:
     @pytest.fixture
     def headers(self, roles: dict[str, dict]) -> dict[str, dict[str, str]]:
         return {
-            name: _auth_headers(user["access_token"])
+            name: _auth_headers(user)
             for name, user in roles.items()
         }
 
@@ -608,9 +608,9 @@ class TestSteelRoleHierarchySecurity:
         assert approve.json()["reconciliation"]["status"] == "approved"
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 # SECTION 3: Corporate Security Risk Tests
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 
 class TestSteelCorporateSecurityRisks:
     """Corporate security risk tests for steel factory workflows.
@@ -636,7 +636,7 @@ class TestSteelCorporateSecurityRisks:
 
     @pytest.fixture
     def headers(self, owner: dict) -> dict[str, str]:
-        return _auth_headers(owner["access_token"])
+        return _auth_headers(owner)
 
     # ── Credit Limit Hard Enforcement ─────────────────────────────────────
 
@@ -657,7 +657,6 @@ class TestSteelCorporateSecurityRisks:
                 "payment_terms_days": 15,
                 "status": "active",
             },
-            headers=headers,
         )
         assert customer.status_code == HTTPStatus.OK, customer.text
         customer_id = customer.json()["customer"]["id"]
@@ -670,7 +669,6 @@ class TestSteelCorporateSecurityRisks:
                 "customer_id": customer_id,
                 "lines": [{"item_id": fin_id, "weight_kg": 1000, "rate_per_kg": 70}],
             },
-            headers=headers,
         )
         assert invoice_ok.status_code == HTTPStatus.OK, invoice_ok.text
         assert invoice_ok.json()["invoice"]["total_amount"] == 70000
@@ -683,7 +681,6 @@ class TestSteelCorporateSecurityRisks:
                 "customer_id": customer_id,
                 "lines": [{"item_id": fin_id, "weight_kg": 1000, "rate_per_kg": 70}],
             },
-            headers=headers,
         )
         assert invoice_blocked.status_code == HTTPStatus.CONFLICT, invoice_blocked.text
         assert "credit limit" in invoice_blocked.text.lower()
@@ -708,7 +705,6 @@ class TestSteelCorporateSecurityRisks:
                 "quantity_kg": 101,
                 "notes": "Exceeds available stock",
             },
-            headers=headers,
         )
         assert blocked.status_code == HTTPStatus.BAD_REQUEST, blocked.text
         assert "negative" in blocked.text.lower()
@@ -734,7 +730,6 @@ class TestSteelCorporateSecurityRisks:
                 "physical_qty_kg": 450,
                 "notes": "Count differs but no cause provided",
             },
-            headers=headers,
         )
         assert missing_cause.status_code == HTTPStatus.BAD_REQUEST, missing_cause.text
         assert "Mismatch cause is required" in missing_cause.text
@@ -748,7 +743,6 @@ class TestSteelCorporateSecurityRisks:
                 "notes": "Count with cause",
                 "mismatch_cause": "theft_or_leakage",
             },
-            headers=headers,
         )
         assert with_cause.status_code == HTTPStatus.OK, with_cause.text
         assert with_cause.json()["reconciliation"]["mismatch_cause"] == "theft_or_leakage"
@@ -762,7 +756,7 @@ class TestSteelCorporateSecurityRisks:
         """Corporate security: Customer identity verification mismatch must
         be rejected, not approved. This prevents identity fraud.
         """
-        manager_headers = _auth_headers(manager["access_token"])
+        manager_headers = {"Cookie": f"auth_session={manager['session_token']}"}
 
         # Create customer via manager so owner can review (avoids self-approval)
         customer = http_client.post(
@@ -795,7 +789,6 @@ class TestSteelCorporateSecurityRisks:
                 "official_legal_name": "Fraud Risk Buyer",
                 "official_state": "Gujarat",
             },
-            headers=headers,
         )
         assert blocked_approve.status_code == HTTPStatus.BAD_REQUEST, blocked_approve.text
 
@@ -808,10 +801,10 @@ class TestSteelCorporateSecurityRisks:
         to another org (tenant isolation).
         """
         org1 = _create_steel_user(http_client, role="owner")
-        org1_headers = _auth_headers(org1["access_token"])
+        org1_headers = {"Cookie": f"auth_session={org1['session_token']}"}
 
         org2 = _create_steel_user(http_client, role="owner")
-        org2_headers = _auth_headers(org2["access_token"])
+        org2_headers = {"Cookie": f"auth_session={org2['session_token']}"}
 
         # Seed data in org1
         item_id, _ = _seed_stock(http_client, org1_headers, item_code="ISO-ORG1")
@@ -836,9 +829,9 @@ class TestSteelCorporateSecurityRisks:
         assert customer_id not in org2_customer_ids, "Cross-org data leak: Org2 sees Org1 customers"
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 # SECTION 4: Sensitive Operation Guardrails
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 
 class TestSensitiveOperationGuardrails:
     """Guardrails for highly sensitive steel operations.
@@ -865,14 +858,14 @@ class TestSensitiveOperationGuardrails:
 
     @pytest.fixture
     def headers(self, owner: dict) -> dict[str, str]:
-        return _auth_headers(owner["access_token"])
+        return _auth_headers(owner)
 
     def test_invoice_void_requires_admin_plus(
         self, http_client: httpx.Client, headers: dict[str, str],
         operator: dict, admin: dict,
     ) -> None:
         """Corporate security: Only ADMIN_PLUS can void invoices (MFA required)."""
-        admin_headers = _auth_headers(admin["access_token"])
+        admin_headers = {"Cookie": f"auth_session={admin['session_token']}"}
 
         fin_id, _ = _seed_stock(
             http_client, headers, item_code="VOID-SEC",
@@ -893,7 +886,7 @@ class TestSensitiveOperationGuardrails:
         invoice_id = invoice.json()["invoice"]["id"]
 
         # Operator cannot void invoices
-        op_headers = _auth_headers(operator["access_token"])
+        op_headers = {"Cookie": f"auth_session={operator['session_token']}"}
         op_void = http_client.post(
             f"/steel/invoices/{invoice_id}/void",
             headers=op_headers,
@@ -905,7 +898,6 @@ class TestSensitiveOperationGuardrails:
         # test mode the user has no MFA enrolled, so _check_mfa() allows through.
         void_resp = http_client.post(
             f"/steel/invoices/{invoice_id}/void",
-            headers=headers,
         )
         assert void_resp.status_code == HTTPStatus.OK, (
             f"Owner should be able to void invoice (MFA not enrolled): {void_resp.text[:200]}"
@@ -916,7 +908,7 @@ class TestSensitiveOperationGuardrails:
         operator: dict, admin: dict,
     ) -> None:
         """Corporate security: Only ADMIN_PLUS can cancel dispatches (MFA required)."""
-        admin_headers = _auth_headers(admin["access_token"])
+        admin_headers = {"Cookie": f"auth_session={admin['session_token']}"}
 
         fin_id, _ = _seed_stock(
             http_client, headers, item_code="DISP-CANCEL",
@@ -952,7 +944,7 @@ class TestSensitiveOperationGuardrails:
         dispatch_id = dispatch.json()["dispatch"]["id"]
 
         # Operator cannot cancel dispatches (endpoint doesn't exist, so 404)
-        op_headers = _auth_headers(operator["access_token"])
+        op_headers = {"Cookie": f"auth_session={operator['session_token']}"}
         op_cancel = http_client.post(
             f"/steel/dispatches/{dispatch_id}/cancel",
             headers=op_headers,
@@ -965,7 +957,6 @@ class TestSensitiveOperationGuardrails:
         cancel_resp = http_client.post(
             f"/steel/dispatches/{dispatch_id}/status",
             json={"status": "cancelled"},
-            headers=headers,
         )
         assert cancel_resp.status_code == HTTPStatus.OK, (
             f"Owner should be able to cancel dispatch: {cancel_resp.text[:200]}"
@@ -984,7 +975,6 @@ class TestSensitiveOperationGuardrails:
         customer = http_client.post(
             "/steel/customers",
             json={"name": "Payment Reversal Buyer", "phone": "919000000001", "credit_limit": 500000, "payment_terms_days": 15},
-            headers=headers,
         )
         assert customer.status_code == HTTPStatus.OK, customer.text
         customer_id = customer.json()["customer"]["id"]
@@ -996,7 +986,6 @@ class TestSensitiveOperationGuardrails:
                 "customer_id": customer_id,
                 "lines": [{"item_id": fin_id, "weight_kg": 1000, "rate_per_kg": 70}],
             },
-            headers=headers,
         )
         assert invoice.status_code == HTTPStatus.OK, invoice.text
         invoice_id = invoice.json()["invoice"]["id"]
@@ -1010,13 +999,12 @@ class TestSensitiveOperationGuardrails:
                 "amount": 70000,
                 "payment_mode": "bank_transfer",
             },
-            headers=headers,
         )
         assert payment.status_code == HTTPStatus.OK, payment.text
         payment_id = payment.json()["payment"]["id"]
 
         # Operator cannot reverse payments (endpoint doesn't exist, so 404)
-        op_headers = _auth_headers(operator["access_token"])
+        op_headers = {"Cookie": f"auth_session={operator['session_token']}"}
         op_reverse = http_client.post(
             f"/steel/customers/payments/{payment_id}/reverse",
             headers=op_headers,
@@ -1026,9 +1014,9 @@ class TestSensitiveOperationGuardrails:
         )
 
 
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 # SECTION 5: Multi-Role E2E Approval Workflow
-# ══════════════════════════════════════════════════════════════════════════════
+#                                                                                                                                                             
 
 class TestMultiRoleApprovalWorkflow:
     """Complete maker-checker workflows across role boundaries.
@@ -1068,9 +1056,9 @@ class TestMultiRoleApprovalWorkflow:
         - A third person can audit the queue
         - Chain of custody is preserved in audit logs
         """
-        owner_headers = _auth_headers(owner["access_token"])
-        manager_headers = _auth_headers(manager["access_token"])
-        supervisor_headers = _auth_headers(supervisor["access_token"])
+        owner_headers = {"Cookie": f"auth_session={owner['session_token']}"}
+        manager_headers = {"Cookie": f"auth_session={manager['session_token']}"}
+        supervisor_headers = {"Cookie": f"auth_session={supervisor['session_token']}"}
 
         # Owner seeds stock
         raw_id, _ = _seed_stock(
@@ -1134,9 +1122,9 @@ class TestMultiRoleApprovalWorkflow:
 
         This is a monotonicity test for the role hierarchy security model.
         """
-        owner_headers = _auth_headers(owner["access_token"])
-        manager_headers = _auth_headers(manager["access_token"])
-        supervisor_headers = _auth_headers(supervisor["access_token"])
+        owner_headers = {"Cookie": f"auth_session={owner['session_token']}"}
+        manager_headers = {"Cookie": f"auth_session={manager['session_token']}"}
+        supervisor_headers = {"Cookie": f"auth_session={supervisor['session_token']}"}
 
         # Seed data
         fin_id, _ = _seed_stock(

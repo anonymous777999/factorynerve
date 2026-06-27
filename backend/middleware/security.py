@@ -20,7 +20,6 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.responses import JSONResponse, Response
 
-from backend.security import decode_access_token
 from backend.utils import request_id_var
 
 
@@ -123,21 +122,6 @@ def apply_security(app: FastAPI) -> None:
     endpoint_request_timestamps: dict[str, deque[float]] = defaultdict(deque)
 
     def _rate_key(request: Request) -> str:
-        auth = request.headers.get("Authorization") or ""
-        token = ""
-        if auth.startswith("Bearer "):
-            token = auth.replace("Bearer ", "", 1).strip()
-        if token:
-            try:
-                payload = decode_access_token(token)
-                org_id = payload.get("org_id")
-                user_id = payload.get("sub")
-                if org_id:
-                    return f"org:{org_id}"
-                if user_id:
-                    return f"user:{user_id}"
-            except Exception:
-                pass
         ip_address = request.client.host if request.client else "unknown"
         return f"ip:{ip_address}"
 

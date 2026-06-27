@@ -98,6 +98,11 @@ class User(Base):
     refresh_tokens = relationship("RefreshToken", back_populates="user")
 
 
+# Late import ensures RefreshToken model is loaded before SQLAlchemy resolves
+# the User.refresh_tokens relationship reference during mapper configuration.
+from backend.models.refresh_token import RefreshToken as _RefreshToken  # noqa: F401,E402
+
+
 class UserBaseSchema(BaseModel):
     org_id: str
     name: str = Field(min_length=2, max_length=120)

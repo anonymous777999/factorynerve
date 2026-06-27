@@ -134,7 +134,7 @@ def _create_and_approve_entry(
         "scrap_qty_entry": scrap_qty_entry,
         "notes": "Test entry for quality intelligence",
     }
-    resp = http_client.post("/entries", json=payload, headers=headers)
+    resp = http_client.post("/entries", json=payload)
     assert resp.status_code in (HTTPStatus.OK, HTTPStatus.CREATED), \
         f"Entry creation: {resp.status_code}: {resp.text[:300]}"
     data = resp.json()
@@ -159,7 +159,7 @@ def _create_and_approve_entry(
 
 def _create_batch(
     http_client,
-    headers: dict,
+    
     input_id: int,
     output_id: int,
     input_kg: float,
@@ -183,13 +183,13 @@ def _create_batch(
     if rejection_kg is not None:
         payload["rejection_qty_kg"] = rejection_kg
 
-    resp = http_client.post("/steel/batches", json=payload, headers=headers)
+    resp = http_client.post("/steel/batches", json=payload)
     assert resp.status_code == HTTPStatus.OK, f"Batch creation: {resp.status_code}: {resp.text[:300]}"
     return resp.json()["batch"]["id"]
 
 
 def _create_item(
-    http_client, headers: dict, item_code: str, name: str, category: str, rate: float = 50.0
+    http_client,  item_code: str, name: str, category: str, rate: float = 50.0
 ) -> int:
     resp = http_client.post(
         "/steel/inventory/items",
@@ -200,13 +200,12 @@ def _create_item(
             "display_unit": "kg",
             "current_rate_per_kg": rate,
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
     return resp.json()["item"]["id"]
 
 
-def _create_inward(http_client, headers: dict, item_id: int, qty_kg: float) -> None:
+def _create_inward(http_client,  item_id: int, qty_kg: float) -> None:
     resp = http_client.post(
         "/steel/inventory/transactions",
         json={
@@ -215,7 +214,6 @@ def _create_inward(http_client, headers: dict, item_id: int, qty_kg: float) -> N
             "quantity_kg": qty_kg,
             "notes": "Test inward",
         },
-        headers=headers,
     )
     assert resp.status_code == HTTPStatus.OK, resp.text
 
@@ -226,9 +224,7 @@ def _create_inward(http_client, headers: dict, item_id: int, qty_kg: float) -> N
 def test_quality_intelligence_rejects_non_steel_factory(http_client):
     """Non-steel factory should get 400."""
     user = register_user(http_client, role="admin")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.BAD_REQUEST
     assert "steel factory" in response.text.lower()
 
@@ -237,9 +233,7 @@ def test_quality_intelligence_empty_factory(http_client):
     """A factory with no entries should return all-zero analytics."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -270,8 +264,6 @@ def test_quality_intelligence_basic_summary_with_data(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Seed defect reasons for FK references
     dr_map = _seed_defect_reasons()
 
@@ -282,7 +274,7 @@ def test_quality_intelligence_basic_summary_with_data(http_client):
                   scrap_qty_entry=10, rework_required=True)
     _create_and_approve_entry(http_client, headers, shift="night", units_produced=100)  # clean entry
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -304,8 +296,6 @@ def test_quality_intelligence_defect_categorization(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     # Create entries with different defect reasons — use different shifts to avoid 409 conflicts
@@ -316,7 +306,7 @@ def test_quality_intelligence_defect_categorization(http_client):
     _create_and_approve_entry(http_client, headers, shift="night", units_produced=100,
                   rejection_qty=2, defect_reason_id=dr_map["surface_defect"])
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -336,14 +326,12 @@ def test_quality_intelligence_by_operator(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     _create_and_approve_entry(http_client, headers, units_produced=100,
                   rejection_qty=5, defect_reason_id=dr_map["equipment_failure"])
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -361,8 +349,6 @@ def test_quality_intelligence_by_shift(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     today = date.today().isoformat()
@@ -372,7 +358,7 @@ def test_quality_intelligence_by_shift(http_client):
     _create_and_approve_entry(http_client, headers, shift="evening", units_produced=100,
                   rejection_qty=0, entry_date=today)
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -391,14 +377,12 @@ def test_quality_intelligence_by_department(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     _create_and_approve_entry(http_client, headers, department="Rolling Mill", units_produced=100,
                   rejection_qty=4, defect_reason_id=dr_map["material_defect"])
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -417,8 +401,6 @@ def test_quality_intelligence_scrap_vs_rework(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     # Use different shifts to avoid 409 conflicts
     # Entry with scrap only
     _create_and_approve_entry(http_client, headers, shift="morning", units_produced=100, scrap_qty_entry=20)
@@ -428,7 +410,7 @@ def test_quality_intelligence_scrap_vs_rework(http_client):
     _create_and_approve_entry(http_client, headers, shift="night", units_produced=100,
                   scrap_qty_entry=10, rework_required=True)
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -444,16 +426,14 @@ def test_quality_intelligence_batch_integration(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
+    raw_id = _create_item(http_client,  "QI-RAW", "QI Input", "raw_material", rate=50.0)
+    prod_id = _create_item(http_client,  "QI-OUT", "QI Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
 
-    raw_id = _create_item(http_client, headers, "QI-RAW", "QI Input", "raw_material", rate=50.0)
-    prod_id = _create_item(http_client, headers, "QI-OUT", "QI Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
-
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=300, rejection_kg=50)
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -472,8 +452,6 @@ def test_quality_intelligence_financial_redaction(http_client):
     """
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     # Create entry with scrap (which generates cost data)
@@ -481,16 +459,20 @@ def test_quality_intelligence_financial_redaction(http_client):
                   scrap_qty_entry=15, rework_required=True)
 
     # Create batch with scrap for batch-level cost
-    raw_id = _create_item(http_client, headers, "FR2-RAW", "FR2 Input", "raw_material", rate=50.0)
-    prod_id = _create_item(http_client, headers, "FR2-OUT", "FR2 Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600, scrap_kg=200)
+    raw_id = _create_item(http_client,  "FR2-RAW", "FR2 Input", "raw_material", rate=50.0)
+    prod_id = _create_item(http_client,  "FR2-OUT", "FR2 Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600, scrap_kg=200)
 
     # Switch to supervisor (has analytics.view but NOT scrap_cost.view)
     from backend.database import SessionLocal, init_db
     from backend.models.user import User
     from backend.models.user_factory_role import UserFactoryRole
-    from backend.security import create_access_token
+    from backend.models.auth_user import AuthUser
+    from backend.models.auth_session import AuthSession
+    from backend.auth_security.tokens import generate_token, hash_token
+    from backend.security import hash_password as hp
+    from datetime import timedelta
     init_db()
     db = SessionLocal()
     try:
@@ -502,17 +484,38 @@ def test_quality_intelligence_financial_redaction(http_client):
         db.commit()
         membership = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == refreshed.id).first()
         fid = membership.factory_id if membership else None
-        new_token = create_access_token(
-            user_id=refreshed.id, role="supervisor",
-            email=refreshed.email, org_id=refreshed.org_id,
-            factory_id=fid, mfa_verified=False,
+
+        # Create a v2 session for the supervisor
+        auth_user = db.query(AuthUser).filter(AuthUser.email == refreshed.email).first()
+        if not auth_user:
+            auth_user = AuthUser(
+                email=refreshed.email,
+                password_hash=hp("test-password"),
+                is_email_verified=True,
+                is_active=True,
+            )
+            db.add(auth_user)
+            db.flush()
+        now = datetime.now(timezone.utc)
+        raw_token = generate_token(32)
+        token_hash = hash_token(raw_token)
+        session_obj = AuthSession(
+            auth_user_id=auth_user.id,
+            token_hash=token_hash,
+            csrf_hash=hash_token(generate_token(16)),
+            created_at=now,
+            expires_at=now + timedelta(days=30),
+            factory_id=fid,
         )
+        db.add(session_obj)
+        db.commit()
+        new_token = raw_token
     finally:
         db.close()
 
-    headers = {"Authorization": f"Bearer {new_token}"}
+    headers = {"Cookie": "auth_session=" + new_token}
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -527,14 +530,12 @@ def test_quality_intelligence_financial_access_for_owner(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     _create_and_approve_entry(http_client, headers, units_produced=100,
                   scrap_qty_entry=10, rework_required=True)
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -557,14 +558,12 @@ def test_quality_intelligence_data_confidence_section(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     _create_and_approve_entry(http_client, headers, units_produced=100,
                   rejection_qty=5, defect_reason_id=dr_map["material_defect"])
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -588,8 +587,6 @@ def test_quality_intelligence_rejection_trend(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     today = date.today()
@@ -602,7 +599,7 @@ def test_quality_intelligence_rejection_trend(http_client):
                   rejection_qty=3, scrap_qty_entry=8,
                   entry_date=yesterday)
 
-    response = http_client.get("/steel/quality/intelligence?days=30", headers=headers)
+    response = http_client.get("/steel/quality/intelligence?days=30")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -625,8 +622,6 @@ def test_quality_intelligence_daily_trend_with_batches(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     today = date.today().isoformat()
@@ -637,13 +632,13 @@ def test_quality_intelligence_daily_trend_with_batches(http_client):
                   entry_date=today)
 
     # Create batch with scrap/rejection
-    raw_id = _create_item(http_client, headers, "TR2-RAW", "Trend2 Input", "raw_material", rate=50.0)
-    prod_id = _create_item(http_client, headers, "TR2-OUT", "Trend2 Output", "finished_goods", rate=100.0)
-    _create_inward(http_client, headers, raw_id, 50000)
-    _create_batch(http_client, headers, raw_id, prod_id, 5000, 4600,
+    raw_id = _create_item(http_client,  "TR2-RAW", "Trend2 Input", "raw_material", rate=50.0)
+    prod_id = _create_item(http_client,  "TR2-OUT", "Trend2 Output", "finished_goods", rate=100.0)
+    _create_inward(http_client,  raw_id, 50000)
+    _create_batch(http_client,  raw_id, prod_id, 5000, 4600,
                   scrap_kg=300, rejection_kg=50, production_date=today)
 
-    response = http_client.get("/steel/quality/intelligence", headers=headers)
+    response = http_client.get("/steel/quality/intelligence")
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
 
@@ -661,8 +656,6 @@ def test_quality_intelligence_increase_drivers(http_client):
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
-    headers = {"Authorization": f"Bearer {user['access_token']}"}
-
     dr_map = _seed_defect_reasons()
 
     today = date.today()
@@ -679,7 +672,6 @@ def test_quality_intelligence_increase_drivers(http_client):
 
     response = http_client.get(
         "/steel/quality/intelligence?days=3&baseline_days=7",
-        headers=headers,
     )
     assert response.status_code == HTTPStatus.OK, response.text
     payload = response.json()
