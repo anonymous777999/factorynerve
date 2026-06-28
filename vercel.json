@@ -1,8 +1,6 @@
 {
-  "experimentalServices": {
-    "factorynerve-api": {
-      "type": "web",
-      "routePrefix": "/"
-    }
-  }
+  "github": {
+    "silent": true
+  },
+  "rootDirectory": "web"
 }
