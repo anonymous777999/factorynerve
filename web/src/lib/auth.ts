@@ -304,10 +304,26 @@ function mergeAuthContextWithUserPermissions(context: AuthContext, user: Current
 export async function recoverWorkspaceContextFromError(status: number): Promise<AuthContext | null> {
   const snapshot = getSessionSnapshot();
 
-  console.error(
-    "[recoverWorkspaceContextFromError]",
-    { status, factories: snapshot.factories, activeFactoryId: snapshot.activeFactoryId, userEmail: snapshot.user?.email, userName: snapshot.user?.name },
-  );
+  // Store diagnostic info in sessionStorage so it survives the page navigation
+  // to /onboarding/factory-required. The factory-required page reads this to
+  // display debug info.
+  if (typeof window !== "undefined") {
+    try {
+      window.sessionStorage.setItem(
+        "dpr:redirect-diagnostic",
+        JSON.stringify({
+          status,
+          timestamp: new Date().toISOString(),
+          factories: snapshot.factories,
+          activeFactoryId: snapshot.activeFactoryId,
+          userEmail: snapshot.user?.email,
+          userName: snapshot.user?.name,
+        }),
+      );
+    } catch {
+      // sessionStorage may be unavailable
+    }
+  }
 
   const recoveryPlan = resolveWorkspaceRecoveryPlan(
     {

@@ -7,8 +7,31 @@ import { Button } from "@/components/ui/button";
 import { logout } from "@/lib/auth";
 import { clearSession } from "@/lib/session-store";
 
+type RedirectDiagnostic = {
+  status: number;
+  timestamp: string;
+  factories: { factory_id: string; name: string }[];
+  activeFactoryId: string | null;
+  userEmail: string | null;
+  userName: string | null;
+};
+
+function readRedirectDiagnostic(): RedirectDiagnostic | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem("dpr:redirect-diagnostic");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as RedirectDiagnostic;
+    return parsed && typeof parsed === "object" && "status" in parsed ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function FactoryRequiredPage() {
   const [loggingOut, setLoggingOut] = useState(false);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
+  const diagnostic = readRedirectDiagnostic();
 
   const handleLogout = useCallback(async () => {
     setLoggingOut(true);
@@ -76,6 +99,23 @@ export default function FactoryRequiredPage() {
             support@dpr.ai
           </a>
         </p>
+
+        {diagnostic ? (
+          <div className="mt-6">
+            <button
+              type="button"
+              onClick={() => setShowDiagnostic((v) => !v)}
+              className="text-xs text-slate-600 underline transition hover:text-slate-400"
+            >
+              {showDiagnostic ? "Hide debug info" : "Show debug info"}
+            </button>
+            {showDiagnostic ? (
+              <pre className="mt-2 overflow-auto rounded-xl border border-white/5 bg-black/40 p-4 text-[11px] leading-5 text-slate-500">
+                {JSON.stringify(diagnostic, null, 2)}
+              </pre>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     </main>
   );
