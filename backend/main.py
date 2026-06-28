@@ -129,7 +129,6 @@ async def lifespan(_app: FastAPI):
     try:
         logger.info("Starting backend initialization.")
         init_db()
-        register_approval_callbacks()
         try:
             with SessionLocal() as db:
                 normalized = normalize_subscription_states(db)

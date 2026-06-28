@@ -5,8 +5,8 @@ timeout) create duplicate SteelDispatch rows with the same invoice lines,
 causing double stock deductions.  The column is nullable so existing rows are
 unaffected.
 
-Revision ID: 20260627_02
-Revises: 20260627_01
+Revision ID: 20260627_03
+Revises: 20260627_02
 Create Date: 2026-06-27
 """
 
@@ -17,8 +17,8 @@ from typing import ClassVar
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "20260627_02"
-down_revision: ClassVar[str] = "20260627_01"
+revision: str = "20260627_03"
+down_revision: ClassVar[str] = "20260627_02"
 branch_labels: ClassVar[str | None] = None
 depends_on: ClassVar[str | None] = None
 
