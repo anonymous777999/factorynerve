@@ -602,25 +602,39 @@ export async function getAuthContext(options?: {
   signal?: AbortSignal;
   timeoutMs?: number;
 }): Promise<AuthContext> {
+  const MAX_RETRIES = 1;
+  const RETRY_DELAY_MS = 500;
+
   return withBackendWakeRetry(
     async () => {
-      try {
-        const context = await apiFetch<AuthContext>(
-          "/auth/v2/context",
-          { signal: options?.signal },
-          { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
-        );
-        const user = await getMe(options);
-        return mergeAuthContextWithUserPermissions(context, user);
-      } catch (error) {
-        if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
-          const recovered = await recoverWorkspaceContextFromError(error.status);
-          if (recovered) {
-            return recovered;
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const context = await apiFetch<AuthContext>(
+            "/auth/v2/context",
+            { signal: options?.signal },
+            { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
+          );
+          const user = await getMe(options);
+          return mergeAuthContextWithUserPermissions(context, user);
+        } catch (error) {
+          const isAuthError = error instanceof ApiError && (error.status === 403 || error.status === 404);
+          if (isAuthError && attempt < MAX_RETRIES) {
+            // Brief delay to allow the session cookie from login to fully propagate
+            // before retrying the context fetch.
+            await delay(RETRY_DELAY_MS);
+            continue;
           }
+          if (isAuthError) {
+            const recovered = await recoverWorkspaceContextFromError(error.status);
+            if (recovered) {
+              return recovered;
+            }
+          }
+          throw error;
         }
-        throw error;
       }
+      // This line is unreachable — the loop always returns or throws.
+      throw new Error("Unreachable");
     },
     {
       retryMessage: "DPR.ai is waking up. Please wait a few seconds while your workspace reloads.",

@@ -52,7 +52,7 @@ async function readSessionAuthContext(
   }
 
   try {
-    const authUrl = new URL("/api/auth/me", request.url);
+    const authUrl = new URL("/api/auth/v2/me", request.url);
     const response = await fetch(authUrl, {
       method: "GET",
       headers: {
@@ -65,22 +65,31 @@ async function readSessionAuthContext(
       return { role: null, orgId: null, source: "auth_session" };
     }
 
-    const payload = (await response.json()) as Record<string, unknown> | null;
+    const rawPayload = (await response.json()) as Record<string, unknown> | null;
+    // Unwrap the response envelope ({ success, data }) if present.
+    // Backend endpoints like /auth/v2/me and /auth/v2/context wrap the response
+    // in a { success: true, data: {...} } envelope via middleware.
+    const innerPayload =
+      rawPayload &&
+      typeof rawPayload === "object" &&
+      "data" in rawPayload
+        ? (rawPayload.data as Record<string, unknown> | null)
+        : rawPayload;
     const user =
-      payload && typeof payload === "object" && "user" in payload
-        ? (payload.user as Record<string, unknown> | null)
+      innerPayload && typeof innerPayload === "object" && "user" in innerPayload
+        ? (innerPayload.user as Record<string, unknown> | null)
         : null;
     const rawRole =
       typeof user?.role === "string"
         ? user.role
-        : typeof payload?.role === "string"
-          ? payload.role
+        : typeof innerPayload?.role === "string"
+          ? innerPayload.role
           : null;
     const rawOrgId =
       typeof user?.org_id === "string"
         ? user.org_id
-        : typeof payload?.org_id === "string"
-          ? payload.org_id
+        : typeof innerPayload?.org_id === "string"
+          ? innerPayload.org_id
           : null;
 
     return {
