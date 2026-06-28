@@ -307,7 +307,10 @@ def init_db() -> None:
                         text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
                     )
                     conn.execute(
-                        text("INSERT OR REPLACE INTO alembic_version (version_num) VALUES (:rev)"),
+                        text("DELETE FROM alembic_version")
+                    )
+                    conn.execute(
+                        text("INSERT INTO alembic_version (version_num) VALUES (:rev)"),
                         {"rev": heads[0]},
                     )
                 logger.info("Database initialized and stamped at Alembic head (%s).", heads[0])

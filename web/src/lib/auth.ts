@@ -303,6 +303,12 @@ function mergeAuthContextWithUserPermissions(context: AuthContext, user: Current
 
 export async function recoverWorkspaceContextFromError(status: number): Promise<AuthContext | null> {
   const snapshot = getSessionSnapshot();
+
+  console.error(
+    "[recoverWorkspaceContextFromError]",
+    { status, factories: snapshot.factories, activeFactoryId: snapshot.activeFactoryId, userEmail: snapshot.user?.email, userName: snapshot.user?.name },
+  );
+
   const recoveryPlan = resolveWorkspaceRecoveryPlan(
     {
       activeFactoryId: snapshot.activeFactoryId,
