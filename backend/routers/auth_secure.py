@@ -37,6 +37,7 @@ from backend.auth_security.lockout import (
     increment_failed_login,
     reset_failed_login,
 )
+from backend.security import verify_password as legacy_verify_password
 
 
 router = APIRouter(tags=["AuthSecure"])
@@ -148,20 +149,66 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
             detail="Account temporarily locked due to too many failed login attempts. Try again later.",
         )
 
-    if not user or not verify_password(payload.password, user.password_hash):
-        if user:
-            now_locked = increment_failed_login(db, user)
-            if now_locked:
-                _log_event(
-                    db, action="AUTH_LOGIN_LOCKOUT", user_id=user.id,
-                    request=request, meta={"email": email},
-                )
-                db.commit()
-                raise HTTPException(
-                    status_code=status.HTTP_423_LOCKED,
-                    detail="Account temporarily locked due to too many failed login attempts. Try again later.",
-                )
-        _log_event(db, action="AUTH_LOGIN_FAILED", user_id=user.id if user else None, request=request, meta={"email": email})
+    if not user:
+        # Migration path: legacy User record exists but no AuthUser yet.
+        # This happens for accounts created via the old /auth/register flow
+        # which creates a User (bcrypt) but never created an AuthUser (argon2).
+        legacy_user = db.query(User).filter(
+            User.email == email,
+            User.is_active.is_(True),
+        ).first()
+        if legacy_user and legacy_verify_password(payload.password, legacy_user.password_hash):
+            # Password matches the legacy bcrypt hash — create AuthUser with
+            # the same password re-hashed using argon2 for the new auth system.
+            now = datetime.now(timezone.utc)
+            user = AuthUser(
+                email=email,
+                password_hash=hash_password(payload.password),
+                is_active=True,
+                is_email_verified=legacy_user.email_verified_at is not None,
+                password_changed_at=now,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(user)
+            db.flush()
+            _log_event(
+                db, action="AUTH_USER_MIGRATED",
+                user_id=user.id, request=request,
+                meta={"source": "legacy_user_migration"},
+            )
+            logger.info(
+                "Auto-migrated legacy User %s (id=%s) to AuthUser %s",
+                email, legacy_user.id, user.id,
+            )
+            # Continue with login — user now exists
+        else:
+            # AuthUser not found AND no matching legacy User (or wrong password)
+            _log_event(
+                db, action="AUTH_LOGIN_FAILED",
+                user_id=None, request=request,
+                meta={"email": email, "reason": "auth_user_not_found"},
+            )
+            db.commit()
+            raise _generic_login_error()
+
+    if not verify_password(payload.password, user.password_hash):
+        now_locked = increment_failed_login(db, user)
+        if now_locked:
+            _log_event(
+                db, action="AUTH_LOGIN_LOCKOUT", user_id=user.id,
+                request=request, meta={"email": email},
+            )
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail="Account temporarily locked due to too many failed login attempts. Try again later.",
+            )
+        _log_event(
+            db, action="AUTH_LOGIN_FAILED",
+            user_id=user.id, request=request,
+            meta={"email": email, "reason": "wrong_password"},
+        )
         db.commit()
         raise _generic_login_error()
 
