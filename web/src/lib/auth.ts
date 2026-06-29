@@ -400,11 +400,45 @@ export async function login(email: string, password: string): Promise<AuthRespon
       { cookieAuth: true },
     );
 
-    const context = await getAuthContext();
-    primeRoleRevision(context.user.role_revision);
-    primeSession(context);
+    // Fetch context directly (not via getAuthContext) to avoid the
+    // recovery-redirect logic that navigates to /onboarding/factory-required
+    // on 403/404. During login, any error should surface on the login form
+    // as a clear message, not as a silent redirect to a dead page.
+    let context = null as AuthContext | null;
+    try {
+      // Single retry for transient errors (e.g., cookie propagation delay)
+      for (let attempt = 0; attempt <= 1; attempt++) {
+        try {
+          const fetched = await apiFetch<AuthContext>(
+            "/auth/v2/context",
+            {},
+            { cacheKey: "session:context", timeoutMs: 8000 },
+          );
+          const user = await getMe();
+          context = mergeAuthContextWithUserPermissions(fetched, user);
+          break;
+        } catch (fetchError) {
+          if (attempt === 0 && fetchError instanceof ApiError && (fetchError.status === 403 || fetchError.status === 404)) {
+            await delay(500);
+            continue;
+          }
+          throw fetchError;
+        }
+      }
+    } catch (error) {
+      // Clear any stale session data and surface the error so the login
+      // form shows a meaningful message instead of redirecting away.
+      clearSession();
+      throw error;
+    }
+
+    // context is guaranteed non-null here — the loop always assigns it or throws
+    const resolvedContext = context!;
+
+    primeRoleRevision(resolvedContext.user.role_revision);
+    primeSession(resolvedContext);
     return {
-      ...context,
+      ...resolvedContext,
       access_token: "",
       token_type: "cookie",
     } as AuthResponse;
