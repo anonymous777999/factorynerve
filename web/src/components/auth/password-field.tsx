@@ -6,35 +6,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 type PasswordFieldProps = {
+  id?: string;
   label: string;
   value: string;
   autoComplete?: string;
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
+  minLength?: number;
 };
 
 export function PasswordField({
+  id,
   label,
   value,
   autoComplete,
   onChange,
   placeholder,
   required = false,
+  minLength,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
 
   return (
     <div>
-      <label className="text-sm text-[var(--muted)]">{label}</label>
+      <label htmlFor={id} className="text-sm text-[var(--muted)]">{label}</label>
       <div className="relative mt-2">
         <Input
+          id={id}
           type={visible ? "text" : "password"}
           autoComplete={autoComplete}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           required={required}
+          minLength={minLength}
           className="mt-0 pr-24"
         />
         <Button

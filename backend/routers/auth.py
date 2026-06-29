@@ -851,13 +851,33 @@ def logout_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
+    session_revoked = False
     try:
         session = get_v2_session(db, request)
-        require_v2_csrf(request, session)
+        # Attempt to revoke the session even if CSRF validation fails — a
+        # failed CSRF suggests the session may be compromised, so revoking
+        # it is the safest course of action.
+        try:
+            require_v2_csrf(request, session)
+        except HTTPException:
+            logger.warning(
+                "CSRF validation failed during logout for user %s — session will be revoked anyway.",
+                current_user.id,
+            )
+        # revoke_v2_session handles cookie deletion (response.delete_cookie)
+        # internally, so no explicit cookie cleanup is needed here.
         revoke_v2_session(db, session=session, response=response)
+        session_revoked = True
     except HTTPException:
+        pass
+
+    if not session_revoked:
+        # Fallback: session lookup failed, so manually clear cookies to
+        # ensure the user is signed out on this device even though the
+        # session couldn't be revoked server-side.
         response.delete_cookie(SESSION_COOKIE, path="/")
         response.delete_cookie(CSRF_COOKIE, path="/")
+
     _log_auth_event(db, "USER_LOGOUT", "User logged out.", current_user.id, request)
     db.commit()
     return {"message": "Logged out successfully."}
@@ -870,25 +890,61 @@ def logout_all_devices(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
+    session_revoked = False
+    from backend.models.auth_user import AuthUser
+
+    # Attempt to revoke all sessions for this user's AuthUser account.
+    # We use two strategies: first via the session cookie (preferred), then
+    # via email lookup (fallback for when the session cookie is already gone
+    # or CSRF validation fails).
     try:
         session = get_v2_session(db, request)
-        require_v2_csrf(request, session)
-        from backend.models.auth_user import AuthUser
-        auth_user = db.query(AuthUser).filter(
-            AuthUser.email == current_user.email,
-            AuthUser.is_active.is_(True),
-        ).first()
-        if auth_user:
-            revoke_all_v2_sessions(db, user_id=auth_user.id)
+        auth_user_id = session.auth_user_id
+        revoke_all_v2_sessions(db, user_id=auth_user_id)
+        session_revoked = True
+        # Attempt CSRF validation — log a warning on failure but don't block
+        # the logout since we already revoked all sessions.
+        try:
+            require_v2_csrf(request, session)
+        except HTTPException:
+            logger.warning(
+                "CSRF validation failed during logout-all for user %s — sessions already revoked.",
+                current_user.id,
+            )
     except HTTPException:
-        pass
+        # Fallback: resolve AuthUser by email and revoke all sessions.
+        # This handles the case where the session cookie is expired or
+        # missing entirely.
+        try:
+            auth_user = db.query(AuthUser).filter(
+                AuthUser.email == current_user.email,
+                AuthUser.is_active.is_(True),
+            ).first()
+            if auth_user:
+                revoke_all_v2_sessions(db, user_id=auth_user.id)
+                session_revoked = True
+                logger.info(
+                    "Fallback logout-all for user %s — revoked sessions via email lookup.",
+                    current_user.id,
+                )
+        except Exception as fallback_error:
+            logger.exception(
+                "Fallback session revocation failed during logout-all for user %s.",
+                current_user.id,
+            )
+
     response.delete_cookie(SESSION_COOKIE, path="/")
     response.delete_cookie(CSRF_COOKIE, path="/")
 
+    audit_detail = (
+        "User logged out from all devices (sessions revoked)."
+        if session_revoked
+        else "User logged out from all devices (cookies cleared, session revocation failed)."
+    )
     _log_auth_event(
         db,
         "USER_LOGOUT_ALL",
-        "User logged out from all devices.",
+        audit_detail,
         current_user.id,
         request,
         org_id=current_user.org_id,

@@ -260,25 +260,25 @@ export default function AccessPage() {
         <span className="h-px flex-1 bg-white/10" />
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-4" noValidate>
-        <div>
-          <label className="text-sm font-semibold uppercase tracking-label text-[#8ec4ff]">
-            {t("auth.login.email_label", "Email address")}
-          </label>
-          <Input
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            placeholder={t("auth.login.email_placeholder", "operator@factory.ai")}
-            required
-            className="auth-input mt-3"
-          />
+      <form onSubmit={onSubmit} className="space-y-4" noValidate>          <div>
+            <label htmlFor="login-email" className="text-sm font-semibold uppercase tracking-label text-[#8ec4ff]">
+              {t("auth.login.email_label", "Email address")}
+            </label>
+            <Input
+              id="login-email"
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder={t("auth.login.email_placeholder", "operator@factory.ai")}
+              required
+              className="auth-input mt-3"
+            />
         </div>
 
         <div>
           <div className="flex items-baseline justify-between">
-            <label className="text-sm font-semibold uppercase tracking-label text-[#d7dde8]">
+            <label htmlFor="login-password" className="text-sm font-semibold uppercase tracking-label text-[#d7dde8]">
               {t("auth.login.password_label", "Access password")}
             </label>
             <Link

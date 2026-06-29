@@ -36,10 +36,12 @@ def extract_client_ip(request: Request) -> str:
         return direct_ip
 
     if forwarded_for:
-        # Behind a trusted proxy: take the LAST IP in the chain (closest to
-        # the server), not the first (which the client can spoof).
+        # Behind a trusted proxy: take the FIRST IP in the chain (the
+        # original client), not the last (which is the nearest proxy).
+        # Taking the nearest proxy would mean all clients behind that proxy
+        # share the same rate limit, making the limit ineffective.
         parts = [p.strip() for p in forwarded_for.split(",") if p.strip()]
         if parts:
-            return parts[-1]
+            return parts[0]
 
     return direct_ip or "unknown"

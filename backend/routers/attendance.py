@@ -309,7 +309,7 @@ def _factory_now(factory: Factory | None) -> datetime:
 def _active_org_or_400(current_user: User) -> str:
     org_id = resolve_org_id(current_user)
     if not org_id:
-        raise HTTPException(status_code=400, detail="Organization could not be resolved.") from error
+        raise HTTPException(status_code=400, detail="Organization could not be resolved.")
     return org_id
 
 
@@ -1068,9 +1068,8 @@ def punch_attendance(
                 shift_end = yesterday_template.end_time  # datetime.time
                 local_time = local_now.time()
                 # Build a datetime for the shift end on today's date for comparison
-                from datetime import datetime as _dt
-                shift_end_dt = _dt.combine(current_date, shift_end)
-                shift_end_cutoff = _dt.combine(
+                shift_end_dt = datetime.combine(current_date, shift_end)
+                shift_end_cutoff = datetime.combine(
                     current_date,
                     shift_end,
                 ).replace(

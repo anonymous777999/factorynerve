@@ -338,12 +338,13 @@ export default function RegisterPage() {
           </details>
           <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("auth.register.name_label", "Full Name")}</label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} required />
+                <label htmlFor="register-name" className="text-sm text-[var(--muted)]">{t("auth.register.name_label", "Full Name")}</label>
+                <Input id="register-name" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />
               </div>
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("forms.email", "Email")}</label>
+                <label htmlFor="register-email" className="text-sm text-[var(--muted)]">{t("forms.email", "Email")}</label>
                 <Input
+                  id="register-email"
                   type="email"
                   autoComplete="email"
                   value={email}
@@ -353,29 +354,32 @@ export default function RegisterPage() {
               </div>
               <div className="md:col-span-1">
                 <PasswordField
+                  id="register-password"
                   label={t("forms.password", "Password")}
                   autoComplete="new-password"
                   value={password}
                   onChange={setPassword}
                   required
+                  minLength={12}
                 />
                 <p className="mt-2 text-xs text-[var(--muted)]">{t("auth.register.password_hint", "Use 12+ characters with mixed case, number, and symbol.")}</p>
               </div>
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("auth.register.account_type_label", "Account Type")}</label>
-                <Input value={t("auth.register.account_type_value", "Attendance worker access")} readOnly aria-readonly />
+                <label htmlFor="register-account-type" className="text-sm text-[var(--muted)]">{t("auth.register.account_type_label", "Account Type")}</label>
+                <Input id="register-account-type" value={t("auth.register.account_type_value", "Attendance worker access")} readOnly aria-readonly />
               </div>
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("auth.register.factory_label", "Company / Factory Name")}</label>
-                <Input value={factoryName} onChange={(e) => setFactoryName(e.target.value)} required />
+                <label htmlFor="register-factory" className="text-sm text-[var(--muted)]">{t("auth.register.factory_label", "Company / Factory Name")}</label>
+                <Input id="register-factory" value={factoryName} onChange={(e) => setFactoryName(e.target.value)} required minLength={2} />
               </div>
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("auth.register.company_code_label", "Company Code (optional)")}</label>
-                <Input value={companyCode} onChange={(e) => setCompanyCode(e.target.value)} />
+                <label htmlFor="register-company-code" className="text-sm text-[var(--muted)]">{t("auth.register.company_code_label", "Company Code (optional)")}</label>
+                <Input id="register-company-code" value={companyCode} onChange={(e) => setCompanyCode(e.target.value)} />
               </div>
               <div className="md:col-span-2">
-                <label className="text-sm text-[var(--muted)]">{t("forms.phone_number_optional", "Phone Number (optional)")}</label>
+                <label htmlFor="register-phone" className="text-sm text-[var(--muted)]">{t("forms.phone_number_optional", "Phone Number (optional)")}</label>
                 <Input
+                  id="register-phone"
                   type="tel"
                   autoComplete="tel"
                   inputMode="tel"

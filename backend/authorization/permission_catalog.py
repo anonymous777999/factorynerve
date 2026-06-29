@@ -525,29 +525,6 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         default_roles=_FINANCIAL_ROLES,
     ),
 
-    # ── Reporting & Analytics ──────────────────────────────────────────────
-    "reporting.insights.view": PermissionDef(
-        key="reporting.insights.view",
-        label="View insights",
-        description="View aggregated report insights and dashboards.",
-        scope_level=ScopeLevel.FACTORY,
-        default_roles=_SUPERVISOR_PLUS,
-    ),
-    "reporting.export.view": PermissionDef(
-        key="reporting.export.view",
-        label="Export reports",
-        description="Export production reports (PDF, Excel).",
-        scope_level=ScopeLevel.FACTORY,
-        default_roles=_EVERYONE_BUT_ATTENDANCE,
-    ),
-    "analytics.premium.view": PermissionDef(
-        key="analytics.premium.view",
-        label="View premium analytics",
-        description="Access premium analytics dashboards (plan-gated).",
-        scope_level=ScopeLevel.FACTORY,
-        default_roles=_SUPERVISOR_PLUS,
-    ),
-
     # ── AI ──────────────────────────────────────────────────────────────────
     "ai.suggestions.view": PermissionDef(
         key="ai.suggestions.view",
