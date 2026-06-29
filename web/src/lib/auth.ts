@@ -355,7 +355,10 @@ export async function recoverWorkspaceContextFromError(status: number): Promise<
     factories: [],
     organization: snapshot.organization,
   } as AuthContext);
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && window.location.pathname !== "/") {
+    // Only redirect to factory-required when NOT on the landing page.
+    // On the root page, the caller (getAuthContext → ensureSessionLoaded)
+    // handles the failure gracefully by showing the landing page.
     window.location.assign("/onboarding/factory-required");
   }
   return null;
