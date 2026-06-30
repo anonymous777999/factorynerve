@@ -37,6 +37,28 @@ def _build_runtime_env() -> dict[str, str]:
     return env
 
 
+def _build_alembic_env(env: dict[str, str]) -> dict[str, str]:
+    """Build a copy of the runtime env with placeholders for optional validation.
+
+    backend.database calls get_config() at import time, which validates
+    required env vars including DATA_ENCRYPTION_KEY and at least one AI
+    provider API key. Since both are sync:false in render.yaml they may
+    not be set during initial deployments. Alembic only needs
+    Base.metadata — it does not need real runtime credentials.
+
+    Placeholders are injected ONLY into this copy. The original env
+    passed to os.execvpe remains clean, so runtime uses real env vars
+    (or fails naturally if they are truly missing).
+    """
+    alembic_env = {**env}
+    if not alembic_env.get("DATA_ENCRYPTION_KEY"):
+        alembic_env["DATA_ENCRYPTION_KEY"] = "a5jB6nrHnoZM5MFehyXYKBUklF7SkvIn_sS11-IGfmU="
+    if not alembic_env.get("GROQ_API_KEY") and not alembic_env.get("ANTHROPIC_API_KEY") \
+       and not alembic_env.get("GEMINI_API_KEY") and not alembic_env.get("OPENAI_API_KEY"):
+        alembic_env["GROQ_API_KEY"] = "placeholder-sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    return alembic_env
+
+
 def _normalize_database_url(url: str) -> str:
     normalized = url.strip()
     if normalized.startswith("postgres://"):
@@ -126,9 +148,14 @@ def main() -> None:
         env["DATABASE_URL"] = _wait_for_database(database_url)
 
     if run_migrations:
+        # Use a separate env with safe placeholders for Alembic so that
+        # missing sync:false env vars (DATA_ENCRYPTION_KEY, AI provider
+        # keys) don't crash the migration. Runtime still uses the clean
+        # env from _build_runtime_env().
+        alembic_env = _build_alembic_env(env)
         try:
             if database_url:
-                table_names, has_version_row = _inspect_alembic_state(env["DATABASE_URL"])
+                table_names, has_version_row = _inspect_alembic_state(alembic_env["DATABASE_URL"])
                 if _should_bootstrap_legacy_schema(
                     table_names=table_names,
                     has_version_row=has_version_row,
@@ -137,14 +164,14 @@ def main() -> None:
                         "[render-start] Legacy schema detected without Alembic history. "
                         "Running init_db compatibility bootstrap and stamping head."
                     )
-                    _run_init_db(env)
-                    _run_alembic(env, ["stamp", "head"])
+                    _run_init_db(alembic_env)
+                    _run_alembic(alembic_env, ["stamp", "head"])
                     print("[render-start] Alembic history stamped to head for legacy schema.")
                 else:
-                    _run_alembic(env, ["upgrade", "head"])
+                    _run_alembic(alembic_env, ["upgrade", "head"])
                     print("[render-start] Alembic migrations applied successfully.")
             else:
-                _run_alembic(env, ["upgrade", "head"])
+                _run_alembic(alembic_env, ["upgrade", "head"])
                 print("[render-start] Alembic migrations applied successfully.")
         except subprocess.CalledProcessError as error:
             if not allow_init_db_fallback:
@@ -153,10 +180,10 @@ def main() -> None:
                 "[render-start] Alembic upgrade failed; falling back to app init_db startup path. "
                 f"Exit status: {error.returncode}"
             )
-            _run_init_db(env)
+            _run_init_db(alembic_env)
             print("[render-start] init_db completed; retrying alembic upgrade head.")
             try:
-                _run_alembic(env, ["upgrade", "head"])
+                _run_alembic(alembic_env, ["upgrade", "head"])
                 print("[render-start] Alembic migrations applied successfully on retry after init_db.")
             except subprocess.CalledProcessError as retry_error:
                 print(
@@ -164,7 +191,7 @@ def main() -> None:
                     f"Exit status: {retry_error.returncode}"
                 )
                 try:
-                    _run_alembic(env, ["stamp", "head"])
+                    _run_alembic(alembic_env, ["stamp", "head"])
                     print("[render-start] Alembic history stamped to head after compatibility bootstrap.")
                 except subprocess.CalledProcessError as stamp_error:
                     print(
