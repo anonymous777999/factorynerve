@@ -36,15 +36,13 @@ const backendHost =
 const backendPort =
   process.env.NEXT_PUBLIC_API_PORT || backendEnv.FASTAPI_PORT || "8765";
 const isVercel = process.env.VERCEL === "1" || process.env.VERCEL_ENV === "production";
-const backendOrigin = explicitBackendOrigin.trim().replace(/\/+$/, "");
+const explicitOrigin = explicitBackendOrigin.trim().replace(/\/+$/, "");
 
-if (!backendOrigin && isVercel) {
-  throw new Error(
-    "API_PROXY_ORIGIN or NEXT_PUBLIC_API_PROXY_ORIGIN must be set in Vercel so /api/* can proxy to the Render backend.",
-  );
-}
+const defaultOrigin = isVercel
+  ? "https://factorynerve-api-6ttl.onrender.com"
+  : `http://${backendHost}:${backendPort}`;
 
-const resolvedBackendOrigin = backendOrigin || `http://${backendHost}:${backendPort}`;
+const resolvedBackendOrigin = explicitOrigin || defaultOrigin;
 
 const nextConfig: NextConfig = {
   turbopack: {
