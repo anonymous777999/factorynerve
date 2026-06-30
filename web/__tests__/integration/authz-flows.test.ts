@@ -79,7 +79,20 @@ test("Flow 3 - factory removed mid-session auto-switches to the next workspace",
   });
 });
 
-test("Flow 4 - manager does not receive admin-only panel navigation affordances", () => {
+test("Flow 4 - active workspace context does not force onboarding redirect on transient auth errors", () => {
+  const plan = resolveWorkspaceRecoveryPlan(
+    {
+      activeFactoryId: "factory-a",
+      factories: [
+        { factory_id: "factory-a", name: "Factory A", role: "manager" },
+      ],
+    },
+    404,
+  );
+  assert.deepEqual(plan, { action: "ignore" });
+});
+
+test("Flow 5 - manager does not receive admin-only panel navigation affordances", () => {
   const labels = getVisibleNavSections(
     new Set(["/dashboard", "/settings", "/plans", "/billing", "/profile"]),
     makePermissions({

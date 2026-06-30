@@ -375,6 +375,18 @@ export function resolveWorkspaceRecoveryPlan(
     return { action: "ignore" };
   }
 
+  const hasCurrentFactoryContext =
+    !!snapshot.activeFactoryId &&
+    snapshot.factories.some(
+      (factory) => factory.factory_id === snapshot.activeFactoryId,
+    );
+
+  // If the snapshot still contains a valid active factory, treat 403/404 from
+  // context probing as transient and avoid forcing the onboarding redirect.
+  if (hasCurrentFactoryContext) {
+    return { action: "ignore" };
+  }
+
   const nextFactories = snapshot.factories.filter(
     (factory) => factory.factory_id && factory.factory_id !== snapshot.activeFactoryId,
   );
