@@ -35,9 +35,16 @@ const backendHost =
   process.env.NEXT_PUBLIC_API_HOST || backendEnv.FASTAPI_HOST || "127.0.0.1";
 const backendPort =
   process.env.NEXT_PUBLIC_API_PORT || backendEnv.FASTAPI_PORT || "8765";
-const backendOrigin = explicitBackendOrigin.trim()
-  ? explicitBackendOrigin.trim().replace(/\/+$/, "")
-  : `http://${backendHost}:${backendPort}`;
+const isVercel = process.env.VERCEL === "1" || process.env.VERCEL_ENV === "production";
+const backendOrigin = explicitBackendOrigin.trim().replace(/\/+$/, "");
+
+if (!backendOrigin && isVercel) {
+  throw new Error(
+    "API_PROXY_ORIGIN or NEXT_PUBLIC_API_PROXY_ORIGIN must be set in Vercel so /api/* can proxy to the Render backend.",
+  );
+}
+
+const resolvedBackendOrigin = backendOrigin || `http://${backendHost}:${backendPort}`;
 
 const nextConfig: NextConfig = {
   turbopack: {
@@ -48,7 +55,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${backendOrigin}/:path*`,
+        destination: `${resolvedBackendOrigin}/:path*`,
       },
     ];
   },
