@@ -16,17 +16,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-LEGACY_SCHEMA_SENTINELS = {
-    "organizations",
-    "factories",
-    "users",
-    "entries",
-    "refresh_tokens",
-    "org_feature_usage",
-    "org_ocr_usage",
-}
-
-
 def _build_runtime_env() -> dict[str, str]:
     env = os.environ.copy()
     existing_pythonpath = env.get("PYTHONPATH", "").strip()
@@ -115,12 +104,6 @@ def _inspect_alembic_state(url: str) -> tuple[set[str], bool]:
     return table_names, has_version_row
 
 
-def _should_bootstrap_legacy_schema(*, table_names: set[str], has_version_row: bool) -> bool:
-    if has_version_row:
-        return False
-    return bool(table_names & LEGACY_SCHEMA_SENTINELS)
-
-
 def _run_init_db(runtime_env: dict[str, str]) -> None:
     os.environ.update(runtime_env)
     from backend.database import init_db
@@ -155,18 +138,24 @@ def main() -> None:
         alembic_env = _build_alembic_env(env)
         try:
             if database_url:
-                table_names, has_version_row = _inspect_alembic_state(alembic_env["DATABASE_URL"])
-                if _should_bootstrap_legacy_schema(
-                    table_names=table_names,
-                    has_version_row=has_version_row,
-                ):
+                _, has_version_row = _inspect_alembic_state(alembic_env["DATABASE_URL"])
+                if not has_version_row:
+                    # No Alembic history — database is either fresh (no tables)
+                    # or has legacy tables created outside Alembic. Either way,
+                    # run init_db() to ensure all core tables (users,
+                    # organizations, factories, …) exist before Alembic
+                    # migrations reference them via foreign keys.
+                    # init_db() is idempotent — Base.metadata.create_all uses
+                    # SQLAlchemy's checkfirst=True (IF NOT EXISTS semantics).
+                    # After creating tables, it stamps the Alembic head so
+                    # future deploys can apply incremental migrations.
                     print(
-                        "[render-start] Legacy schema detected without Alembic history. "
-                        "Running init_db compatibility bootstrap and stamping head."
+                        "[render-start] No Alembic history found. "
+                        "Running init_db to create all core tables..."
                     )
                     _run_init_db(alembic_env)
                     _run_alembic(alembic_env, ["stamp", "head"])
-                    print("[render-start] Alembic history stamped to head for legacy schema.")
+                    print("[render-start] Database initialized and Alembic history stamped to head.")
                 else:
                     _run_alembic(alembic_env, ["upgrade", "head"])
                     print("[render-start] Alembic migrations applied successfully.")
