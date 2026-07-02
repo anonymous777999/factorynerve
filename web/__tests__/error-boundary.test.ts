@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { resolveApiError } from "../src/components/api-error-boundary";
+import { resolveApiError } from "../src/components/shared/api-error-boundary";
 
 test("403 with SESSION_UPDATED redirects to /access", () => {
   const resolution = resolveApiError({

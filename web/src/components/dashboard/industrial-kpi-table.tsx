@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 
 function statusTone(status: KpiTableRow["status"], changePercent: number) {
-  if (status === "up") return changePercent >= 0 ? "text-emerald-600 bg-emerald-50" : "text-amber-600 bg-amber-50";
-  if (status === "down") return changePercent < 0 ? "text-red-600 bg-rose-50" : "text-amber-600 bg-amber-50";
-  return "text-slate-500 bg-slate-100";
+  if (status === "up") return changePercent >= 0 ? "text-emerald-300 bg-[rgba(34,197,94,0.12)]" : "text-amber-300 bg-[rgba(245,158,11,0.12)]";
+  if (status === "down") return changePercent < 0 ? "text-red-300 bg-[rgba(239,68,68,0.12)]" : "text-amber-300 bg-[rgba(245,158,11,0.12)]";
+  return "text-[var(--muted)] bg-[var(--card-strong)]";
 }
 
 export function IndustrialKpiTable({
@@ -16,33 +16,33 @@ export function IndustrialKpiTable({
   rows: KpiTableRow[];
 }) {
   return (
-    <Card className="rounded-[1.8rem] !border-[#e7e5e4] !bg-none !bg-white !text-[#111111] shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+    <Card>
       <CardHeader>
-        <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Monthly KPI Review</div>
-        <CardTitle className="mt-2 text-xl text-slate-900">Compact KPI table</CardTitle>
+        <div className="text-xs uppercase tracking-header text-[var(--muted)]">Monthly KPI Review</div>
+        <CardTitle className="mt-2 text-xl">Compact KPI table</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-3 md:hidden">
           {rows.map((row) => (
-            <div key={row.metric} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+            <div key={row.metric} className="rounded-lg border border-[var(--border)] bg-[var(--card-strong)] p-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="font-semibold text-slate-900">{row.metric}</div>
+                <div className="font-semibold text-[var(--text)]">{row.metric}</div>
                 <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(row.status, row.changePercent)}`}>
                   {row.status === "up" ? "Healthy" : row.status === "down" ? "Watch" : "Stable"}
                 </span>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-500">Current</div>
-                  <div className="mt-1 text-slate-800">{row.current}</div>
+                  <div className="text-xs uppercase tracking-label text-[var(--muted)]">Current</div>
+                  <div className="mt-1 text-[var(--text)]">{row.current}</div>
                 </div>
                 <div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-500">Previous</div>
-                  <div className="mt-1 text-slate-600">{row.previous}</div>
+                  <div className="text-xs uppercase tracking-label text-[var(--muted)]">Previous</div>
+                  <div className="mt-1 text-[var(--muted)]">{row.previous}</div>
                 </div>
                 <div className="col-span-2">
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-500">Change</div>
-                  <div className="mt-1 text-slate-800">
+                  <div className="text-xs uppercase tracking-label text-[var(--muted)]">Change</div>
+                  <div className="mt-1 text-[var(--text)]">
                     {row.changePercent > 0 ? "+" : ""}
                     {row.changePercent.toFixed(1)}%
                   </div>

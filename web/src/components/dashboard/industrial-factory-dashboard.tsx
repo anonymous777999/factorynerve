@@ -347,7 +347,7 @@ export function IndustrialFactoryDashboard({
       ))}
       <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-none !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
         <CardHeader>
-          <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Active Filters</div>
+          <div className="text-xs uppercase tracking-caption text-[#78716c]">Active Filters</div>
           <CardTitle className="mt-2 text-lg text-[#111111]">Control context</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm text-[#57534e]">
@@ -364,7 +364,7 @@ export function IndustrialFactoryDashboard({
       </Card>
       <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-none !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
         <CardHeader>
-          <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Action Center</div>
+          <div className="text-xs uppercase tracking-caption text-[#78716c]">Action Center</div>
           <CardTitle className="mt-2 text-lg text-[#111111]">Next best step</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-[#57534e]">
@@ -380,7 +380,7 @@ export function IndustrialFactoryDashboard({
           </div>
           {drilldownAction ? (
             <div className="space-y-2 rounded-xl border border-[#e7e5e4] bg-[#f5f5f4] px-3 py-3">
-              <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">{drilldownAction.context}</div>
+              <div className="text-xs uppercase tracking-caption text-[#78716c]">{drilldownAction.context}</div>
               <div className="font-semibold text-[#111111]">
                 {lastDrillDown?.seriesName}: {lastDrillDown?.label} ({Math.round(lastDrillDown?.value || 0)})
               </div>
@@ -401,7 +401,7 @@ export function IndustrialFactoryDashboard({
       <section className="space-y-6">
         <Card className="rounded-[2rem] !border-[#e7e5e4] !bg-[linear-gradient(180deg,#ffffff,#fafaf9)] !text-[#111111] shadow-[0_26px_60px_rgba(15,23,42,0.1)]">
           <CardHeader>
-            <div className="text-xs uppercase tracking-[0.28em] text-[#78716c]">Steel Dashboard</div>
+            <div className="text-xs uppercase tracking-prominent text-[#78716c]">Steel Dashboard</div>
             <CardTitle className="mt-3 text-3xl text-[#111111]">Steel-first control board</CardTitle>
           </CardHeader>
           <CardContent className="text-sm leading-7 text-[#57534e]">
@@ -421,7 +421,7 @@ export function IndustrialFactoryDashboard({
           {!embedded ? (
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="text-xs uppercase tracking-[0.28em] text-[#78716c]">Steel Control System</div>
+                <div className="text-xs uppercase tracking-prominent text-[#78716c]">Steel Control System</div>
                 <CardTitle className="mt-3 text-2xl text-[#111111] md:text-3xl">Steel performance overview</CardTitle>
                 <p className="mt-3 max-w-3xl text-sm leading-7 text-[#57534e]">
                   Steel plant signals designed for managers and owners. The focus stays on stock trust, output, batch loss,
@@ -451,7 +451,7 @@ export function IndustrialFactoryDashboard({
             ))}
           </ResponsiveScrollArea>
           <div className="rounded-[1.4rem] border !border-[#e7e5e4] !bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
-            <div className="text-sm uppercase tracking-[0.18em] text-[#78716c]">Active Time Window</div>
+            <div className="text-sm uppercase tracking-caption text-[#78716c]">Active Time Window</div>
             <div className="mt-2 text-xl font-semibold text-[#111111] md:text-2xl">{activeData.title}</div>
             <div className="mt-2 text-sm leading-6 text-[#57534e]">{activeData.subtitle}</div>
             <div className="mt-3 inline-flex rounded-full border border-[#d6d3d1] bg-[#f5f5f4] px-3 py-1 text-xs font-semibold text-[#111111]">
@@ -476,7 +476,7 @@ export function IndustrialFactoryDashboard({
             <div className="order-2 xl:order-1">
               <details className="rounded-[1.6rem] border !border-[#e7e5e4] !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)] xl:hidden">
                 <summary className="cursor-pointer list-none px-5 py-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Filters and actions</div>
+                  <div className="text-xs uppercase tracking-caption text-[#78716c]">Filters and actions</div>
                   <div className="mt-1 text-lg font-semibold text-[#111111]">Open chart controls</div>
                   <div className="mt-1 text-sm text-[#57534e]">Choose plant/process lenses and see the next best step.</div>
                 </summary>

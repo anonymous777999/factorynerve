@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import io
 import logging
 import os
@@ -17,23 +16,21 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from PIL import Image, ImageOps, UnidentifiedImageError
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.database import get_db, hash_ip_address
-from backend.models.report import AuditLog, TokenBlacklist
+from backend.models.report import AuditLog
 from backend.models.email_verification_token import EmailVerificationToken
 from backend.models.pending_registration import PendingRegistration
-from backend.models.refresh_token import RefreshToken
-from backend.models.user import User, UserReadSchema, UserRole
+from backend.models.user import User, UserReadSchema, UserRole, role_rank
 from backend.models.factory import Factory
 from backend.models.organization import Organization
 from backend.models.user_factory_role import UserFactoryRole
-from backend.schemas.auth import AuthMeResponse, PermissionsSchema
+from backend.authorization import PermissionCatalog, ResourceContext
+from backend.authorization.permission_catalog import ScopeLevel
 from backend.security import (
-    create_access_token,
-    decode_access_token,
     get_current_user,
     hash_password,
     is_admin,
@@ -68,24 +65,23 @@ from backend.services.user_code_service import (
     next_user_code,
 )
 from backend.services.user_service import validate_factory_role_assignment
-from backend.email_service import send_email
+from backend.email_utils import queue_and_send_email
 from backend.services.registration_service import resolve_registration_context
-from backend.auth_cookies import (
-    clear_auth_cookies,
-    get_access_cookie,
-    get_refresh_cookie,
-    require_csrf,
-    set_auth_cookies,
-    wants_cookie_auth,
+from backend.auth_security.sessions import (
+    get_current_session as get_v2_session,
+    require_csrf as require_v2_csrf,
+    revoke_all_sessions as revoke_all_v2_sessions,
+    revoke_session as revoke_v2_session,
+    SESSION_COOKIE,
+    CSRF_COOKIE,
 )
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Authentication"])
 
-LOGIN_ATTEMPT_LIMIT = 5
-LOGIN_ATTEMPT_WINDOW_SECONDS = 60
-REFRESH_TOKEN_DAYS = int(os.getenv("REFRESH_TOKEN_DAYS", "30"))
+LOGIN_ATTEMPT_LIMIT = int(os.getenv("AUTH_REGISTER_RATE_LIMIT", "5"))
+LOGIN_ATTEMPT_WINDOW_SECONDS = int(os.getenv("AUTH_REGISTER_RATE_LIMIT_WINDOW", "60"))
 PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "30"))
 PASSWORD_RESET_EMAIL_SUBJECT = os.getenv("PASSWORD_RESET_EMAIL_SUBJECT", "Reset your DPR.ai password")
 EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
@@ -231,10 +227,18 @@ def _send_auth_email(
     to_email: str,
     body: str,
     context: str,
+    user_id: int | None = None,
+    factory_name: str | None = None,
 ) -> bool:
     try:
-        send_email(subject=subject, to_emails=[to_email], body=body)
-        return True
+        result = queue_and_send_email(
+            to_emails=[to_email],
+            subject=subject,
+            body=body,
+            user_id=user_id or 0,
+            factory_name=factory_name or "FactoryNerve",
+        )
+        return result.get("sent", False) or result.get("queue_id") is not None
     except Exception:  # pylint: disable=broad-except
         logger.exception("Auth email delivery failed for %s.", context)
         return False
@@ -344,21 +348,6 @@ class OrganizationContext(BaseModel):
     accessible_factories: int
 
 
-class AuthContextResponse(BaseModel):
-    user: UserReadSchema
-    active_factory_id: str | None = None
-    active_factory: FactoryAccess | None = None
-    factories: list[FactoryAccess] = Field(default_factory=list)
-    organization: OrganizationContext | None = None
-    model_config = ConfigDict(from_attributes=True)
-
-
-class AuthResponse(AuthContextResponse):
-    access_token: str
-    refresh_token: str | None = None
-    token_type: str = "bearer"
-
-
 class ActiveWorkflowTemplateResponse(BaseModel):
     factory_id: str | None = None
     factory_name: str | None = None
@@ -369,15 +358,6 @@ class ActiveWorkflowTemplateResponse(BaseModel):
     workflow_template_label: str
     starter_modules: list[str] = Field(default_factory=list)
     template: dict[str, object]
-
-
-class SessionSummaryResponse(BaseModel):
-    active_devices: int
-    last_activity: datetime | None = None
-
-
-class RefreshRequest(BaseModel):
-    refresh_token: str | None = Field(default=None, min_length=32, max_length=2048)
 
 
 class PasswordForgotRequest(BaseModel):
@@ -433,48 +413,6 @@ class SelectFactoryRequest(BaseModel):
     factory_id: str = Field(min_length=4, max_length=36)
 
 
-class LogoutRequest(BaseModel):
-    refresh_token: str | None = None
-
-
-class FactoryListResponse(BaseModel):
-    user_id: int
-    user_code: int | None = None
-    active_factory_id: str | None = None
-    active_factory: FactoryAccess | None = None
-    factories: list[FactoryAccess] = Field(default_factory=list)
-    organization: OrganizationContext | None = None
-
-
-def _hash_refresh_token(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
-_ROLE_ORDER = {
-    UserRole.ATTENDANCE: 0,
-    UserRole.OPERATOR: 1,
-    UserRole.SUPERVISOR: 2,
-    UserRole.ACCOUNTANT: 2,
-    UserRole.MANAGER: 3,
-    UserRole.ADMIN: 4,
-    UserRole.OWNER: 5,
-}
-
-
-def _build_permissions(user: User) -> PermissionsSchema:
-    role_value = user.role.value if isinstance(user.role, UserRole) else str(user.role)
-    role = user.role if isinstance(user.role, UserRole) else None
-    return PermissionsSchema(
-        can_view_billing=role in {UserRole.ADMIN, UserRole.OWNER},
-        can_manage_users=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.MANAGER]),
-        can_view_analytics=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
-        can_approve_entries=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
-        can_export_data=role not in {UserRole.ATTENDANCE, UserRole.OPERATOR},
-        can_manage_billing=role == UserRole.OWNER,
-        can_view_admin_panel=role_value == "superadmin",
-    )
-
-
 def _persist_user_with_user_code(db: Session, user: User) -> User:
     last_error: IntegrityError | None = None
     for _ in range(MAX_USER_CODE_ATTEMPTS):
@@ -492,25 +430,6 @@ def _persist_user_with_user_code(db: Session, user: User) -> User:
         status_code=500,
         detail="Could not generate a unique user ID. Please try again.",
     ) from last_error
-
-
-def _issue_refresh_token(
-    db: Session, *, user: User, org_id: str | None, factory_id: str | None
-) -> str:
-    token = secrets.token_urlsafe(48)
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(days=REFRESH_TOKEN_DAYS)
-    db.add(
-        RefreshToken(
-            token_hash=_hash_refresh_token(token),
-            user_id=user.id,
-            org_id=org_id,
-            factory_id=factory_id,
-            created_at=now,
-            expires_at=expires_at,
-        )
-    )
-    return token
 
 
 def _get_factory_access(db: Session, *, user_id: int) -> list[FactoryAccess]:
@@ -636,14 +555,6 @@ def _build_active_template_context(
     )
 
 
-def _revoke_refresh_token(db: Session, *, token: str, user_id: int) -> None:
-    token_hash = _hash_refresh_token(token)
-    record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
-    if record and record.user_id == user_id and record.revoked_at is None:
-        record.revoked_at = datetime.now(timezone.utc)
-        db.add(record)
-
-
 def _resolve_active_factory_id(
     db: Session, *, user_id: int, preferred_factory_id: str | None
 ) -> str | None:
@@ -686,7 +597,7 @@ def _preview_public_registration(
         )
         if factory:
             if factory.name.strip().lower() != normalized_factory.lower():
-                raise HTTPException(status_code=400, detail="Company code does not match factory name.")
+                raise HTTPException(status_code=400, detail="Invalid factory name or company code.")
             org_id = factory.org_id
             normalized_factory = factory.name
         else:
@@ -696,9 +607,9 @@ def _preview_public_registration(
                 .first()
             )
             if not legacy:
-                raise HTTPException(status_code=400, detail="Invalid company code.")
+                raise HTTPException(status_code=400, detail="Invalid factory name or company code.")
             if legacy.factory_name.strip().lower() != normalized_factory.lower():
-                raise HTTPException(status_code=400, detail="Company code does not match factory name.")
+                raise HTTPException(status_code=400, detail="Invalid factory name or company code.")
             org_id = legacy.org_id
             normalized_factory = legacy.factory_name
     else:
@@ -869,6 +780,8 @@ def register_user(
                     "If you did not create this account, you can ignore this email."
                 ),
                 context="registration_verification",
+                user_id=None,
+                factory_name=requested_factory,
             )
             if not sent:
                 delivery_mode = "email_failed"
@@ -913,13 +826,13 @@ def register_user(
         raise HTTPException(status_code=500, detail="Could not complete registration.") from error
 
 
-@router.post("/login", response_model=AuthResponse)
+@router.post("/login")
 def login_user(
     payload: LoginRequest,
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
-) -> AuthResponse:
+) -> dict:
     del payload, request, response, db
     raise HTTPException(
         status_code=410,
@@ -935,29 +848,35 @@ def login_user(
 def logout_user(
     request: Request,
     response: Response,
-    payload: LogoutRequest | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    token = str(getattr(current_user, "current_token", "") or "")
-    if not token:
-        token = get_access_cookie(request) or ""
-        if token:
-            require_csrf(request)
-    if token:
-        jti = str(getattr(current_user, "current_token_jti", "") or "")
-        exp = getattr(current_user, "current_token_expires_at", None)
+    session_revoked = False
+    try:
+        session = get_v2_session(db, request)
+        # Attempt to revoke the session even if CSRF validation fails — a
+        # failed CSRF suggests the session may be compromised, so revoking
+        # it is the safest course of action.
+        try:
+            require_v2_csrf(request, session)
+        except HTTPException:
+            logger.warning(
+                "CSRF validation failed during logout for user %s — session will be revoked anyway.",
+                current_user.id,
+            )
+        # revoke_v2_session handles cookie deletion (response.delete_cookie)
+        # internally, so no explicit cookie cleanup is needed here.
+        revoke_v2_session(db, session=session, response=response)
+        session_revoked = True
+    except HTTPException:
+        pass
 
-        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first() if jti else None
-        if jti and exp and not existing:
-            db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
-
-    refresh_token = payload.refresh_token if payload and payload.refresh_token else None
-    if not refresh_token:
-        refresh_token = get_refresh_cookie(request)
-    if refresh_token:
-        _revoke_refresh_token(db, token=refresh_token, user_id=current_user.id)
-    clear_auth_cookies(response=response)
+    if not session_revoked:
+        # Fallback: session lookup failed, so manually clear cookies to
+        # ensure the user is signed out on this device even though the
+        # session couldn't be revoked server-side.
+        response.delete_cookie(SESSION_COOKIE, path="/")
+        response.delete_cookie(CSRF_COOKIE, path="/")
 
     _log_auth_event(db, "USER_LOGOUT", "User logged out.", current_user.id, request)
     db.commit()
@@ -971,31 +890,61 @@ def logout_all_devices(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    if get_access_cookie(request) or get_refresh_cookie(request):
-        require_csrf(request)
+    session_revoked = False
+    from backend.models.auth_user import AuthUser
 
-    token = str(getattr(current_user, "current_token", "") or "")
-    if not token:
-        token = get_access_cookie(request) or ""
-    if token:
-        jti = str(getattr(current_user, "current_token_jti", "") or "")
-        exp = getattr(current_user, "current_token_expires_at", None)
-        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first() if jti else None
-        if jti and exp and not existing:
-            db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
+    # Attempt to revoke all sessions for this user's AuthUser account.
+    # We use two strategies: first via the session cookie (preferred), then
+    # via email lookup (fallback for when the session cookie is already gone
+    # or CSRF validation fails).
+    try:
+        session = get_v2_session(db, request)
+        auth_user_id = session.auth_user_id
+        revoke_all_v2_sessions(db, user_id=auth_user_id)
+        session_revoked = True
+        # Attempt CSRF validation — log a warning on failure but don't block
+        # the logout since we already revoked all sessions.
+        try:
+            require_v2_csrf(request, session)
+        except HTTPException:
+            logger.warning(
+                "CSRF validation failed during logout-all for user %s — sessions already revoked.",
+                current_user.id,
+            )
+    except HTTPException:
+        # Fallback: resolve AuthUser by email and revoke all sessions.
+        # This handles the case where the session cookie is expired or
+        # missing entirely.
+        try:
+            auth_user = db.query(AuthUser).filter(
+                AuthUser.email == current_user.email,
+                AuthUser.is_active.is_(True),
+            ).first()
+            if auth_user:
+                revoke_all_v2_sessions(db, user_id=auth_user.id)
+                session_revoked = True
+                logger.info(
+                    "Fallback logout-all for user %s — revoked sessions via email lookup.",
+                    current_user.id,
+                )
+        except Exception as fallback_error:
+            logger.exception(
+                "Fallback session revocation failed during logout-all for user %s.",
+                current_user.id,
+            )
 
-    now = datetime.now(timezone.utc)
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == current_user.id,
-        RefreshToken.revoked_at.is_(None),
-        RefreshToken.expires_at > now,
-    ).update({"revoked_at": now}, synchronize_session=False)
-    clear_auth_cookies(response=response)
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")
 
+    audit_detail = (
+        "User logged out from all devices (sessions revoked)."
+        if session_revoked
+        else "User logged out from all devices (cookies cleared, session revocation failed)."
+    )
     _log_auth_event(
         db,
         "USER_LOGOUT_ALL",
-        "User logged out from all devices.",
+        audit_detail,
         current_user.id,
         request,
         org_id=current_user.org_id,
@@ -1005,89 +954,22 @@ def logout_all_devices(
     return {"message": "Logged out from all devices successfully."}
 
 
-@router.post("/refresh", response_model=AuthResponse)
+@router.post("/refresh")
 def refresh_access_token(
     request: Request,
     response: Response,
-    payload: RefreshRequest | None = None,
     db: Session = Depends(get_db),
-) -> AuthResponse:
-    refresh_token = payload.refresh_token if payload else None
-    if not refresh_token:
-        refresh_token = get_refresh_cookie(request)
-    if not refresh_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing.")
-    now = datetime.now(timezone.utc)
-    token_hash = _hash_refresh_token(refresh_token)
-    record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
-    if not record or record.revoked_at or record.expires_at <= now:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired.")
-
-    user = db.query(User).filter(User.id == record.user_id, User.is_active.is_(True)).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-
-    role_row: UserFactoryRole | None = None
-    factory_id = record.factory_id
-    if factory_id:
-        role_row = (
-            db.query(UserFactoryRole)
-            .filter(UserFactoryRole.user_id == user.id, UserFactoryRole.factory_id == factory_id)
-            .first()
-        )
-        if not role_row:
-            factory_id = None
-
-    if not role_row:
-        role_row = (
-            db.query(UserFactoryRole)
-            .filter(UserFactoryRole.user_id == user.id)
-            .order_by(UserFactoryRole.assigned_at.asc())
-            .first()
-        )
-        factory_id = role_row.factory_id if role_row else None
-
-    org_id = role_row.org_id if role_row else user.org_id
-    active_role = role_row.role.value if role_row else user.role.value
-
-    access_token = create_access_token(
-        user_id=user.id,
-        role=active_role,
-        email=user.email,
-        org_id=org_id,
-        factory_id=factory_id,
+) -> dict[str, str]:
+    # v2 sessions handle their own refresh via idle/absolute timeout checks in
+    # get_current_session().  The legacy JWT refresh endpoint is deprecated.
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "DEPRECATED",
+            "migrate_to": "/auth-secure/me",
+            "message": "JWT refresh is no longer supported. Use v2 session cookies.",
+        },
     )
-
-    record.revoked_at = now
-    record.last_used_at = now
-    refresh_token = _issue_refresh_token(db, user=user, org_id=org_id, factory_id=factory_id)
-
-    _log_auth_event(
-        db,
-        "TOKEN_REFRESH",
-        "Access token refreshed.",
-        user.id,
-        request,
-        org_id=org_id,
-        factory_id=factory_id,
-    )
-
-    db.commit()
-    auth_context = _build_auth_context(db, user=user, active_factory_id=factory_id)
-    auth_response = AuthResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        **auth_context,
-    )
-    if wants_cookie_auth(request) or get_refresh_cookie(request) or get_access_cookie(request):
-        csrf_token = set_auth_cookies(
-            response=response,
-            access_token=access_token,
-            refresh_token=refresh_token,
-            request=request,
-        )
-        response.headers["X-CSRF-Token"] = csrf_token
-    return auth_response
 
 
 @router.post("/email/verification/resend", response_model=EmailVerificationResponse)
@@ -1135,6 +1017,8 @@ def resend_email_verification(
                     "If you did not request this, you can ignore this email."
                 ),
                 context="resend_verification",
+                user_id=None,
+                factory_name=pending.factory_name,
             )
         if delivered:
             _log_auth_event(
@@ -1166,6 +1050,8 @@ def resend_email_verification(
                     "If you did not request this, you can ignore this email."
                 ),
                 context="resend_verification",
+                user_id=user.id,
+                factory_name=user.factory_name,
             )
         if delivered:
             _log_auth_event(
@@ -1294,6 +1180,8 @@ def password_forgot(
                 ),
                 to_email=user.email,
                 context="password_reset",
+                user_id=user.id,
+                factory_name=user.factory_name,
             )
         if delivered:
             _log_auth_event(
@@ -1345,10 +1233,13 @@ def password_reset(
     user.password_hash = hash_password(payload.new_password)
     record.used_at = now
 
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == user.id,
-        RefreshToken.revoked_at.is_(None),
-    ).update({"revoked_at": now}, synchronize_session=False)
+    # Invalidate all other pending reset tokens for this user
+    from backend.models.password_reset_token import PasswordResetToken
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.used_at.is_(None),
+        PasswordResetToken.id != record.id,
+    ).update({"used_at": now}, synchronize_session=False)
 
     _log_auth_event(
         db,
@@ -1363,44 +1254,28 @@ def password_reset(
     return {"message": "Password reset successful. Please log in again."}
 
 
-@router.post("/factories", response_model=FactoryListResponse)
-def list_factories(
-    payload: RefreshRequest, db: Session = Depends(get_db)
-) -> FactoryListResponse:
-    now = datetime.now(timezone.utc)
-    token_hash = _hash_refresh_token(payload.refresh_token)
-    record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
-    if not record or record.revoked_at or record.expires_at <= now:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired.")
-
-    user = db.query(User).filter(User.id == record.user_id, User.is_active.is_(True)).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-
-    active_factory_id = _resolve_active_factory_id(
-        db, user_id=user.id, preferred_factory_id=record.factory_id
-    )
-    record.last_used_at = now
-    db.commit()
-    auth_context = _build_auth_context(db, user=user, active_factory_id=active_factory_id)
-    return FactoryListResponse(
-        user_id=user.id,
-        user_code=user.user_code,
-        active_factory_id=active_factory_id,
-        active_factory=auth_context["active_factory"],  # type: ignore[index]
-        factories=auth_context["factories"],  # type: ignore[index]
-        organization=auth_context["organization"],  # type: ignore[index]
+@router.post("/factories")
+def list_factories(db: Session = Depends(get_db)) -> dict:
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "DEPRECATED",
+            "migrate_to": "/auth/v2/context",
+            "message": "Legacy refresh-token based factory listing is no longer supported. Use GET /auth/v2/context.",
+        },
     )
 
 
-@router.post("/select-factory", response_model=AuthResponse)
+@router.post("/select-factory")
 def select_factory(
     payload: SelectFactoryRequest,
     request: Request,
     response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> AuthResponse:
+) -> dict:
+    session = get_v2_session(db, request)
+    require_v2_csrf(request, session)
     role_row = (
         db.query(UserFactoryRole)
         .filter(
@@ -1411,33 +1286,6 @@ def select_factory(
     )
     if not role_row:
         raise HTTPException(status_code=403, detail="Access denied.")
-
-    access_token = create_access_token(
-        user_id=current_user.id,
-        role=role_row.role.value,
-        email=current_user.email,
-        org_id=role_row.org_id,
-        factory_id=payload.factory_id,
-    )
-
-    refresh_token: str | None = None
-    if get_refresh_cookie(request) or get_access_cookie(request) or wants_cookie_auth(request):
-        existing_refresh_token = get_refresh_cookie(request)
-        if existing_refresh_token:
-            _revoke_refresh_token(db, token=existing_refresh_token, user_id=current_user.id)
-        refresh_token = _issue_refresh_token(
-            db,
-            user=current_user,
-            org_id=role_row.org_id,
-            factory_id=payload.factory_id,
-        )
-        csrf_token = set_auth_cookies(
-            response=response,
-            access_token=access_token,
-            refresh_token=refresh_token,
-            request=request,
-        )
-        response.headers["X-CSRF-Token"] = csrf_token
 
     _log_auth_event(
         db,
@@ -1450,20 +1298,11 @@ def select_factory(
     )
     db.commit()
     auth_context = _build_auth_context(db, user=current_user, active_factory_id=payload.factory_id)
-    return AuthResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
+    return {
+        "message": "Factory switched successfully.",
+        "active_factory_id": payload.factory_id,
         **auth_context,
-    )
-
-
-@router.get("/me", response_model=AuthMeResponse)
-def get_me(current_user: User = Depends(get_current_user)) -> AuthMeResponse:
-    user_payload = UserReadSchema.model_validate(current_user)
-    return AuthMeResponse(
-        **user_payload.model_dump(),
-        permissions=_build_permissions(current_user),
-    )
+    }
 
 
 @router.get("/profile-photo/{photo_name}")
@@ -1485,43 +1324,29 @@ def get_profile_photo(
     )
 
 
-@router.get("/session-summary", response_model=SessionSummaryResponse)
+@router.get("/session-summary")
 def get_session_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> SessionSummaryResponse:
-    now = datetime.now(timezone.utc)
-    active_tokens = (
-        db.query(RefreshToken)
-        .filter(
-            RefreshToken.user_id == current_user.id,
-            RefreshToken.revoked_at.is_(None),
-            RefreshToken.expires_at > now,
-        )
-        .all()
-    )
-
-    last_activity = current_user.last_login
-    for token in active_tokens:
-        candidate = token.last_used_at or token.created_at
-        if candidate and (last_activity is None or candidate > last_activity):
-            last_activity = candidate
-
-    return SessionSummaryResponse(
-        active_devices=len(active_tokens),
-        last_activity=last_activity,
-    )
-
-
-@router.get("/context", response_model=AuthContextResponse)
-def get_auth_context(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> AuthContextResponse:
-    active_factory_id = getattr(current_user, "active_factory_id", None)
-    if not active_factory_id:
-        active_factory_id = _resolve_active_factory_id(db, user_id=current_user.id, preferred_factory_id=None)
-    return AuthContextResponse(**_build_auth_context(db, user=current_user, active_factory_id=active_factory_id))
+) -> dict:
+    from backend.models.auth_user import AuthUser
+    from backend.models.auth_session import AuthSession
+    auth_user = db.query(AuthUser).filter(
+        AuthUser.email == current_user.email,
+        AuthUser.is_active.is_(True),
+    ).first()
+    active_devices = 0
+    if auth_user:
+        now = datetime.now(timezone.utc)
+        active_devices = db.query(AuthSession).filter(
+            AuthSession.auth_user_id == auth_user.id,
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > now,
+        ).count()
+    return {
+        "active_devices": active_devices,
+        "last_activity": current_user.last_login,
+    }
 
 
 @router.get("/active-workflow-template", response_model=ActiveWorkflowTemplateResponse)
@@ -1539,10 +1364,13 @@ def get_active_workflow_template(
 def update_profile(
     payload: ProfileUpdateRequest,
     request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserReadSchema:
     try:
+        session = get_v2_session(db, request)
+        require_v2_csrf(request, session)
         if payload.name is not None:
             cleaned_name = sanitize_text(payload.name, max_length=120, preserve_newlines=False) or ""
             if len(cleaned_name) < 2:
@@ -1572,6 +1400,8 @@ async def upload_profile_photo(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserReadSchema:
+    session = get_v2_session(db, request)
+    require_v2_csrf(request, session)
     if not file.filename:
         raise HTTPException(status_code=400, detail="Upload a profile photo to continue.")
     content_type = (file.content_type or "").lower()
@@ -1625,9 +1455,12 @@ async def upload_profile_photo(
 @router.delete("/profile-photo", response_model=UserReadSchema)
 def delete_profile_photo(
     request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserReadSchema:
+    session = get_v2_session(db, request)
+    require_v2_csrf(request, session)
     previous_photo_path = current_user.profile_picture
     try:
         current_user.profile_picture = None
@@ -1655,14 +1488,24 @@ def delete_profile_photo(
 def change_password(
     payload: ChangePasswordRequest,
     request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
+    session = get_v2_session(db, request)
+    require_v2_csrf(request, session)
     if not verify_password(payload.old_password, current_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
     try:
         validate_password_strength(payload.new_password)
         current_user.password_hash = hash_password(payload.new_password)
+        # Invalidate any pending password reset tokens
+        from backend.models.password_reset_token import PasswordResetToken
+        now = datetime.now(timezone.utc)
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == current_user.id,
+            PasswordResetToken.used_at.is_(None),
+        ).update({"used_at": now}, synchronize_session=False)
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
         return {"message": "Password changed successfully."}
@@ -1676,7 +1519,10 @@ def change_password(
 
 
 @router.get("/admin-only")
-def admin_only_route(current_user: User = Depends(get_current_user)) -> dict[str, str]:
-    if not is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Insufficient permissions.")
+def admin_only_route(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    from backend.authorization import PDP
+    PDP(db=db).require_permission(actor=current_user, permission_key="system.admin")
     return {"message": "Admin access granted."}

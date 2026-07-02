@@ -185,7 +185,7 @@ export function DataTableGrid({
   return (
     <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
       <div className="border-b border-[#edf1f5] px-5 py-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+        <div className="text-[11px] font-semibold uppercase tracking-label text-[#667085]">
           Preview & edit
         </div>
         <div className="mt-1 text-sm text-[#667085]">Inline edits only. No popups.</div>

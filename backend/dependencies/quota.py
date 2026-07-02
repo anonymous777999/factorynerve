@@ -13,6 +13,7 @@ from backend.feature_limits import check_and_record_org_feature_usage
 from backend.models.organization import Organization
 from backend.models.subscription import Subscription
 from backend.models.user import User
+from backend.plans import get_org_whatsapp_message_allowance
 from backend.security import get_current_user
 from backend.services.billing_logger import duration_ms_since, log_billing_event
 from backend.services.billing_manager import get_canonical_subscription, get_effective_subscription_status
@@ -162,3 +163,110 @@ async def require_ocr_quota(
         duration_ms=duration_ms_since(started_at),
     )
     return dict(row)
+
+
+async def require_whatsapp_quota(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, object]:
+    """Check and decrement WhatsApp message quota atomically.
+
+    Works like require_ocr_quota but checks org_whatsapp_usage.message_count
+    against message_limit. If no row exists or message_limit is 0, blocks.
+    """
+    started_at = time.perf_counter()
+    subscription = get_canonical_subscription(db, user.org_id)
+    if subscription and get_effective_subscription_status(subscription) == "past_due":
+        log_billing_event(
+            "whatsapp_quota.decrement",
+            user.org_id,
+            "blocked",
+            user_id=user.id,
+            reason="past_due",
+            duration_ms=duration_ms_since(started_at),
+        )
+        raise HTTPException(
+            status_code=402,
+            detail={
+                "code": "PAST_DUE",
+                "grace_ends": subscription.grace_period_end_at.isoformat()
+                if subscription.grace_period_end_at
+                else None,
+            },
+        )
+
+    timestamp_sql = _current_timestamp_sql(db)
+    result = db.execute(
+        text(
+            f"""
+            UPDATE org_whatsapp_usage
+            SET message_count = message_count + 1
+            WHERE org_id = :org_id
+              AND message_count < message_limit
+              AND period_end > {timestamp_sql}
+            RETURNING message_count, message_limit, period_end
+            """
+        ),
+        {"org_id": user.org_id},
+    )
+    row = result.mappings().first()
+    db.commit()
+    if not row:
+        log_billing_event(
+            "whatsapp_quota.decrement",
+            user.org_id,
+            "blocked",
+            user_id=user.id,
+            reason="quota_exhausted_or_no_pack",
+            duration_ms=duration_ms_since(started_at),
+        )
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "WHATSAPP_QUOTA_EXHAUSTED",
+                "org_id": user.org_id,
+                "message": "Your WhatsApp message quota is exhausted or no WhatsApp pack is active. Add a WhatsApp pack in Billing to continue sending alerts.",
+                "upgrade_url": "/billing",
+            },
+        )
+    log_billing_event(
+        "whatsapp_quota.decrement",
+        user.org_id,
+        "success",
+        user_id=user.id,
+        message_count=row["message_count"],
+        message_limit=row["message_limit"],
+        period_end=str(row["period_end"]),
+        duration_ms=duration_ms_since(started_at),
+    )
+    return dict(row)
+
+
+def refund_whatsapp_quota(
+    db: Session,
+    *,
+    org_id: str,
+    user_id: int | None = None,
+    reason: str,
+) -> None:
+    """Decrement WhatsApp message count on send failure so quota is not wasted."""
+    timestamp_sql = _current_timestamp_sql(db)
+    db.execute(
+        text(
+            f"""
+            UPDATE org_whatsapp_usage
+            SET message_count = CASE WHEN message_count > 0 THEN message_count - 1 ELSE 0 END
+            WHERE org_id = :org_id
+              AND period_end > {timestamp_sql}
+            """
+        ),
+        {"org_id": org_id},
+    )
+    db.commit()
+    log_billing_event(
+        "whatsapp_quota.refund",
+        org_id,
+        "success",
+        user_id=user_id,
+        reason=reason,
+    )

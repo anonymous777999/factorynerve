@@ -1,0 +1,20 @@
+{
+  "base_url": "http://127.0.0.1:8765",
+  "virtual_users": 10,
+  "concurrency": 3,
+  "duration_ms": 8155.46,
+  "failed_users": 10,
+  "failures": [
+    "All connection attempts failed",
+    "All connection attempts failed",
+    "All connection attempts failed",
+    "All connection attempts failed",
+    "All connection attempts failed",
+    "All connection attempts failed",
+    "All connection attempts failed",
+    "All connection attempts failed",
+    "All connection attempts failed",
+    "All connection attempts failed"
+  ],
+  "endpoints": {}
+}

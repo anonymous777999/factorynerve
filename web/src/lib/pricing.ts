@@ -26,7 +26,7 @@ export type AddonBreakdown = {
   requiredAddonIds: string[];
 };
 
-const PLAN_ORDER = ["free", "starter", "growth", "factory", "business", "enterprise"];
+const PLAN_ORDER = ["pilot", "operator", "factory", "operations", "group", "enterprise"];
 
 function safeLimit(limit: number) {
   return Number(limit || 0);

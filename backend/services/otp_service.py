@@ -253,7 +253,6 @@ class OTPService:
                 recipient.verified_by_user_id = user.id if user is not None else None
                 db.add(recipient)
             db.add(verification)
-            db.commit()
         except Exception:
             db.rollback()
             raise
@@ -271,6 +270,7 @@ class OTPService:
         )
         result = self._sms_provider.send_otp(phone_e164, otp_code, channel.value)
         if not result.success:
+            db.rollback()
             self._log_event(
                 "otp_sent",
                 phone_masked=masked_phone,
@@ -283,6 +283,15 @@ class OTPService:
                 success=False,
             )
             raise SMSDeliveryFailedError(result)
+
+        # Only commit after SMS is sent successfully — if SMS fails, the OTP
+        # record is rolled back so no orphaned OTPs are left in the database.
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+
         self._log_event(
             "otp_sent",
             phone_masked=masked_phone,

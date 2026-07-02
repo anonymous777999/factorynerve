@@ -20,7 +20,6 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse
 from starlette.responses import JSONResponse, Response
 
-from backend.security import decode_access_token
 from backend.utils import request_id_var
 
 
@@ -107,6 +106,12 @@ def apply_security(app: FastAPI) -> None:
     )
     invite_rate_window = _env_float("INVITE_RATE_LIMIT_WINDOW_SECONDS", 3600.0)
     invite_rate_max = _env_int("INVITE_RATE_LIMIT_MAX_REQUESTS", 20)
+    register_rate_window = _env_float("REGISTER_RATE_LIMIT_WINDOW_SECONDS", 60.0)
+    register_rate_max = _env_int("REGISTER_RATE_LIMIT_MAX_REQUESTS", 3)
+    resend_rate_window = _env_float("RESEND_RATE_LIMIT_WINDOW_SECONDS", 60.0)
+    resend_rate_max = _env_int("RESEND_RATE_LIMIT_MAX_REQUESTS", 2)
+    forgot_rate_window = _env_float("FORGOT_RATE_LIMIT_WINDOW_SECONDS", 60.0)
+    forgot_rate_max = _env_int("FORGOT_RATE_LIMIT_MAX_REQUESTS", 3)
     ocr_rate_window = _env_float("OCR_RATE_LIMIT_WINDOW_SECONDS", 60.0)
     ocr_rate_max = _env_int("OCR_RATE_LIMIT_MAX_REQUESTS", 20)
     max_request_bytes = _env_int("MAX_REQUEST_BYTES", 8_000_000)
@@ -117,21 +122,6 @@ def apply_security(app: FastAPI) -> None:
     endpoint_request_timestamps: dict[str, deque[float]] = defaultdict(deque)
 
     def _rate_key(request: Request) -> str:
-        auth = request.headers.get("Authorization") or ""
-        token = ""
-        if auth.startswith("Bearer "):
-            token = auth.replace("Bearer ", "", 1).strip()
-        if token:
-            try:
-                payload = decode_access_token(token)
-                org_id = payload.get("org_id")
-                user_id = payload.get("sub")
-                if org_id:
-                    return f"org:{org_id}"
-                if user_id:
-                    return f"user:{user_id}"
-            except Exception:
-                pass
         ip_address = request.client.host if request.client else "unknown"
         return f"ip:{ip_address}"
 
@@ -181,6 +171,9 @@ def apply_security(app: FastAPI) -> None:
             key = _rate_key(request)
             endpoint_policies = (
                 ("POST", "/auth/login", login_rate_window, login_rate_max),
+                ("POST", "/auth/register", register_rate_window, register_rate_max),
+                ("POST", "/auth/email/verification/resend", resend_rate_window, resend_rate_max),
+                ("POST", "/auth/password/forgot", forgot_rate_window, forgot_rate_max),
                 ("POST", "/settings/users/invite", invite_rate_window, invite_rate_max),
             )
             for method, path, window_seconds, max_requests in endpoint_policies:

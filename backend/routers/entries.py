@@ -34,9 +34,14 @@ from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.security import get_current_user
-from backend.rbac import assert_not_self_approval, require_role
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.plans import normalize_plan, plan_rank, get_org_plan
+from backend.feature_limits import check_and_record_org_feature_usage
 from backend.ai_rate_limit import check_rate_limit, RateLimitError
+from backend.models.defect_reason import DefectReason
+from backend.security import get_current_user
 from backend.utils import (
     LOW_CONFIDENCE_THRESHOLD,
     check_entry_alerts,
@@ -47,7 +52,30 @@ from backend.utils import (
 )
 from backend.services import ai_router
 from backend.services.background_jobs import create_job, register_retry_handler, start_job
+import threading
 from backend.tenancy import resolve_factory_id, resolve_org_id
+
+# ── Per-user rate limiting for smart input (Bug #26) ──────────────────
+_SMART_INPUT_RATE_LIMIT = {}  # user_id -> [timestamp, ...]
+_SMART_INPUT_MAX_PER_MINUTE = 5
+_SMART_INPUT_LOCK = threading.Lock()
+
+
+def _check_smart_input_rate_limit(user_id: int) -> None:
+    """Check if user has exceeded the smart input rate limit (5 requests/minute)."""
+    now = time.time()
+    with _SMART_INPUT_LOCK:
+        timestamps = _SMART_INPUT_RATE_LIMIT.get(user_id, [])
+        # Remove timestamps older than 60 seconds
+        timestamps = [t for t in timestamps if now - t < 60]
+        if len(timestamps) >= _SMART_INPUT_MAX_PER_MINUTE:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Rate limit exceeded. Maximum {_SMART_INPUT_MAX_PER_MINUTE} requests per minute.",
+            )
+        timestamps.append(now)
+        _SMART_INPUT_RATE_LIMIT[user_id] = timestamps
+
 from backend.query_helpers import apply_role_scope, can_view_entry, factory_user_ids_query, get_org_record_or_404_sync
 
 
@@ -69,6 +97,10 @@ SMART_INPUT_SCHEMA = {
         "materials_used": {"type": "string"},
         "quality_issues": {"type": "boolean"},
         "quality_details": {"type": "string"},
+        "rejection_qty": {"type": "integer", "minimum": 0},
+        "defect_reason_id": {"type": "integer"},
+        "rework_required": {"type": "boolean"},
+        "scrap_qty_entry": {"type": "integer", "minimum": 0},
         "notes": {"type": "string"},
     },
     "required": [
@@ -110,6 +142,12 @@ class EntryCreateRequest(BaseModel):
     materials_used: str | None = None
     quality_issues: bool = False
     quality_details: str | None = None
+    # ── Phase 1: Structured quality intelligence ───────────────────────────
+    rejection_qty: int | None = Field(default=None, ge=0)
+    defect_reason_id: int | None = Field(default=None)
+    defect_reason_details: str | None = Field(default=None, max_length=300)
+    rework_required: bool = False
+    scrap_qty_entry: int | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=1000)
 
     @field_validator("date")
@@ -131,6 +169,12 @@ class EntryUpdateRequest(BaseModel):
     materials_used: str | None = None
     quality_issues: bool | None = None
     quality_details: str | None = None
+    # ── Phase 1: Structured quality intelligence ───────────────────────────
+    rejection_qty: int | None = Field(default=None, ge=0)
+    defect_reason_id: int | None = Field(default=None)
+    defect_reason_details: str | None = Field(default=None, max_length=300)
+    rework_required: bool | None = None
+    scrap_qty_entry: int | None = Field(default=None, ge=0)
     notes: str | None = Field(default=None, max_length=1000)
 
 
@@ -151,6 +195,12 @@ class EntryResponse(BaseModel):
     materials_used: str | None
     quality_issues: bool
     quality_details: str | None
+    # ── Phase 1: Structured quality intelligence ───────────────────────────
+    rejection_qty: int | None = None
+    defect_reason_id: int | None = None
+    defect_reason_details: str | None = None
+    rework_required: bool = False
+    scrap_qty_entry: int | None = None
     notes: str | None
     ai_summary: str | None
     summary_job_id: str | None = None
@@ -340,7 +390,7 @@ def _queue_entry_summary_job(
             "entry_id": entry_id,
             "owner_id": owner_id,
             "org_id": org_id,
-            "consume_quota": False,
+            "consume_quota": consume_quota,  # Match initial call to avoid double-charge on retry (Bug #47)
         },
     )
     start_job(
@@ -387,6 +437,11 @@ def _summary_payload(entry: Entry) -> dict[str, Any]:
         "materials_used": entry.materials_used,
         "quality_issues": entry.quality_issues,
         "quality_details": entry.quality_details,
+        "rejection_qty": entry.rejection_qty,
+        "defect_reason_id": entry.defect_reason_id,
+        "defect_reason_details": entry.defect_reason_details,
+        "rework_required": entry.rework_required,
+        "scrap_qty_entry": entry.scrap_qty_entry,
         "notes": entry.notes,
     }
 
@@ -398,7 +453,7 @@ def _summary_scope(entry: Entry) -> str:
 
 
 def _summary_min_plan() -> str:
-    raw = (os.getenv("SUMMARY_REGEN_MIN_PLAN") or "free").strip().lower()
+    raw = (os.getenv("SUMMARY_REGEN_MIN_PLAN") or "pilot").strip().lower()
     return normalize_plan(raw)
 
 
@@ -427,11 +482,10 @@ async def parse_smart_input(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SmartInputResponse:
+    # Per-user rate limit check — max 5 requests/minute (Bug #26)
+    _check_smart_input_rate_limit(current_user.id)
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.create")
     started = time.perf_counter()
-    if current_user.role == UserRole.ACCOUNTANT:
-        raise HTTPException(status_code=403, detail="Accountant role cannot use smart input.")
-    if current_user.role == UserRole.ATTENDANCE:
-        raise HTTPException(status_code=403, detail="Attendance role cannot use smart input.")
     text_data = (raw_text or "").strip()
     if upload_file is not None:
         if not upload_file.filename.lower().endswith(".txt"):
@@ -547,19 +601,17 @@ def create_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
-    if current_user.role == UserRole.ACCOUNTANT:
-        raise HTTPException(status_code=403, detail="Accountant role cannot create entries.")
-    if current_user.role == UserRole.ATTENDANCE:
-        raise HTTPException(status_code=403, detail="Attendance role cannot create entries.")
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.create")
     org_id = resolve_org_id(current_user)
     factory_id = resolve_factory_id(db, current_user)
     request.state.org_id = org_id
     request.state.factory_id = factory_id
     if payload.client_request_id:
+        # Scope dedup to org/factory level, not just current user — another
+        # operator may have already recorded the same shift (Bug #41).
         existing_by_request = (
             db.query(Entry)
             .filter(
-                Entry.user_id == current_user.id,
                 Entry.client_request_id == payload.client_request_id,
                 Entry.is_active.is_(True),
             )
@@ -568,6 +620,8 @@ def create_entry(
             existing_by_request = existing_by_request.filter(Entry.factory_id == factory_id)
         elif org_id:
             existing_by_request = existing_by_request.filter(Entry.org_id == org_id)
+        else:
+            existing_by_request = existing_by_request.filter(Entry.user_id == current_user.id)
         existing_by_request = existing_by_request.first()
         if existing_by_request:
             response.status_code = status.HTTP_200_OK
@@ -600,6 +654,7 @@ def create_entry(
         data["department"] = department_value
         data["materials_used"] = sanitize_text(data.get("materials_used"), max_length=1000)
         data["quality_details"] = sanitize_text(data.get("quality_details"), max_length=1000)
+        data["defect_reason_details"] = sanitize_text(data.get("defect_reason_details"), max_length=300)
         data["notes"] = sanitize_text(data.get("notes"), max_length=1000)
         entry = Entry(
             user_id=current_user.id,
@@ -669,6 +724,7 @@ def list_entries(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryListResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     query = db.query(Entry).options(selectinload(Entry.user)).filter(Entry.is_active.is_(True))
     org_id = resolve_org_id(current_user)
     if org_id:
@@ -752,6 +808,25 @@ def list_entries(
     return EntryListResponse(items=items, total=total, page=page, page_size=page_size)
 
 
+@router.get("/defect-reasons")
+def list_defect_reasons(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    """List active defect reasons for the entry form dropdown."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
+    reasons = db.query(DefectReason).filter(DefectReason.is_active.is_(True)).order_by(DefectReason.code).all()
+    return [
+        {
+            "id": r.id,
+            "code": r.code,
+            "label": r.label,
+            "description": r.description,
+        }
+        for r in reasons
+    ]
+
+
 @router.post("/{entry_id}/approve", response_model=EntryResponse)
 def approve_entry(
     entry_id: int,
@@ -759,16 +834,46 @@ def approve_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
-    require_role(current_user, UserRole.SUPERVISOR)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.entry.approve",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
-    if not _can_view_entry(db, current_user, entry):
-        raise HTTPException(status_code=403, detail="Access denied.")
-    assert_not_self_approval(entry.user_id, current_user.id)
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=entry.user_id,
+        workflow_key="production.entry.approve",
+        action_key="production.entry.approve",
+        resource_type="Entry",
+        resource_id=str(entry_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=entry.status,
+        requested_change={"new_status": "approved"},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # Step 3: Proceed with mutation
     entry.status = "approved"
-    request.state.org_id = entry.org_id or resolve_org_id(current_user)
-    request.state.factory_id = entry.factory_id or resolve_factory_id(db, current_user)
+    request.state.org_id = entry.org_id or org_id
+    request.state.factory_id = entry.factory_id or factory_id
     try:
         _write_audit_log(
             db,
@@ -780,6 +885,11 @@ def approve_entry(
         db.commit()
         db.refresh(entry)
         _invalidate_entry_related_cache(entry)
+
+        # Step 4: Notify approval system of completion
+        if approval_decision.instance_id:
+            APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
         return entry
     except Exception as error:  # pylint: disable=broad-except
         db.rollback()
@@ -795,20 +905,50 @@ def reject_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
-    require_role(current_user, UserRole.SUPERVISOR)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.entry.approve",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
-    if not _can_view_entry(db, current_user, entry):
-        raise HTTPException(status_code=403, detail="Access denied.")
-    assert_not_self_approval(entry.user_id, current_user.id)
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=entry.user_id,
+        workflow_key="production.entry.approve",
+        action_key="production.entry.approve",
+        resource_type="Entry",
+        resource_id=str(entry_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=entry.status,
+        requested_change={"new_status": "rejected"},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # Step 3: Proceed with mutation
     entry.status = "rejected"
     reason = sanitize_text(payload.reason, max_length=500, preserve_newlines=False) if payload else None
     detail = f"entry_id={entry.id}"
     if reason:
         detail = f"{detail}; reason={reason}"
-    request.state.org_id = entry.org_id or resolve_org_id(current_user)
-    request.state.factory_id = entry.factory_id or resolve_factory_id(db, current_user)
+    request.state.org_id = entry.org_id or org_id
+    request.state.factory_id = entry.factory_id or factory_id
     try:
         _write_audit_log(
             db,
@@ -820,6 +960,11 @@ def reject_entry(
         db.commit()
         db.refresh(entry)
         _invalidate_entry_related_cache(entry)
+
+        # Step 4: Notify approval system of completion
+        if approval_decision.instance_id:
+            APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
         return entry
     except Exception as error:  # pylint: disable=broad-except
         db.rollback()
@@ -829,6 +974,7 @@ def reject_entry(
 
 @router.get("/today", response_model=list[EntryResponse])
 def get_today_entries(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[EntryResponse]:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     today = date.today()
     query = db.query(Entry).options(selectinload(Entry.user)).filter(Entry.date == today, Entry.is_active.is_(True))
     org_id = resolve_org_id(current_user)
@@ -845,6 +991,7 @@ def get_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
@@ -863,6 +1010,7 @@ def get_entry_summary_meta(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntrySummaryMeta:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
@@ -889,6 +1037,7 @@ def queue_entry_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.view")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
@@ -901,10 +1050,15 @@ def queue_entry_summary(
             status_code=403,
             detail=f"AI summaries are not available on the {plan.title()} plan. Upgrade to {_summary_min_plan().title()} or higher to unlock this.",
         )
+    # Check quota availability BEFORE queuing so the caller gets immediate
+    # feedback instead of a silent background failure (Bug #47).
+    if org_id:
+        consume_ai_quota(db, org_id=org_id, feature="summary")
     return _queue_entry_summary_job(
         entry_id=entry.id,
         owner_id=current_user.id,
         org_id=entry.org_id,
+        consume_quota=False,  # Already consumed above; don't double-charge
     )
 
 
@@ -915,6 +1069,7 @@ def regenerate_entry_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.edit")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
@@ -968,11 +1123,10 @@ def update_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="production.entry.edit")
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
-    if current_user.role == UserRole.ACCOUNTANT:
-        raise HTTPException(status_code=403, detail="Accountant role cannot edit entries.")
     if entry.user_id != current_user.id:
         if current_user.role in {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER}:
             if not _can_view_entry(db, current_user, entry):
@@ -997,6 +1151,8 @@ def update_entry(
         updates["materials_used"] = sanitize_text(updates.get("materials_used"), max_length=1000)
     if "quality_details" in updates:
         updates["quality_details"] = sanitize_text(updates.get("quality_details"), max_length=1000)
+    if "defect_reason_details" in updates:
+        updates["defect_reason_details"] = sanitize_text(updates.get("defect_reason_details"), max_length=300)
     if "notes" in updates:
         updates["notes"] = sanitize_text(updates.get("notes"), max_length=1000)
     for key, value in updates.items():
@@ -1022,17 +1178,54 @@ def delete_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, str]:
-    require_role(current_user, UserRole.MANAGER)
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.entry.delete",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if current_user.role == UserRole.MANAGER and not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
+
+    # Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=entry.user_id,
+        workflow_key="production.entry.delete",
+        action_key="production.entry.delete",
+        resource_type="Entry",
+        resource_id=str(entry_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=entry.status,
+        requested_change={"is_active": False},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {"status": "pending_approval", "approval_instance_id": approval_decision.instance_id, "message": "Submitted for approval."}
+    elif approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     try:
         entry.is_active = False
         _write_audit_log(db, user_id=current_user.id, action="ENTRY_DELETED", details=f"Entry soft deleted: id={entry.id}", request=request)
         db.commit()
         _invalidate_entry_related_cache(entry)
+
+        # Notify approval system of completion
+        if approval_decision.instance_id:
+            APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
         return {"message": "Entry deleted successfully."}
     except Exception as error:  # pylint: disable=broad-except
         db.rollback()

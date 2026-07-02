@@ -35,3 +35,4 @@ class AuthSession(Base):
 
     ip_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     user_agent_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    factory_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)

@@ -10,6 +10,11 @@ from backend.services.ocr_document_pipeline import (
 from backend import table_scan
 
 
+def _cell_values(rows: list[list[dict | str]]) -> list[list[str]]:
+    """Extract plain string values from cell object rows. Handles both cell objects and plain strings."""
+    return [[cell["value"] if isinstance(cell, dict) else cell for cell in row] for row in rows]
+
+
 def test_choose_ocr_route_defaults_fast_when_quality_analysis_fails(monkeypatch):
     def boom(_image_bytes: bytes):
         raise RuntimeError("quality crash")
@@ -60,7 +65,7 @@ def test_table_scan_tesseract_provider_returns_table(monkeypatch):
     result = table_scan.extract_table_from_image(b"fake-image")
 
     assert result["headers"] == ["Date", "Qty"]
-    assert result["rows"] == [["2026-04-28", "12"]]
+    assert _cell_values(result["rows"]) == [["2026-04-28", "12"]]
 
 
 def test_build_structured_ocr_result_survives_routing_failure(monkeypatch):
@@ -88,7 +93,7 @@ def test_build_structured_ocr_result_survives_routing_failure(monkeypatch):
         doc_type_hint="table",
     )
 
-    assert result["rows"] == [["A", "B"]]
+    assert _cell_values(result["rows"]) == [["A", "B"]]
     assert result["routing"]["model_tier"] == "balanced"
     assert result["routing"]["provider_used"] == "anthropic"
 
@@ -132,7 +137,7 @@ def test_structured_ocr_result_uses_ai_enhancement_for_balanced_table_route(monk
     )
 
     assert calls["count"] == 1
-    assert result["rows"] == [["2026-04-28", "12"]]
+    assert _cell_values(result["rows"]) == [["2026-04-28", "12"]]
 
 
 def test_structured_ocr_result_skips_ai_enhancement_for_fast_route(monkeypatch):
@@ -174,7 +179,7 @@ def test_structured_ocr_result_skips_ai_enhancement_for_fast_route(monkeypatch):
     )
 
     assert calls["count"] == 0
-    assert result["rows"] == [["Date", "Qty"], ["2026-04-28", "12"]]
+    assert _cell_values(result["rows"]) == [["Date", "Qty"], ["2026-04-28", "12"]]
 
 
 def test_structured_ocr_result_uses_ai_enhancement_when_base_result_is_sparse(monkeypatch):
@@ -216,7 +221,7 @@ def test_structured_ocr_result_uses_ai_enhancement_when_base_result_is_sparse(mo
     )
 
     assert calls["count"] == 1
-    assert result["rows"] == [["2026-04-28", "12"]]
+    assert _cell_values(result["rows"]) == [["2026-04-28", "12"]]
 
 
 def test_structured_ocr_result_marks_anthropic_provider(monkeypatch):
@@ -254,7 +259,7 @@ def test_structured_ocr_result_marks_anthropic_provider(monkeypatch):
 
     assert result["routing"]["provider_used"] == "anthropic"
     assert result["routing"]["ai_applied"] is True
-    assert result["rows"] == [["2026-04-28", "12"]]
+    assert _cell_values(result["rows"]) == [["2026-04-28", "12"]]
 
 
 def test_structured_ocr_result_preserves_explicit_requested_model_and_usage(monkeypatch):
@@ -352,7 +357,7 @@ def test_structured_ocr_result_falls_back_to_local_result_when_remote_ai_fails(m
         doc_type_hint="table",
     )
 
-    assert result["rows"] == [["Date", "Qty"], ["2026-04-28", "12"]]
+    assert _cell_values(result["rows"]) == [["Date", "Qty"], ["2026-04-28", "12"]]
     assert result["routing"]["provider_used"] == "tesseract"
     assert result["routing"]["ai_applied"] is False
     assert result["routing"]["ai_attempted"] is True
@@ -419,8 +424,8 @@ def test_structured_ocr_result_applies_document_understanding_for_ledger_rows(mo
     )
 
     assert result["headers"] == ["Dr", "Amount", "Cr", "Amount"]
-    assert result["rows"][0] == ["Opening Stock", "5000", "Sales", "8000"]
-    assert result["rows"][1] == ["Purchases", "3000", "", ""]
+    assert _cell_values(result["rows"])[0] == ["Opening Stock", "5000", "Sales", "8000"]
+    assert _cell_values(result["rows"])[1] == ["Purchases", "3000", "", ""]
     assert result["understanding"]["doc_type"] == "ledger"
     assert result["sheets"][0]["columns"] == ["Dr", "Amount", "Cr", "Amount"]
 
@@ -452,7 +457,7 @@ def test_structured_ocr_result_falls_back_when_document_understanding_breaks(mon
     )
 
     assert result["headers"] == ["Column 1", "Column 2"]
-    assert result["rows"] == [["To Opening Stock", "5000"]]
+    assert _cell_values(result["rows"]) == [["To Opening Stock", "5000"]]
     assert result["understanding"] is None
 
 

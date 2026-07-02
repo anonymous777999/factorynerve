@@ -63,15 +63,6 @@ def _plan_limits(plan: str) -> dict[str, int]:
 
 
 def _effective_plan_limits(db: Session, *, org_id: str | None, plan: str) -> dict[str, int]:
-    if normalize_plan(plan) == "free":
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "ocr_not_available",
-                "message": "OCR image scanning is not available on the Free plan. Upgrade to Starter or higher to add OCR packs.",
-                "upgrade_url": "/billing",
-            },
-        )
     limits = _plan_limits(plan)
     if plan_limit_is_unlimited(plan, "ocr"):
         return {"requests": 0, "credits": 0, "rate": limits["rate"]}

@@ -27,6 +27,10 @@ class SteelInventoryItem(Base):
     base_unit: Mapped[str] = mapped_column(String(16), nullable=False, default="kg")
     display_unit: Mapped[str] = mapped_column(String(16), nullable=False, default="kg")
     current_rate_per_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    reorder_point_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    safety_stock_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    coil_weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.0)
+    lead_time_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

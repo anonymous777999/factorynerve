@@ -6,14 +6,14 @@ import time
 from tests.utils import create_entry_payload, register_user, set_org_plan_for_user_email, unique_email, unique_factory
 
 
-def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+def _auth_headers() -> dict[str, str]:
+    return {}
 
 
 def _wait_for_job(http_client, path: str, headers: dict[str, str], attempts: int = 80):
     payload = None
     for _ in range(attempts):
-        response = http_client.get(path, headers=headers)
+        response = http_client.get(path)
         assert response.status_code == HTTPStatus.OK, response.text
         payload = response.json()
         if payload.get("status") in {"succeeded", "failed", "canceled"}:
@@ -24,7 +24,7 @@ def _wait_for_job(http_client, path: str, headers: dict[str, str], attempts: int
 
 def _setup_multi_factory_manager(http_client, *, plan: str = "factory") -> dict[str, str]:
     admin = register_user(http_client, role="admin")
-    admin_headers = _auth_headers(admin["access_token"])
+    admin_headers = {"Cookie": f"auth_session={admin['session_token']}"}
     set_org_plan_for_user_email(admin["email"], plan)
 
     created = http_client.post(
@@ -76,7 +76,7 @@ def _setup_multi_factory_manager(http_client, *, plan: str = "factory") -> dict[
     assert login.status_code == HTTPStatus.OK, login.text
     access_token = login.json()["access_token"]
 
-    context = http_client.get("/auth/context", headers=_auth_headers(access_token))
+    context = http_client.get("/auth/context", headers={})
     assert context.status_code == HTTPStatus.OK, context.text
     context_payload = context.json()
     first_factory_id = context_payload["active_factory_id"]
@@ -92,7 +92,7 @@ def _setup_multi_factory_manager(http_client, *, plan: str = "factory") -> dict[
 def _switch_factory(http_client, token: str, factory_id: str) -> str:
     switched = http_client.post(
         "/auth/select-factory",
-        headers=_auth_headers(token),
+        headers={},
         json={"factory_id": factory_id},
     )
     assert switched.status_code == HTTPStatus.OK, switched.text
@@ -105,7 +105,7 @@ def test_factory_switch_scopes_sync_entries_analytics_reports_and_ai(http_client
     first_factory_id = setup["first_factory_id"]
     second_factory_id = setup["second_factory_id"]
 
-    first_headers = _auth_headers(manager_token)
+    first_headers = {}
     first_payload = create_entry_payload(index=1)
     first_payload["units_target"] = 100
     first_payload["units_produced"] = 21
@@ -115,7 +115,7 @@ def test_factory_switch_scopes_sync_entries_analytics_reports_and_ai(http_client
     first_entry_id = created_first.json()["id"]
 
     manager_token = _switch_factory(http_client, manager_token, second_factory_id)
-    second_headers = _auth_headers(manager_token)
+    second_headers = {}
     second_payload = create_entry_payload(index=1)
     second_payload["shift"] = "evening"
     second_payload["units_target"] = 100
@@ -126,7 +126,7 @@ def test_factory_switch_scopes_sync_entries_analytics_reports_and_ai(http_client
     second_entry_id = created_second.json()["id"]
 
     manager_token = _switch_factory(http_client, manager_token, first_factory_id)
-    first_headers = _auth_headers(manager_token)
+    first_headers = {}
 
     entries_first = http_client.get("/entries", headers=first_headers)
     assert entries_first.status_code == HTTPStatus.OK, entries_first.text
@@ -154,7 +154,7 @@ def test_factory_switch_scopes_sync_entries_analytics_reports_and_ai(http_client
     assert int(executive_first.json()["metrics"]["total_units"]) == 21
 
     manager_token = _switch_factory(http_client, manager_token, second_factory_id)
-    second_headers = _auth_headers(manager_token)
+    second_headers = {}
 
     entries_second = http_client.get("/entries", headers=second_headers)
     assert entries_second.status_code == HTTPStatus.OK, entries_second.text
@@ -187,7 +187,7 @@ def test_factory_switch_scopes_async_report_and_ai_jobs(http_client):
     manager_token = setup["manager_token"]
     second_factory_id = setup["second_factory_id"]
 
-    first_headers = _auth_headers(manager_token)
+    first_headers = {}
     first_payload_one = create_entry_payload(index=2)
     first_payload_one["units_target"] = 100
     first_payload_one["units_produced"] = 20
@@ -202,7 +202,7 @@ def test_factory_switch_scopes_async_report_and_ai_jobs(http_client):
     assert created_first_two.status_code == HTTPStatus.CREATED, created_first_two.text
 
     manager_token = _switch_factory(http_client, manager_token, second_factory_id)
-    second_headers = _auth_headers(manager_token)
+    second_headers = {}
     second_payload = create_entry_payload(index=2)
     second_payload["shift"] = "night"
     second_payload["units_target"] = 100
@@ -238,7 +238,7 @@ def test_factory_switch_scopes_async_report_and_ai_jobs(http_client):
 def test_manager_alerts_follow_active_factory_scope(http_client):
     setup = _setup_multi_factory_manager(http_client, plan="factory")
     manager_token = _switch_factory(http_client, setup["manager_token"], setup["second_factory_id"])
-    second_headers = _auth_headers(manager_token)
+    second_headers = {}
 
     alert_payload = create_entry_payload(index=3)
     alert_payload["units_target"] = 100
@@ -253,7 +253,7 @@ def test_manager_alerts_follow_active_factory_scope(http_client):
     assert second_alert_ids
 
     manager_token = _switch_factory(http_client, manager_token, setup["first_factory_id"])
-    first_headers = _auth_headers(manager_token)
+    first_headers = {}
 
     alerts_first = http_client.get("/alerts", headers=first_headers)
     assert alerts_first.status_code == HTTPStatus.OK, alerts_first.text

@@ -1,0 +1,98 @@
+name: Test Database Restore
+
+on:
+  workflow_dispatch:
+    inputs:
+      backup_filename:
+        description: 'Backup filename to restore (e.g. factorynerve_20260623_020001.dump)'
+        required: true
+        type: string
+      target_db_url:
+        description: 'Target DATABASE_URL (leave blank for temporary test DB)'
+        required: false
+        default: ''
+        type: string
+
+env:
+  B2_BUCKET_NAME: factorynerve-backups
+
+jobs:
+  restore-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: restore_test
+          POSTGRES_PASSWORD: restore_test
+          POSTGRES_DB: restore_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client
+          pip install --upgrade b2
+
+      - name: Download backup from Backblaze B2
+        run: |
+          b2 authorize-account \
+            "${{ secrets.B2_APPLICATION_KEY_ID }}" \
+            "${{ secrets.B2_APPLICATION_KEY }}"
+          b2 download-file-by-name \
+            "${{ env.B2_BUCKET_NAME }}" \
+            "${{ inputs.backup_filename }}" \
+            "${{ inputs.backup_filename }}"
+          ls -lh "${{ inputs.backup_filename }}"
+
+      - name: Restore backup to test database
+        run: |
+          TEST_DB_URL="postgresql://restore_test:restore_test@localhost:5432/restore_test"
+          
+          pg_restore \
+            --clean \
+            --if-exists \
+            --no-owner \
+            --no-privileges \
+            --verbose \
+            -d "${TEST_DB_URL}" \
+            "${{ inputs.backup_filename }}"
+
+      - name: Verify restore — check table count
+        run: |
+          TEST_DB_URL="postgresql://restore_test:restore_test@localhost:5432/restore_test"
+          
+          echo "Tables in restored database:"
+          psql "${TEST_DB_URL}" -c "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name;"
+          
+          TABLE_COUNT=$(psql "${TEST_DB_URL}" -t -A -c "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public';")
+          echo "Total tables: ${TABLE_COUNT}"
+          
+          if [ "${TABLE_COUNT}" -gt 5 ]; then
+            echo "✅ Restore verified: ${TABLE_COUNT} tables found"
+          else
+            echo "❌ Restore may have failed: only ${TABLE_COUNT} tables found"
+            exit 1
+          fi
+
+      - name: Print restore summary
+        run: |
+          echo "══════════════════════════════════════════════"
+          echo "  Restore test completed"
+          echo "  Backup: ${{ inputs.backup_filename }}"
+          echo "  Database: restore_test (PostgreSQL 15)"
+          echo "  ⚠️  This was a test restore to a temporary DB"
+          echo "  ⚠️  No production data was modified"
+          echo "══════════════════════════════════════════════"

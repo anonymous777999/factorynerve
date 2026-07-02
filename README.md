@@ -145,6 +145,44 @@ FEEDBACK_TRANSLATION_TIMEOUT_SECONDS=4
 
 See [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) for a detailed AI and engineer handoff guide.
 
+## Disaster Recovery
+
+### Automated Database Backups
+
+Backups run daily at 2:00 AM UTC via a GitHub Actions workflow:
+- **Backup file:** `factorynerve_YYYYMMDD_HHMMSS.dump` (custom format, compressed)
+- **Storage:** Backblaze B2 bucket (`factorynerve-backups`)
+- **Retention:** 14 days (older backups automatically deleted)
+
+### Trigger a manual backup
+
+1. Go to GitHub → Actions → **Database Backup** workflow
+2. Click **Run workflow** → optionally enter a reason → **Run workflow**
+
+### Restore from backup
+
+1. Go to GitHub → Actions → **Test Database Restore** workflow
+2. Enter the backup filename (e.g. `factorynerve_20260623_020001.dump`)
+3. Click **Run workflow** to test restore into an isolated PostgreSQL container
+
+### Local restore procedure
+
+```bash
+# Download backup from B2
+export B2_APPLICATION_KEY_ID=your_key_id
+export B2_APPLICATION_KEY=your_app_key
+b2 authorize-account "$B2_APPLICATION_KEY_ID" "$B2_APPLICATION_KEY"
+b2 download-file-by-name factorynerve-backups factorynerve_20260623_020001.dump ./restore.dump
+
+# Restore to local PostgreSQL
+pg_restore --clean --if-exists --no-owner -d postgresql://localhost:5432/factorynerve ./restore.dump
+
+# Or restore to Render PostgreSQL directly (⚠️ destructive — replaces all data)
+pg_restore --clean --if-exists -d "$DATABASE_URL" ./restore.dump
+```
+
+> **⚠️ WARNING:** Restoring to a production database will **replace all existing data**. Always test restore on a staging/development database first.
+
 ## Deployment help
 
 - HTTPS / production deployment: [docs/HTTPS_DEPLOYMENT_PLAYBOOK.md](./docs/HTTPS_DEPLOYMENT_PLAYBOOK.md)

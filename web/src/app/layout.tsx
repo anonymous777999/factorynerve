@@ -1,23 +1,28 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { AppProviders } from "@/components/app-providers";
-import { AppShell } from "@/components/app-shell";
-import { BetaRolloutBanner } from "@/components/beta-rollout-banner";
-import { FeedbackSyncAgent } from "@/components/feedback-sync-agent";
-import { FrontendErrorMonitor } from "@/components/frontend-error-monitor";
-import { OfflineSyncAgent } from "@/components/offline-sync-agent";
-import { ServiceWorker } from "@/components/service-worker";
-import { ToastCenter } from "@/components/toast-center";
+import { AppProviders } from "@/components/layout/app-providers";
+import { AppShell } from "@/components/layout/app-shell";
+import { BetaRolloutBanner } from "@/components/shared/beta-rollout-banner";
+import { FeedbackSyncAgent } from "@/components/shared/feedback-sync-agent";
+import { FrontendErrorMonitor } from "@/components/shared/frontend-error-monitor";
+import { OfflineSyncAgent } from "@/components/shared/offline-sync-agent";
+import { ServiceWorker } from "@/components/shared/service-worker";
+import { ToastCenter } from "@/components/shared/toast-center";
 
 export const metadata: Metadata = {
-  title: "DPR.ai Web",
-  description: "Modern production-ready frontend for DPR.ai",
+  title: "Factory Nerve",
+  description: "Factory trust infrastructure — production, attendance, inventory, and dispatch in one platform.",
   manifest: "/manifest.json",
-  applicationName: "DPR.ai",
+  applicationName: "Factory Nerve",
+  icons: {
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "DPR.ai",
+    title: "Factory Nerve",
   },
   formatDetection: {
     telephone: false,
@@ -46,7 +51,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      {/* AUDIT: VISUAL_GENERIC — Swapped the default app fonts for a more deliberate control-room pairing loaded from Google Fonts CDN. */}
+
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--text)]">
         <AppProviders>
           <BetaRolloutBanner />

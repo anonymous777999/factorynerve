@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -38,6 +38,20 @@ class SteelProductionBatch(Base):
     variance_value_inr: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     severity: Mapped[str] = mapped_column(String(16), nullable=False, default="normal")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="recorded")
+    coil_expected_weight_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    coil_weight_variance_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
+    coil_weight_variance_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
+    is_coil_theft_suspected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # ── Phase 2: Rejection, scrap, line, machine ──────────────────────────
+    rejection_qty_kg: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    scrap_qty_kg: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    line_id: Mapped[int | None] = mapped_column(
+        ForeignKey("steel_production_lines.id"), nullable=True, default=None
+    )
+    machine_id: Mapped[int | None] = mapped_column(
+        ForeignKey("steel_machines.id"), nullable=True, default=None
+    )
+
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False

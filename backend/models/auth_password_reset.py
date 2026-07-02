@@ -19,7 +19,7 @@ class AuthPasswordReset(Base):
     auth_user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("auth_users.id"), nullable=False
     )
-    token_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)  # unique=True creates an implicit index
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False

@@ -1,0 +1,35 @@
+"""Steel vendor payment tracking for accounts payable settlement."""
+
+from __future__ import annotations
+
+from datetime import date, datetime, timezone
+
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+from backend.database import Base
+
+
+class SteelVendorPayment(Base):
+    __tablename__ = "steel_vendor_payments"
+    __table_args__ = (
+        Index("ix_steel_vendor_payments_factory_id", "factory_id"),
+        Index("ix_steel_vendor_payments_vendor_id", "vendor_id"),
+        Index("ix_steel_vendor_payments_payment_date", "payment_date"),
+        Index("uq_steel_vendor_payments_factory_reference", "factory_id", "reference_number", unique=True),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    org_id: Mapped[str] = mapped_column(ForeignKey("organizations.org_id"), nullable=False, index=True)
+    factory_id: Mapped[str] = mapped_column(ForeignKey("factories.factory_id"), nullable=False)
+    vendor_id: Mapped[int] = mapped_column(ForeignKey("steel_vendors.id"), nullable=False)
+    bill_id: Mapped[int | None] = mapped_column(ForeignKey("steel_vendor_bills.id"), nullable=True)
+    payment_date: Mapped[date] = mapped_column(Date, nullable=False)
+    amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0)
+    payment_mode: Mapped[str] = mapped_column(String(32), nullable=False, default="bank_transfer")
+    reference_number: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )

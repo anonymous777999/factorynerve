@@ -8,9 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
 function toneClasses(tone: SmartInsight["tone"]) {
-  if (tone === "good") return "border-[#bbf7d0] bg-[#f4fbf7]";
-  if (tone === "warning") return "border-[#fed7aa] bg-[#fff7ed]";
-  return "border-[#d6d3d1] bg-[#f5f5f4]";
+  if (tone === "good") return "border-emerald-400/30 bg-[rgba(34,197,94,0.12)]";
+  if (tone === "warning") return "border-amber-400/30 bg-[rgba(245,158,11,0.12)]";
+  return "border-[var(--border)] bg-[var(--card-strong)]";
 }
 
 function severityLabel(severity: SmartInsight["severity"]) {
@@ -28,11 +28,11 @@ export function SmartInsightsPanel({
   loading?: boolean;
 }) {
   return (
-    <Card className="rounded-[1.9rem] !border-[#e7e5e4] !bg-none !bg-white !text-[#111111] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+    <Card>
       <CardHeader>
-        <div className="text-xs uppercase tracking-[0.24em] text-[#78716c]">Ranked Insights</div>
-        <CardTitle className="mt-2 text-xl text-[#111111] md:text-2xl">Industrial decision prompts</CardTitle>
-        <p className="mt-2 text-sm leading-6 text-[#57534e]">
+        <div className="text-xs uppercase tracking-header text-[var(--muted)]">Ranked Insights</div>
+        <CardTitle className="mt-2 text-xl md:text-2xl">Industrial decision prompts</CardTitle>
+        <p className="mt-2 text-sm leading-6 text-[var(--muted)]">
           These messages are generated from live dashboard data so a manager can see risk, stock pressure, and revenue movement without scanning every chart manually.
         </p>
       </CardHeader>
@@ -51,18 +51,18 @@ export function SmartInsightsPanel({
                 className={`rounded-[1.5rem] border p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${toneClasses(insight.tone)}`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Impact {insight.impactScore}</div>
-                  <div className="rounded-full border border-[#d6d3d1] bg-white/90 px-3 py-1 text-[11px] font-semibold text-[#111111]">
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Impact {insight.impactScore}</div>
+                  <div className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[11px] font-semibold text-[var(--text)]">
                     {severityLabel(insight.severity)}
                   </div>
                 </div>
-                <div className="mt-3 text-sm font-semibold text-[#111111]">{insight.headline}</div>
-                <div className="mt-2 text-xs leading-6 text-[#57534e]">{insight.supportingText}</div>
-                <div className="mt-3 text-xs font-medium leading-6 text-[#111111]">Next: {insight.nextStep}</div>
+                <div className="mt-3 text-sm font-semibold text-[var(--text)]">{insight.headline}</div>
+                <div className="mt-2 text-xs leading-6 text-[var(--muted)]">{insight.supportingText}</div>
+                <div className="mt-3 text-xs font-medium leading-6 text-[var(--text)]">Next: {insight.nextStep}</div>
                 {insight.primaryAction ? (
                   <div className="mt-4">
                     <Link href={insight.primaryAction.href}>
-                      <Button variant="outline" className="!border-[#111111] !bg-none !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-none hover:!bg-[#2f2f2f]">
+                      <Button variant="outline">
                         {insight.primaryAction.label}
                       </Button>
                     </Link>

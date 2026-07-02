@@ -53,8 +53,8 @@ def _db_session():
     Base.metadata.create_all(bind=engine)
     Session = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
     session = Session()
-    session.add(Organization(org_id="org-a", name="Org A", plan="free", ai_daily_token_cap=1000, ai_monthly_cost_cap_usd=10.0))
-    session.add(Organization(org_id="org-b", name="Org B", plan="free", ai_daily_token_cap=1000, ai_monthly_cost_cap_usd=10.0))
+    session.add(Organization(org_id="org-a", name="Org A", plan="pilot", ai_daily_token_cap=1000, ai_monthly_cost_cap_usd=10.0))
+    session.add(Organization(org_id="org-b", name="Org B", plan="pilot", ai_daily_token_cap=1000, ai_monthly_cost_cap_usd=10.0))
     session.commit()
     return session
 

@@ -31,6 +31,7 @@ export function CameraCapture({
   const [previewFile, setPreviewFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [flashVisible, setFlashVisible] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
 
   const supportsTorch = useMemo(() => torchSupported, [torchSupported]);
 
@@ -82,6 +83,7 @@ export function CameraCapture({
     setTorchSupported(false);
     setTorchState(false);
     setPreviewFile(null);
+    setCaptureError(null);
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl("");
@@ -91,15 +93,22 @@ export function CameraCapture({
 
   const handleCapture = async () => {
     if (!videoRef.current) return;
-    const file = await captureVideoFrame(videoRef.current);
-    setFlashVisible(true);
-    const nextUrl = URL.createObjectURL(file);
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
+    try {
+      setCaptureError(null);
+      const file = await captureVideoFrame(videoRef.current);
+      setFlashVisible(true);
+      const nextUrl = URL.createObjectURL(file);
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+      setPreviewFile(file);
+      setPreviewUrl(nextUrl);
+      window.setTimeout(() => setFlashVisible(false), 160);
+    } catch {
+      setCaptureError(
+        "Could not capture the frame. The camera may not be ready yet. Try again or upload a photo instead.",
+      );
     }
-    setPreviewFile(file);
-    setPreviewUrl(nextUrl);
-    window.setTimeout(() => setFlashVisible(false), 160);
   };
 
   const handleUsePhoto = () => {
@@ -138,14 +147,32 @@ export function CameraCapture({
         </div>
 
         <div className="relative flex-1 overflow-hidden">
-          {permission === "granted" ? (
-            <>
-              {previewFile ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={previewUrl} alt="Captured preview" className="h-full w-full object-cover" />
-              ) : (
-                <video ref={videoRef} className="h-full w-full object-cover" autoPlay playsInline muted />
-              )}
+        {permission === "granted" ? (
+          <>
+            {captureError ? (
+              <div className="grid h-full place-items-center px-6 text-center text-white">
+                <div className="max-w-xs space-y-4">
+                  <div className="text-2xl font-semibold">Could not capture</div>
+                  <p className="text-sm leading-6 text-white/70">{captureError}</p>
+                  <button
+                    type="button"
+                    className="inline-flex h-12 items-center justify-center rounded-full bg-white px-5 text-sm font-semibold text-[#111827]"
+                    onClick={() => {
+                      setCaptureError(null);
+                      closeCapture();
+                      onUploadInstead();
+                    }}
+                  >
+                    Upload instead
+                  </button>
+                </div>
+              </div>
+            ) : previewFile ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={previewUrl} alt="Captured preview" className="h-full w-full object-cover" />
+            ) : (
+              <video ref={videoRef} className="h-full w-full object-cover" autoPlay playsInline muted />
+            )}
               {!previewFile ? (
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div className="grid h-[min(74vw,22rem)] w-[min(74vw,22rem)] grid-cols-3 grid-rows-3 border border-white/18">
@@ -192,7 +219,7 @@ export function CameraCapture({
           )}
         </div>
 
-        {permission === "granted" ? (
+        {permission === "granted" && !captureError ? (
           <div className="px-6 pb-8 pt-5">
             {previewFile ? (
               <div className="flex items-center justify-center gap-3">

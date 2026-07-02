@@ -16,7 +16,7 @@ from backend.models.report import AuditLog
 from backend.models.subscription import Subscription
 from backend.models.user import User
 from backend.models.user_plan import UserPlan
-from backend.plans import get_addon, normalize_addon_quantities, normalize_plan
+from backend.plans import get_addon, normalize_addon_quantities, normalize_plan, plan_rank, MIN_ZERO_COST_PLAN
 from backend.services.billing_logger import log_billing_event
 from backend.services.plan_resolver import get_effective_plan
 from backend.tenancy import resolve_factory_id, resolve_org_id
@@ -83,7 +83,12 @@ def _subscription_sort_key(sub: Subscription, *, now: datetime | None = None) ->
 
 
 def get_canonical_subscription(db: Session, org_id: str) -> Subscription | None:
-    rows = db.query(Subscription).filter(Subscription.org_id == org_id).all()
+    rows = (
+        db.query(Subscription)
+        .filter(Subscription.org_id == org_id)
+        .limit(50)
+        .all()
+    )
     if not rows:
         return None
     now = datetime.now(timezone.utc)
@@ -91,7 +96,12 @@ def get_canonical_subscription(db: Session, org_id: str) -> Subscription | None:
 
 
 def get_mutable_subscription(db: Session, org_id: str) -> Subscription | None:
-    rows = db.query(Subscription).filter(Subscription.org_id == org_id).all()
+    rows = (
+        db.query(Subscription)
+        .filter(Subscription.org_id == org_id)
+        .limit(50)
+        .all()
+    )
     if not rows:
         return None
     now = datetime.now(timezone.utc)
@@ -178,9 +188,22 @@ def normalize_subscription_record(
 def normalize_subscription_states(db: Session) -> int:
     now = datetime.now(timezone.utc)
     updated = 0
-    for row in db.query(Subscription).all():
-        if normalize_subscription_record(db, row, now=now):
-            updated += 1
+    page_size = 200
+    offset = 0
+    while True:
+        rows = (
+            db.query(Subscription)
+            .order_by(Subscription.id)
+            .limit(page_size)
+            .offset(offset)
+            .all()
+        )
+        if not rows:
+            break
+        for row in rows:
+            if normalize_subscription_record(db, row, now=now):
+                updated += 1
+        offset += page_size
     return updated
 
 
@@ -198,7 +221,52 @@ def detect_orphaned_subscriptions(db: Session) -> list[int]:
             orphaned_ids.append(int(row[0]))
         else:
             orphaned_ids.append(int(getattr(row, "id", row)))
+    # Also find subscriptions whose org_id references a deleted org
+    # (these may not have a User join match if user_id is None).
+    extra_rows = (
+        db.query(Subscription.id)
+        .outerjoin(Organization, Organization.org_id == Subscription.org_id)
+        .filter(Organization.org_id.is_(None))
+        .all()
+    )
+    for row in extra_rows:
+        sid = int(row[0]) if isinstance(row, tuple) else int(getattr(row, "id", row))
+        if sid not in orphaned_ids:
+            orphaned_ids.append(sid)
     return orphaned_ids
+
+
+def cleanup_orphaned_subscriptions(db: Session) -> int:
+    """Mark subscriptions for which the parent org no longer exists as cancelled.
+
+    Returns the number of subscriptions cleaned up.
+    """
+    orphaned_ids = detect_orphaned_subscriptions(db)
+    if not orphaned_ids:
+        return 0
+    now = datetime.now(timezone.utc)
+    count = (
+        db.query(Subscription)
+        .filter(Subscription.id.in_(orphaned_ids), Subscription.status.in_(["active", "trialing", "past_due", "suspended"]))
+        .update(
+            {
+                "status": "cancelled",
+                "updated_at": now,
+            },
+            synchronize_session=False,
+        )
+    )
+    db.commit()
+    if count:
+        logger.warning("Cleaned up %d orphaned subscriptions after org deletion", count)
+        log_billing_event(
+            "subscription.cleanup",
+            None,
+            "success",
+            cleaned_up_count=count,
+            orphaned_ids=orphaned_ids,
+        )
+    return count
 
 
 def apply_plan_change(
@@ -211,7 +279,21 @@ def apply_plan_change(
     current_period_end_at: datetime | None = None,
     audit_details: str | None = None,
     audit_action: str = "PLAN_UPDATED",
+    skip_min_plan_check: bool = False,
 ) -> None:
+    # Prevent downgrade below zero-cost plan unless explicitly allowed
+    if not skip_min_plan_check:
+        resolved_org_id = _resolve_subscription_org_id(db, org_id=org_id, user_id=user_id)
+        current_sub = get_canonical_subscription(db, resolved_org_id)
+        if current_sub is not None:
+            current_rank = plan_rank(current_sub.plan)
+            new_rank = plan_rank(normalize_plan(plan))
+            if new_rank < current_rank:
+                min_rank = plan_rank(MIN_ZERO_COST_PLAN)
+                if new_rank < min_rank:
+                    raise ValueError(
+                        f"Cannot downgrade below the minimum plan ({MIN_ZERO_COST_PLAN})."
+                    )
     normalized = normalize_plan(plan)
     if not normalized:
         return
@@ -306,7 +388,7 @@ def schedule_downgrade(
     resolved_org_id = _resolve_subscription_org_id(db, org_id=org_id, user_id=user_id)
     sub = get_mutable_subscription(db, resolved_org_id)
     if not sub:
-        sub = Subscription(org_id=resolved_org_id, user_id=user_id, plan="free", status="trialing")
+        sub = Subscription(org_id=resolved_org_id, user_id=user_id, plan="pilot", status="trialing")
         db.add(sub)
         db.flush()
     if not effective_at:
@@ -394,23 +476,35 @@ def apply_due_downgrades(
 
 def enforce_expired_grace_periods(db: Session) -> int:
     now = datetime.now(timezone.utc)
-    rows = db.query(Subscription).all()
     changed = 0
-    for row in rows:
-        previous_status = str(row.status or "").strip().lower()
-        if normalize_subscription_record(db, row, now=now):
-            changed += 1
-            log_billing_event(
-                "subscription.state_change",
-                row.org_id,
-                "success",
-                action="GRACE_PERIOD_EXPIRED"
-                if previous_status == "past_due" and row.status == "suspended"
-                else "STATE_NORMALIZED",
-                user_id=row.user_id,
-                status=row.status,
-                grace_period_end=row.grace_period_end_at.isoformat() if row.grace_period_end_at else None,
-            )
+    page_size = 200
+    offset = 0
+    while True:
+        rows = (
+            db.query(Subscription)
+            .order_by(Subscription.id)
+            .limit(page_size)
+            .offset(offset)
+            .all()
+        )
+        if not rows:
+            break
+        for row in rows:
+            previous_status = str(row.status or "").strip().lower()
+            if normalize_subscription_record(db, row, now=now):
+                changed += 1
+                log_billing_event(
+                    "subscription.state_change",
+                    row.org_id,
+                    "success",
+                    action="GRACE_PERIOD_EXPIRED"
+                    if previous_status == "past_due" and row.status == "suspended"
+                    else "STATE_NORMALIZED",
+                    user_id=row.user_id,
+                    status=row.status,
+                    grace_period_end=row.grace_period_end_at.isoformat() if row.grace_period_end_at else None,
+                )
+        offset += page_size
     return changed
 
 

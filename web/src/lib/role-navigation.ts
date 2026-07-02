@@ -55,11 +55,11 @@ export function getRolePrimaryHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/work-queue"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/workforce", "/work-queue"];
     case "admin":
-      return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/dashboard"];
+      return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/dashboard", "/steel/production/machines", "/workforce"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/reports", "/ai", "/email-summary", "/steel/charts", "/steel/dispatches"];
+      return ["/premium/dashboard", "/control-tower", "/reports", "/ai", "/email-summary", "/steel/charts", "/steel/dispatches", "/steel/production/machines", "/workforce"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -76,11 +76,11 @@ export function getRoleDefaultFavoriteHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/workforce"];
     case "admin":
-      return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics"];
+      return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/steel/production/machines", "/workforce"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary", "/ai", "/steel/dispatches"];
+      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary", "/ai", "/steel/dispatches", "/steel/production/machines", "/workforce"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -97,11 +97,11 @@ export function getRoleMobileNavHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/profile"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/workforce"];
     case "admin":
       return ["/settings", "/reports", "/approvals", "/analytics", "/profile"];
     case "owner":
-      return ["/premium/dashboard", "/reports", "/control-tower", "/ai", "/email-summary", "/steel/dispatches"];
+      return ["/premium/dashboard", "/reports", "/control-tower", "/ai", "/email-summary", "/steel/dispatches", "/workforce"];
     default:
       return ["/dashboard", "/work-queue", "/ocr/scan", "/attendance", "/profile"];
   }
@@ -118,7 +118,7 @@ export function getRoleDesktopQuickLinkHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary"];
     case "manager":
-      return ["/approvals", "/reports", "/analytics"];
+      return ["/approvals", "/reports", "/analytics", "/workforce"];
     case "admin":
       return ["/settings", "/settings/attendance", "/reports"];
     case "owner":
@@ -176,16 +176,22 @@ export function getRoleAllowedNavHrefs(role?: string | null, industryType?: stri
         "/steel/inventory",
         "/steel/inventory/transactions",
         "/steel/production/record",
+        "/steel/production/machines",
+        "/steel/production-intelligence",
+        "/steel/machine-alerts",
         "/steel/customers",
         "/steel/invoices",
         "/steel/dispatches",
         "/email-summary",
+        "/workforce",
       ].forEach((href) => base.add(href));
       break;
     case "admin":
       [
         "/dashboard",
         "/ocr/history",
+        "/steel/production/machines",
+        "/workforce",
       ].forEach((href) => base.add(href));
       break;
     case "owner":
@@ -197,8 +203,10 @@ export function getRoleAllowedNavHrefs(role?: string | null, industryType?: stri
         "/steel/charts",
         "/steel/customers",
         "/steel/dispatches",
+        "/steel/production/machines",
         "/email-summary",
         "/ai",
+        "/workforce",
       ].forEach((href) => base.add(href));
       break;
     default:

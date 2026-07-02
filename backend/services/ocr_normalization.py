@@ -10,6 +10,7 @@ from typing import Any
 
 _NUMBER_HEADER_TOKENS = ("amount", "amt", "qty", "quantity", "count", "number", "total", "rate", "value", "balance", "debit", "credit", "dr", "cr")
 _DATE_HEADER_TOKENS = ("date", "day", "time", "month", "year")
+# Confusable letter-to-digit mappings (handwritten letters that look like digits)
 _CONFUSABLE_DIGIT_MAP = str.maketrans({
     "O": "0",
     "o": "0",
@@ -19,6 +20,19 @@ _CONFUSABLE_DIGIT_MAP = str.maketrans({
     "s": "5",
     "B": "8",
 })
+
+# Ambiguous digit pairs common in Indian factory handwriting.
+# These are NOT 1:1 substitutions — they flag cells for review
+# when a digit could plausibly be confused with another.
+_AMBIGUOUS_DIGIT_PAIRS: list[tuple[str, str]] = [
+    ("9", "4"),   # 9 vs 4 — very common in Indian handwriting
+    ("9", "2"),   # 9 vs 2
+    ("5", "6"),   # 5 vs 6
+    ("0", "6"),   # 0 vs 6
+    ("8", "0"),   # 8 vs 0
+    ("1", "7"),   # 1 vs 7
+    ("3", "8"),   # 3 vs 8
+]
 
 
 def extract_json_candidate(raw: str | None) -> Any | None:
@@ -232,8 +246,27 @@ def _looks_confusable_numeric(value: str) -> bool:
     return _looks_number_like(translated)
 
 
+def _has_ambiguous_digit_pattern(value: str) -> bool:
+    """
+    Check if a numeric value contains BOTH digits from a commonly-confused
+    pair in Indian handwriting (e.g., 9 and 4 both present, or 1 and 7 both present).
+
+    A clean "15000" has only "1" and "5" → not flagged.
+    A potentially ambiguous "147" has both "1" and "7" → flagged.
+    """
+    if not value or len(value) < 2:
+        return False
+    for d1, d2 in _AMBIGUOUS_DIGIT_PAIRS:
+        if d1 in value and d2 in value:
+            return True
+    return False
+
+
 def _classify_number_cell(value: str) -> str:
     if _looks_number_like(value):
+        # Even if it looks like a valid number, check for ambiguous handwriting
+        if _has_ambiguous_digit_pattern(value):
+            return "medium"
         return "high"
     if _looks_confusable_numeric(value):
         return "medium"

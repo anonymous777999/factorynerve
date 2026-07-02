@@ -230,6 +230,7 @@ class AttendanceAbsenceService:
                 db.query(Factory)
                 .filter(Factory.is_active.is_(True))
                 .order_by(Factory.created_at.asc(), Factory.factory_id.asc())
+                .limit(1000)
                 .all()
             )
             for factory in factories:

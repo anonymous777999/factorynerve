@@ -1,4 +1,11 @@
-"""Feedback API router for in-app product feedback submission and triage."""
+"""Feedback API router for in-app product feedback submission and triage.
+
+SECURITY: This module implements the Feedback Channel Security Plan
+(docs/FEEDBACK_CHANNEL_SECURITY_PLAN.md). All feedback submissions go through
+content controls (length limit, data pattern detection), multi-tier rate
+limiting (user/factory/org), and full audit logging. The /mine/updates endpoint
+deliberately omits the message body to prevent read-back exfiltration.
+"""
 
 from __future__ import annotations
 
@@ -16,6 +23,8 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.auth_security.rate_limit import RateLimitError, check_rate_limit
+from backend.authorization import PDP
+from backend.authorization.pdp import build_request_context
 from backend.database import get_db
 from backend.middleware.rate_limit_middleware import extract_client_ip
 from backend.models.factory import Factory
@@ -28,6 +37,7 @@ from backend.models.feedback import (
     FeedbackStatus,
     FeedbackType,
 )
+from backend.models.report import AuditLog
 from backend.models.user import User
 from backend.security import get_current_user
 from backend.services.feedback_translation import enrich_feedback_message
@@ -38,6 +48,100 @@ from backend.utils import sanitize_text
 router = APIRouter(tags=["Feedback"])
 _WHITESPACE_RE = re.compile(r"\s+")
 
+# ── Data Exfiltration Pattern Detection (Security Plan Layer 1b) ──────────
+
+# Patterns: (regex, pattern_name, threshold_matches)
+_DATA_PATTERNS: list[tuple[str, str, int]] = [
+    (r'(\+?[\d\s\-]{10,})', "multiple_phone_numbers", 2),
+    (r'(₹[\d,]+|Rs\.?\s*[\d,]+|\d+\s*lakh)', "financial_amounts", 3),
+    (r'[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}', "email_addresses", 2),
+    (r'\b\d{10,}\b', "long_numeric_sequences", 2),
+    (r'([^,\n]+,){4,}', "csv_like_content", 1),
+]
+
+
+# ── Feedback Audit Helper (Security Plan Layer 4) ─────────────────────────
+
+
+def _write_feedback_audit(
+    db: Session,
+    *,
+    action: str,
+    severity: str,
+    user_id: int,
+    org_id: str | None,
+    factory_id: str | None,
+    feedback_id: int | None = None,
+    detail: str = "",
+) -> None:
+    """Write a feedback-related audit log entry.
+
+    Message body is NOT logged. Audit logs store metadata, not content.
+    See: Feedback Channel Security Plan, Layer 4.
+    """
+    db.add(
+        AuditLog(
+            user_id=user_id,
+            org_id=org_id,
+            factory_id=factory_id,
+            action=f"FEEDBACK_{action}",
+            details=detail,
+            ip_address=None,
+            timestamp=datetime.now(timezone.utc),
+        )
+    )
+
+
+# ── Data Pattern Detection (Security Plan Layer 1b) ───────────────────────
+
+
+def _check_message_for_data_patterns(message: str) -> list[str]:
+    """Check a message for embedded data patterns that suggest exfiltration.
+
+    Returns a list of triggered pattern names. Empty list = clean message.
+    On match, the caller should block the submission and audit as high severity.
+    Do NOT reveal which pattern triggered to the user.
+    See: Feedback Channel Security Plan, Layer 1b.
+    """
+    triggered: list[str] = []
+    for pattern, name, threshold in _DATA_PATTERNS:
+        matches = re.findall(pattern, message)
+        if len(matches) >= threshold:
+            triggered.append(name)
+    return triggered
+
+
+# ── Three-Tier Rate Limiting (Security Plan Layer 2) ───────────────────────
+
+
+def _check_feedback_rate_limits(
+    *, user_id: int, factory_id: str | None, org_id: str | None
+) -> None:
+    """Three-tier rate limiting: user, factory, org.
+
+    See: Feedback Channel Security Plan, Layer 2.
+    """
+    check_rate_limit(
+        key=f"feedback:user:{user_id}",
+        max_requests=5,
+        window_seconds=3600,
+        error="You have submitted too many feedback reports this hour.",
+    )
+    if factory_id:
+        check_rate_limit(
+            key=f"feedback:factory:{factory_id}",
+            max_requests=20,
+            window_seconds=3600,
+            error="Too many feedback reports from this factory this hour.",
+        )
+    if org_id:
+        check_rate_limit(
+            key=f"feedback:org:{org_id}",
+            max_requests=50,
+            window_seconds=3600,
+            error="Too many feedback reports from your organisation this hour.",
+        )
+
 
 class FeedbackSort(str, Enum):
     RECENCY = "recency"
@@ -46,12 +150,14 @@ class FeedbackSort(str, Enum):
 
 class FeedbackSubmitRequest(BaseModel):
     type: FeedbackType
-    message_original: str = Field(min_length=1, max_length=4000)
+    # Layer 1a: Hard character limit (1,000 chars) — Security Plan P0
+    message_original: str = Field(min_length=1, max_length=1000)
     source: FeedbackSource = FeedbackSource.FLOATING
     channel: FeedbackChannel = FeedbackChannel.TEXT
     mood: FeedbackMood | None = None
     rating: FeedbackRating | None = None
-    message_translated: str | None = Field(default=None, max_length=4000)
+    # Layer 1c: Attachments are explicitly NOT accepted — Security Plan P1
+    message_translated: str | None = Field(default=None, max_length=1000)
     detected_language: str | None = Field(default=None, max_length=24)
     translation_status: str | None = Field(default="not_requested", max_length=24)
     context: dict[str, Any] | None = None
@@ -60,15 +166,17 @@ class FeedbackSubmitRequest(BaseModel):
     @field_validator("message_original")
     @classmethod
     def validate_message_original(cls, value: str) -> str:
-        cleaned = sanitize_text(value, max_length=4000)
+        cleaned = sanitize_text(value, max_length=1000)
         if not cleaned:
             raise ValueError("Feedback message cannot be empty.")
+        if len(cleaned) < 10:
+            raise ValueError("Feedback message too short to be useful.")
         return cleaned
 
     @field_validator("message_translated")
     @classmethod
     def validate_message_translated(cls, value: str | None) -> str | None:
-        return sanitize_text(value, max_length=4000) if value is not None else None
+        return sanitize_text(value, max_length=1000) if value is not None else None
 
     @field_validator("detected_language")
     @classmethod
@@ -135,9 +243,13 @@ class FeedbackAdminItem(BaseModel):
 
 
 class FeedbackReporterUpdateItem(BaseModel):
+    """Reporter-facing update item.
+
+    message_body is intentionally omitted — prevents read-back exfiltration.
+    See: Feedback Channel Security Plan, Layer 3, Vector 4.
+    """
     id: int
     type: FeedbackType
-    message_original: str
     resolution_note: str | None = None
     resolved_at: datetime
 
@@ -157,11 +269,6 @@ class FeedbackListResponse(BaseModel):
     page_size: int
     limit: int | None = None
     offset: int | None = None
-
-
-def _require_feedback_admin(current_user: User) -> None:
-    if not current_user.is_platform_admin:
-        raise HTTPException(status_code=403, detail="Platform access required.")
 
 
 def _sanitize_json(value: Any, *, depth: int = 0) -> Any:
@@ -251,15 +358,6 @@ def _feedback_query(db: Session, *, org_id: str | None, group_stats=None):
 
 def _feedback_by_id(db: Session, *, org_id: str | None, feedback_id: int, group_stats=None):
     return _feedback_query(db, org_id=org_id, group_stats=group_stats).filter(Feedback.id == feedback_id).first()
-
-
-def _throttle_feedback(request: Request, current_user: User) -> None:
-    ip_address = extract_client_ip(request)
-    try:
-        check_rate_limit(key=f"feedback:user:{current_user.id}", max_requests=5, window_seconds=300)
-        check_rate_limit(key=f"feedback:ip:{ip_address}", max_requests=20, window_seconds=300)
-    except RateLimitError as error:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
 
 
 def _serialize_feedback_item(
@@ -371,10 +469,52 @@ def submit_feedback(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackSubmitResponse:
-    _throttle_feedback(request, current_user)
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="feedback.submit",
+        request_context=build_request_context(request),
+    )
+
     org_id = resolve_org_id(current_user)
     if not org_id:
         raise HTTPException(status_code=400, detail="Organization could not be resolved.")
+
+    factory_id = resolve_factory_id(db, current_user)
+
+    # Layer 2: Three-tier rate limiting (Security Plan P1)
+    try:
+        _check_feedback_rate_limits(
+            user_id=current_user.id,
+            factory_id=factory_id,
+            org_id=org_id,
+        )
+    except RateLimitError as error:
+        _write_feedback_audit(
+            db, action="BLOCKED_RATE_LIMIT", severity="medium",
+            user_id=current_user.id, org_id=org_id, factory_id=factory_id,
+            detail="Rate limit exceeded on feedback submission.",
+        )
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
+
+    # Layer 1b: Data pattern detection (Security Plan P1)
+    message_original = sanitize_text(payload.message_original, max_length=1000)
+    if not message_original:
+        raise HTTPException(status_code=400, detail="Feedback message cannot be empty.")
+
+    triggered_patterns = _check_message_for_data_patterns(message_original)
+    if triggered_patterns:
+        _write_feedback_audit(
+            db, action="BLOCKED_DATA_PATTERN", severity="high",
+            user_id=current_user.id, org_id=org_id, factory_id=factory_id,
+            detail=f"Blocked by data patterns: {', '.join(triggered_patterns)}",
+        )
+        db.commit()
+        # Return generic 400 — do NOT reveal which pattern triggered
+        raise HTTPException(
+            status_code=400,
+            detail="Feedback message could not be processed. Please rephrase and try again.",
+        )
 
     existing_by_request_id = None
     if payload.client_request_id:
@@ -401,10 +541,6 @@ def submit_feedback(
     if isinstance(sanitized_context, dict):
         route_value = sanitized_context.get("route")
         route = route_value if isinstance(route_value, str) else None
-
-    message_original = sanitize_text(payload.message_original, max_length=4000)
-    if not message_original:
-        raise HTTPException(status_code=400, detail="Feedback message cannot be empty.")
 
     dedupe_hash = _dedupe_hash(
         feedback_type=payload.type,
@@ -440,7 +576,7 @@ def submit_feedback(
     )
     feedback = Feedback(
         org_id=org_id,
-        factory_id=resolve_factory_id(db, current_user),
+        factory_id=factory_id,
         user_id=current_user.id,
         type=payload.type,
         source=payload.source,
@@ -457,6 +593,14 @@ def submit_feedback(
         status=FeedbackStatus.OPEN,
     )
     db.add(feedback)
+    db.flush()
+
+    _write_feedback_audit(
+        db, action="SUBMIT", severity="low",
+        user_id=current_user.id, org_id=org_id, factory_id=factory_id,
+        feedback_id=feedback.id,
+        detail=f"Feedback submitted: type={payload.type.value} source={payload.source.value}",
+    )
     db.commit()
     db.refresh(feedback)
     return FeedbackSubmitResponse(
@@ -478,7 +622,10 @@ def list_feedback(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackListResponse:
-    _require_feedback_admin(current_user)
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="feedback.manage",
+    )
     org_id: str | None = None
     if not current_user.is_platform_admin:
         org_id = resolve_org_id(current_user)
@@ -540,10 +687,12 @@ def list_my_feedback_updates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackReporterUpdatesResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="feedback.submit")
     org_id = resolve_org_id(current_user)
     if not org_id:
         raise HTTPException(status_code=400, detail="Organization could not be resolved.")
 
+    # Layer 3: Scope isolation — belt-and-suspenders (Security Plan P0)
     query = (
         db.query(Feedback)
         .filter(
@@ -559,12 +708,12 @@ def list_my_feedback_updates(
     total = query.count()
     offset = (page - 1) * page_size
     rows = query.order_by(Feedback.resolved_at.desc(), Feedback.id.desc()).offset(offset).limit(page_size).all()
+    # message_body is intentionally omitted — prevents read-back exfiltration (Vector 4)
     return FeedbackReporterUpdatesResponse(
         items=[
             FeedbackReporterUpdateItem(
                 id=row.id,
                 type=row.type,
-                message_original=row.message_original,
                 resolution_note=row.resolution_note,
                 resolved_at=row.resolved_at or row.created_at,
             )
@@ -585,6 +734,7 @@ def export_feedback_csv(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
+    PDP(db=db).require_permission(actor=current_user, permission_key="feedback.manage")
     payload = list_feedback(
         status_value=status_value,
         feedback_type=feedback_type,
@@ -595,6 +745,14 @@ def export_feedback_csv(
         current_user=current_user,
     )
     csv_body = _build_feedback_csv(payload.items)
+
+    _write_feedback_audit(
+        db, action="EXPORTED", severity="medium",
+        user_id=current_user.id, org_id=None, factory_id=None,
+        detail=f"Feedback CSV exported: {len(payload.items)} rows",
+    )
+    db.commit()
+
     return Response(
         content=csv_body,
         media_type="text/csv",
@@ -610,7 +768,10 @@ def get_feedback(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackAdminItem:
-    _require_feedback_admin(current_user)
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="feedback.manage",
+    )
     org_id: str | None = None
     if not current_user.is_platform_admin:
         org_id = resolve_org_id(current_user)
@@ -622,6 +783,15 @@ def get_feedback(
     if not row:
         raise HTTPException(status_code=404, detail="Feedback not found.")
     feedback, user_name, user_role, factory_name, resolved_by_name, group_occurrences, latest_similar_at = row
+
+    _write_feedback_audit(
+        db, action="VIEWED", severity="low",
+        user_id=current_user.id, org_id=org_id, factory_id=feedback.factory_id,
+        feedback_id=feedback.id,
+        detail=f"Feedback viewed by admin: type={feedback.type.value} status={feedback.status.value}",
+    )
+    db.commit()
+
     return _serialize_feedback_item(
         feedback,
         user_name=str(user_name),
@@ -640,7 +810,10 @@ def update_feedback(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackAdminItem:
-    _require_feedback_admin(current_user)
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="feedback.manage",
+    )
     org_id: str | None = None
     if not current_user.is_platform_admin:
         org_id = resolve_org_id(current_user)
@@ -651,6 +824,7 @@ def update_feedback(
     if not row:
         raise HTTPException(status_code=404, detail="Feedback not found.")
     feedback, _, _, _, _ = row
+    old_status = feedback.status
 
     feedback.status = payload.status
     feedback.resolution_note = payload.resolution_note
@@ -660,6 +834,13 @@ def update_feedback(
     else:
         feedback.resolved_at = None
         feedback.resolved_by_user_id = None
+
+    _write_feedback_audit(
+        db, action="STATUS_CHANGE", severity="low",
+        user_id=current_user.id, org_id=org_id, factory_id=feedback.factory_id,
+        feedback_id=feedback.id,
+        detail=f"Status changed: {old_status.value} -> {payload.status.value}",
+    )
     db.commit()
 
     group_stats = _feedback_group_stats(db, org_id=org_id)

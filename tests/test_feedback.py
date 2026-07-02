@@ -86,7 +86,7 @@ def test_feedback_submit_list_resolve_updates_and_export_flow(http_client):
 
 def test_feedback_dedup_frequency_sort_and_admin_permissions(http_client):
     admin = register_user(http_client, role="admin")
-    set_org_plan_for_user_email(admin["email"], "growth")
+    set_org_plan_for_user_email(admin["email"], "operations")
     manager = register_user(
         http_client,
         role="manager",

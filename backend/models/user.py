@@ -23,6 +23,22 @@ class UserRole(str, Enum):
     OWNER = "owner"
 
 
+_ROLE_ORDER = {
+    UserRole.ATTENDANCE: 0,
+    UserRole.OPERATOR: 1,
+    UserRole.SUPERVISOR: 2,
+    UserRole.ACCOUNTANT: 2,
+    UserRole.MANAGER: 3,
+    UserRole.ADMIN: 4,
+    UserRole.OWNER: 5,
+}
+
+
+def role_rank(role: UserRole) -> int:
+    """Return numeric rank for a role. Higher = more privileged."""
+    return _ROLE_ORDER.get(role, 0)
+
+
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
@@ -80,6 +96,11 @@ class User(Base):
     organization = relationship("Organization", back_populates="users")
     factory_roles = relationship("UserFactoryRole", back_populates="user")
     refresh_tokens = relationship("RefreshToken", back_populates="user")
+
+
+# Late import ensures RefreshToken model is loaded before SQLAlchemy resolves
+# the User.refresh_tokens relationship reference during mapper configuration.
+from backend.models.refresh_token import RefreshToken as _RefreshToken  # noqa: F401,E402
 
 
 class UserBaseSchema(BaseModel):

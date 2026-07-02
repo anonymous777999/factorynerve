@@ -1,0 +1,179 @@
+=================================== ERRORS ====================================
+____ ERROR at setup of TestAttendanceFlow.test_05_list_attendance_records _____
+E   httpx.HTTPStatusError: Client error '409 Conflict' for url 'http://127.0.0.1:60302/auth/v2/register'
+_ ERROR at setup of TestSteelInventoryFlow.test_07_inventory_transaction_race_prevention _
+E   httpx.HTTPStatusError: Client error '409 Conflict' for url 'http://127.0.0.1:60302/auth/v2/register'
+___ ERROR at setup of TestBillingEndpoint.test_10_payment_order_idempotency ___
+E   httpx.HTTPStatusError: Client error '409 Conflict' for url 'http://127.0.0.1:60302/auth/v2/register'
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_permission_matrix[inventory.ledger.view0] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_permission_matrix[inventory.item.view] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_permission_matrix[inventory.ledger.view1] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_permission_matrix[inventory.item.manage] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_permission_matrix[invoice.record.view] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_permission_matrix[customer.record.view] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_permission_matrix[production.batch.view] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_permission_matrix[dispatch.record.view] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_financial_data_redacted_for_non_owner_roles[attendance] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_financial_data_redacted_for_non_owner_roles[operator] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_financial_data_redacted_for_non_owner_roles[supervisor] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_financial_data_redacted_for_non_owner_roles[accountant] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_financial_data_redacted_for_non_owner_roles[manager] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_financial_data_redacted_for_non_owner_roles[admin] _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_owner_sees_financials _
+_ ERROR at setup of TestSteelRoleHierarchySecurity.test_manager_cannot_approve_own_reconciliation _
+E   sqlite3.IntegrityError: NOT NULL constraint failed: payment_orders.plan_id
+E   sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: payment_orders.plan_id
+    [parameters: (None, 57, None, 'operator', None, 349900, 'INR', 'razorpay', None, 'order_old_failed', None, 'dpr_old_failed', 'failed', '5c8e784fa328520d5f0c6629c4e6750a659d51050bc0e03053f37c484d684855', '2026-06-19 03:49:08.885770')]
+    (Background on this error at: https://sqlalche.me/e/20/gkpj)
+C:\Users\shubh\AppData\Roaming\Python\Python310\site-packages\sqlalchemy\engine\default.py:952: sqlalchemy.exc.IntegrityError: (sqlite3.IntegrityError) NOT NULL constraint failed: payment_orders.plan_id
+2026-06-19 09:19:35,318 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:35,435 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:35,557 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:35,672 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:35,751 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:35,819 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:35,918 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:36,116 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:36,252 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:36,335 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:19:36,444 | ERROR | backend.routers.ocr | - | [OCR] API key: missing
+ERROR    backend.routers.ocr:ocr.py:363 [OCR] API key: missing
+2026-06-19 09:20:20,395 | WARNING | backend.services.rate_limit_service | b4d60ffa-ab92-4557-995d-761637300314 | otp_rate_limit_redis_failed operation=check_cooldown fallback=in_memory
+2026-06-19 09:20:20,395 | WARNING | backend.services.rate_limit_service | b4d60ffa-ab92-4557-995d-761637300314 | otp_rate_limit_redis_failed operation=check_send_allowed fallback=in_memory
+2026-06-19 09:20:20,748 | WARNING | backend.services.rate_limit_service | b4d60ffa-ab92-4557-995d-761637300314 | otp_rate_limit_redis_failed operation=record_send fallback=in_memory
+2026-06-19 09:20:20,748 | WARNING | backend.services.rate_limit_service | b4d60ffa-ab92-4557-995d-761637300314 | otp_rate_limit_redis_failed operation=set_cooldown fallback=in_memory
+WARNING  backend.services.rate_limit_service:rate_limit_service.py:126 otp_rate_limit_redis_failed operation=check_cooldown fallback=in_memory
+WARNING  backend.services.rate_limit_service:rate_limit_service.py:126 otp_rate_limit_redis_failed operation=check_send_allowed fallback=in_memory
+WARNING  backend.services.rate_limit_service:rate_limit_service.py:126 otp_rate_limit_redis_failed operation=record_send fallback=in_memory
+WARNING  backend.services.rate_limit_service:rate_limit_service.py:126 otp_rate_limit_redis_failed operation=set_cooldown fallback=in_memory
+E   AssertionError: Attendance create failed: {"detail":"Not Found"}
+D:\DPR APP\DPR.ai\tests\test_priority_integration.py:161: AssertionError: Attendance create failed: {"detail":"Not Found"}
+    (Background on this error at: https://sqlalche.me/e/20/e3q8)
+    (Background on this error at: https://sqlalche.me/e/20/e3q8)
+    (Background on this error at: https://sqlalche.me/e/20/e3q8)
+FAILED tests/ai/test_governance_validation.py::test_observability_governance_endpoint_isolated
+FAILED tests/ai/test_provider_abstraction.py::test_complete_with_retry_does_not_retry_on_400
+FAILED tests/auth/test_privilege_escalation.py::test_manager_promotes_to_owner
+FAILED tests/auth/test_privilege_escalation.py::test_manager_modifies_admin
+FAILED tests/auth/test_privilege_escalation.py::test_admin_promotes_manager_to_admin
+FAILED tests/auth/test_privilege_escalation.py::test_owner_promotes_manager_to_admin
+FAILED tests/auth/test_privilege_escalation.py::test_admin_promotes_operator_to_manager
+FAILED tests/auth/test_role_revision.py::test_role_change_increments_role_revision
+FAILED tests/auth/test_role_revision.py::test_role_change_creates_audit_entry_with_correct_previous_state_and_new_state
+FAILED tests/auth/test_role_revision.py::test_previous_state_is_never_none_for_role_updated_events
+FAILED tests/auth/test_role_revision.py::test_audit_entry_for_role_updated_includes_actor_user_id
+FAILED tests/billing/test_phase1_migration.py::test_subscription_resolves_by_org_id
+FAILED tests/billing/test_phase1_migration.py::test_migration_backfill_correctness
+FAILED tests/billing/test_phase4_quota.py::test_past_due_blocks_upload_allows_read
+FAILED tests/test_attendance.py::test_attendance_regularization_review_flow
+FAILED tests/test_auth_e2e.py::test_cookie_session_flow - AssertionError: CSR...
+FAILED tests/test_auth_e2e.py::test_safe_get_restores_missing_csrf_cookie_for_cookie_session
+FAILED tests/test_auth_e2e.py::test_safe_get_exposes_csrf_header_for_cookie_session
+FAILED tests/test_auth_e2e.py::test_public_registration_bootstraps_first_workspace_creator_as_admin
+FAILED tests/test_auth_e2e.py::test_public_registration_defaults_existing_workspace_users_to_attendance_role
+FAILED tests/test_auth_e2e.py::test_local_registration_requires_email_verification_before_login
+FAILED tests/test_auth_e2e.py::test_post_auth_v2_login_still_works - Attribut...
+FAILED tests/test_billing_addons.py::test_free_plan_ocr_pack_unlocks_template_access
+FAILED tests/test_billing_security.py::test_create_order_rejects_non_inr_currency
+FAILED tests/test_billing_security.py::test_failed_payment_order_can_create_a_fresh_retry
+FAILED tests/test_billing_security.py::test_admin_can_read_billing_but_cannot_write
+FAILED tests/test_billing_security.py::test_owner_can_schedule_and_cancel_downgrade
+FAILED tests/test_factory_context.py::test_auth_context_and_factory_switch_with_cookies
+FAILED tests/test_factory_context.py::test_active_workflow_template_tracks_selected_factory
+FAILED tests/test_factory_context.py::test_admin_can_assign_manager_to_multiple_factories
+FAILED tests/test_factory_context.py::test_factory_user_limit_counts_multi_factory_memberships
+FAILED tests/test_factory_context.py::test_inviting_existing_org_user_adds_them_to_current_factory
+FAILED tests/test_factory_context.py::test_manager_cannot_promote_or_modify_privileged_roles
+FAILED tests/test_feature_gating.py::test_free_plan_blocked_from_analytics - ...
+FAILED tests/test_feedback.py::test_feedback_submit_list_resolve_updates_and_export_flow
+FAILED tests/test_feedback.py::test_feedback_dedup_frequency_sort_and_admin_permissions
+FAILED tests/test_job_controls.py::test_shared_report_pdf_job_and_cancel - As...
+FAILED tests/test_job_controls.py::test_shared_ocr_job_retry_and_download - A...
+FAILED tests/test_job_controls.py::test_ocr_async_job_rejects_images_over_8mb
+FAILED tests/test_ledger_scan_reliability.py::test_run_provider_enforces_max_retry_and_no_image_resend
+FAILED tests/test_ledger_scan_reliability.py::test_run_provider_minor_error_uses_sonnet
+FAILED tests/test_ledger_scan_reliability.py::test_run_provider_stops_after_max_retry
+FAILED tests/test_ocr_table_excel_route.py::test_call_table_excel_anthropic_uses_expected_payload
+FAILED tests/test_ocr_table_excel_route.py::test_call_table_excel_anthropic_requires_api_key
+FAILED tests/test_ocr_table_excel_route.py::test_call_table_excel_anthropic_rejects_unknown_model
+FAILED tests/test_ocr_table_excel_route.py::test_call_table_excel_anthropic_preserves_upstream_status
+FAILED tests/test_ocr_table_excel_route.py::test_call_table_excel_anthropic_retries_with_alternate_model_on_model_error
+FAILED tests/test_ocr_table_excel_route.py::test_call_table_excel_anthropic_respects_explicit_requested_model_without_fallback
+FAILED tests/test_ocr_table_excel_route.py::test_run_table_excel_pipeline_builds_excel_from_form_response
+FAILED tests/test_ocr_table_excel_route.py::test_run_table_excel_pipeline_extends_short_headers_and_adds_totals
+FAILED tests/test_ocr_table_excel_route.py::test_run_table_excel_pipeline_builds_excel_from_mixed_sections
+FAILED tests/test_ocr_table_excel_route.py::test_run_table_preview_pipeline_reports_requested_model_and_token_usage
+FAILED tests/test_ocr_table_excel_route.py::test_run_table_preview_pipeline_returns_structured_rows_and_anthropic_routing
+FAILED tests/test_ocr_verification.py::test_ocr_verification_draft_submit_approve
+FAILED tests/test_ocr_verification.py::test_ocr_verification_reject_requires_reason
+FAILED tests/test_ocr_verification.py::test_approved_ocr_verification_export_is_marked_trusted
+FAILED tests/test_ocr_verification.py::test_ocr_verification_summary_uses_only_approved_documents_as_trusted
+FAILED tests/test_ocr_warp_guardrails.py::test_warp_perspective_ignores_tiny_auto_detected_corners
+FAILED tests/test_ops_alerts.py::test_request_middleware_reports_auth_route_outcomes_without_blocking
+FAILED tests/test_password_reset.py::test_password_reset_flow - assert 410 ==...
+FAILED tests/test_phone_endpoints.py::test_profile_phone_change_resets_verification_status
+FAILED tests/test_phone_endpoints.py::test_start_verification_returns_safe_service_error_without_http_500
+FAILED tests/test_phone_endpoints.py::test_start_verification_returns_client_error_for_invalid_whatsapp_destination
+FAILED tests/test_phone_endpoints.py::test_start_verification_does_not_leak_http_500_when_redis_runtime_fails
+FAILED tests/test_premium_analytics.py::test_premium_dashboard_and_pdf_work_for_factory_plan
+FAILED tests/test_priority_integration.py::TestAuthFlow::test_02_login_user
+FAILED tests/test_priority_integration.py::TestAttendanceFlow::test_04_create_attendance_record
+FAILED tests/test_profile.py::test_change_password_allows_new_login - Asserti...
+FAILED tests/test_report_insights.py::test_reports_insights_show_weekly_employee_rankings
+FAILED tests/test_report_insights.py::test_reports_insights_block_operator_role
+FAILED tests/test_schema_drift_repairs.py::test_alembic_upgrade_head_repairs_drifted_ops_alert_schema
+FAILED tests/test_schema_drift_repairs.py::test_alembic_upgrade_head_normalizes_legacy_sms_channel
+FAILED tests/test_schema_drift_repairs.py::test_alembic_upgrade_head_is_clean_on_fresh_sqlite
+FAILED tests/test_steel_integration_security.py::TestSteelCorporateSecurityRisks::test_credit_limit_blocks_excess_invoice
+FAILED tests/test_steel_integration_security.py::TestSteelCorporateSecurityRisks::test_customer_verification_mismatch_enforces_rejection
+FAILED tests/test_steel_integration_security.py::TestSteelCorporateSecurityRisks::test_cross_org_steel_isolation
+FAILED tests/test_steel_integration_security.py::TestSensitiveOperationGuardrails::test_invoice_void_requires_admin_plus
+FAILED tests/test_steel_integration_security.py::TestSensitiveOperationGuardrails::test_dispatch_cancel_requires_admin_plus
+FAILED tests/test_steel_integration_security.py::TestSensitiveOperationGuardrails::test_payment_reversal_requires_admin_plus
+FAILED tests/test_steel_integration_security.py::TestMultiRoleApprovalWorkflow::test_manager_creates_reconciliation_supervisor_views_owner_approves
+FAILED tests/test_steel_module.py::test_steel_weight_invoice_flow - Assertion...
+FAILED tests/test_steel_module.py::test_steel_dispatch_gate_pass_flow - Asser...
+FAILED tests/test_steel_module.py::test_steel_dispatch_draft_progression_posts_inventory_only_on_dispatch
+FAILED tests/test_steel_module.py::test_steel_customer_ledger_and_payments - ...
+FAILED tests/test_steel_module.py::test_steel_customer_follow_up_tasks_feed_lifecycle_alerts
+FAILED tests/test_steel_module.py::test_steel_customer_lifecycle_fields_and_credit_limit_block
+FAILED tests/test_steel_module.py::test_steel_customer_verification_flow - As...
+FAILED tests/test_steel_module.py::test_steel_customer_verification_mismatch_requires_reject
+FAILED tests/test_steel_module.py::test_steel_customer_payment_auto_allocates_oldest_invoices
+FAILED tests/test_steel_module.py::test_steel_customer_validation_rejects_bad_email_and_payment_mode
+FAILED tests/test_steel_module.py::test_steel_reconciliation_summary_reports_kpis
+FAILED tests/test_steel_module.py::test_steel_owner_daily_pdf_requires_owner_and_returns_pdf
+FAILED tests/test_tenant_isolation.py::test_factory_switch_scopes_sync_entries_analytics_reports_and_ai
+FAILED tests/test_tenant_isolation.py::test_factory_switch_scopes_async_report_and_ai_jobs
+FAILED tests/test_tenant_isolation.py::test_manager_alerts_follow_active_factory_scope
+FAILED tests/test_user_codes.py::test_invited_user_receives_org_scoped_user_code
+ERROR tests/test_priority_integration.py::TestAttendanceFlow::test_05_list_attendance_records
+ERROR tests/test_priority_integration.py::TestSteelInventoryFlow::test_07_inventory_transaction_race_prevention
+ERROR tests/test_priority_integration.py::TestBillingEndpoint::test_10_payment_order_idempotency
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_permission_matrix[inventory.ledger.view0]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_permission_matrix[inventory.item.view]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_permission_matrix[inventory.ledger.view1]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_permission_matrix[inventory.item.manage]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_permission_matrix[invoice.record.view]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_permission_matrix[customer.record.view]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_permission_matrix[production.batch.view]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_permission_matrix[dispatch.record.view]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_financial_data_redacted_for_non_owner_roles[attendance]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_financial_data_redacted_for_non_owner_roles[operator]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_financial_data_redacted_for_non_owner_roles[supervisor]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_financial_data_redacted_for_non_owner_roles[accountant]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_financial_data_redacted_for_non_owner_roles[manager]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_financial_data_redacted_for_non_owner_roles[admin]
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_owner_sees_financials
+ERROR tests/test_steel_integration_security.py::TestSteelRoleHierarchySecurity::test_manager_cannot_approve_own_reconciliation
+96 failed, 407 passed, 4 skipped, 5 warnings, 19 errors in 244.89s (0:04:04)

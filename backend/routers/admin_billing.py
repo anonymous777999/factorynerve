@@ -4,15 +4,18 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
 from backend.database import get_db
 from backend.models.subscription import Subscription
 from backend.models.user import User
 from backend.models.webhook_event import WebhookEvent
 from backend.security import get_current_user
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.services.billing_logger import log_billing_event
 from backend.services.billing_manager import get_effective_subscription_status
 
@@ -112,9 +115,41 @@ def get_org_quota(
 @router.post("/reset-quota/{org_id}")
 def reset_org_quota(
     org_id: str,
+    request: Request,
     admin_user: User = Depends(require_superadmin),
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
+    pdp = PDP(db=db)
+    request_context = build_request_context(request)
+    pdp.require_permission(
+        actor=admin_user,
+        permission_key="admin.billing.quota.reset",
+        resource=ResourceContext(org_id=org_id),
+        request_context=request_context,
+    )
+
+    # IP-3 critical action approval
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=admin_user.id,
+        subject_user_id=admin_user.id,
+        workflow_key="billing.plan.change",
+        action_key="admin.billing.quota.reset",
+        resource_type="OrgOcrUsage",
+        resource_id=org_id,
+        org_id=org_id,
+        current_workflow_state="active",
+        requested_change={"action": "reset_quota"},
+        request_context=request_context,
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {"status": "pending_approval", "approval_instance_id": approval_decision.instance_id, "message": "Quota reset submitted for approval."}
+    elif approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     updated = db.execute(
         text(
             """
@@ -135,4 +170,8 @@ def reset_org_quota(
         admin_user_id=admin_user.id,
         performed_at=datetime.now(timezone.utc).isoformat(),
     )
+
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {"org_id": org_id, "request_count": 0, "reset_by_user_id": admin_user.id}

@@ -36,7 +36,7 @@ export function OcrShell({
         <section className="rounded-[32px] border border-black/10 bg-[#f8f8f6] px-5 py-5 text-[#101418] shadow-[0_24px_80px_rgba(3,8,20,0.22)] md:px-7 md:py-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">
+              <div className="text-[11px] font-semibold uppercase tracking-caption text-[#6b7280]">
                 OCR Workspace
               </div>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0f1720] md:text-[2.1rem]">
@@ -60,7 +60,7 @@ export function OcrShell({
                           : "border-[#e7eaee] bg-[#f3f4f6] text-[#8a93a0]",
                     )}
                   >
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">
+                    <div className="text-[10px] font-semibold uppercase tracking-label">
                       {index + 1}
                     </div>
                     <div className="mt-1 text-sm font-medium">{item.label}</div>

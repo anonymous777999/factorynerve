@@ -160,7 +160,7 @@ def test_alert_recipient_verification_happy_path(otp_client):
 def test_alert_delivery_skips_unverified_recipient():
     init_db()
     with SessionLocal() as db:
-        org = Organization(org_id="org-unverified", name="Unverified Org", plan="free")
+        org = Organization(org_id="org-unverified", name="Unverified Org", plan="pilot")
         db.add(org)
         db.commit()
         recipient = AdminAlertRecipient(

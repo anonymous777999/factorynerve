@@ -303,6 +303,28 @@ function mergeAuthContextWithUserPermissions(context: AuthContext, user: Current
 
 export async function recoverWorkspaceContextFromError(status: number): Promise<AuthContext | null> {
   const snapshot = getSessionSnapshot();
+
+  // Store diagnostic info in sessionStorage so it survives the page navigation
+  // to /onboarding/factory-required. The factory-required page reads this to
+  // display debug info.
+  if (typeof window !== "undefined") {
+    try {
+      window.sessionStorage.setItem(
+        "dpr:redirect-diagnostic",
+        JSON.stringify({
+          status,
+          timestamp: new Date().toISOString(),
+          factories: snapshot.factories,
+          activeFactoryId: snapshot.activeFactoryId,
+          userEmail: snapshot.user?.email,
+          userName: snapshot.user?.name,
+        }),
+      );
+    } catch {
+      // sessionStorage may be unavailable
+    }
+  }
+
   const recoveryPlan = resolveWorkspaceRecoveryPlan(
     {
       activeFactoryId: snapshot.activeFactoryId,
@@ -333,7 +355,10 @@ export async function recoverWorkspaceContextFromError(status: number): Promise<
     factories: [],
     organization: snapshot.organization,
   } as AuthContext);
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && window.location.pathname !== "/") {
+    // Only redirect to factory-required when NOT on the landing page.
+    // On the root page, the caller (getAuthContext → ensureSessionLoaded)
+    // handles the failure gracefully by showing the landing page.
     window.location.assign("/onboarding/factory-required");
   }
   return null;
@@ -347,6 +372,18 @@ export function resolveWorkspaceRecoveryPlan(
   status: number,
 ): WorkspaceRecoveryPlan {
   if (status !== 403 && status !== 404) {
+    return { action: "ignore" };
+  }
+
+  const hasCurrentFactoryContext =
+    !!snapshot.activeFactoryId &&
+    snapshot.factories.some(
+      (factory) => factory.factory_id === snapshot.activeFactoryId,
+    );
+
+  // If the snapshot still contains a valid active factory, treat 403/404 from
+  // context probing as transient and avoid forcing the onboarding redirect.
+  if (hasCurrentFactoryContext) {
     return { action: "ignore" };
   }
 
@@ -367,7 +404,9 @@ export function resolveWorkspaceRecoveryPlan(
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
   const performLogin = async () => {
-    const response = await apiFetch<AuthResponse>(
+    // /auth/v2/login uses cookie-based sessions — the response is just a
+    // success message, not user data. Fetch the full context afterward.
+    await apiFetch(
       "/auth/v2/login",
       {
         method: "POST",
@@ -375,18 +414,49 @@ export async function login(email: string, password: string): Promise<AuthRespon
       },
       { cookieAuth: true },
     );
-    primeRoleRevision(response.user.role_revision);
-    const currentUser = await getMe();
-    const mergedResponse = {
-      ...response,
-      user: mergeCurrentUserWithPermissions({
-        ...response.user,
-        ...currentUser,
-        permissions: currentUser.permissions,
-      }),
-    };
-    primeSession(mergedResponse);
-    return mergedResponse;
+
+    // Fetch context directly (not via getAuthContext) to avoid the
+    // recovery-redirect logic that navigates to /onboarding/factory-required
+    // on 403/404. During login, any error should surface on the login form
+    // as a clear message, not as a silent redirect to a dead page.
+    let context = null as AuthContext | null;
+    try {
+      // Single retry for transient errors (e.g., cookie propagation delay)
+      for (let attempt = 0; attempt <= 1; attempt++) {
+        try {
+          const fetched = await apiFetch<AuthContext>(
+            "/auth/v2/context",
+            {},
+            { cacheKey: "session:context", timeoutMs: 8000 },
+          );
+          const user = await getMe();
+          context = mergeAuthContextWithUserPermissions(fetched, user);
+          break;
+        } catch (fetchError) {
+          if (attempt === 0 && fetchError instanceof ApiError && (fetchError.status === 403 || fetchError.status === 404)) {
+            await delay(500);
+            continue;
+          }
+          throw fetchError;
+        }
+      }
+    } catch (error) {
+      // Clear any stale session data and surface the error so the login
+      // form shows a meaningful message instead of redirecting away.
+      clearSession();
+      throw error;
+    }
+
+    // context is guaranteed non-null here — the loop always assigns it or throws
+    const resolvedContext = context!;
+
+    primeRoleRevision(resolvedContext.user.role_revision);
+    primeSession(resolvedContext);
+    return {
+      ...resolvedContext,
+      access_token: "",
+      token_type: "cookie",
+    } as AuthResponse;
   };
 
   return withBackendWakeRetry(performLogin, {
@@ -414,14 +484,21 @@ export async function register(payload: {
 }
 
 export async function logout(): Promise<void> {
-  await withBackendWakeRetry(() => apiFetch("/auth/logout", { method: "POST" }), {
-    retryMessage: "DPR.ai is waking up. Please wait a few seconds before signing out again.",
-  });
+  await withBackendWakeRetry(
+    () => apiFetch("/auth/v2/logout", { method: "POST" }, { cookieAuth: true }),
+    {
+      retryMessage: "DPR.ai is waking up. Please wait a few seconds before signing out again.",
+    },
+  );
   clearSession();
 }
 
 export async function logoutAllDevices(): Promise<{ message: string }> {
-  const response = await apiFetch<{ message: string }>("/auth/logout-all", { method: "POST" });
+  const response = await apiFetch<{ message: string }>(
+    "/auth/v2/logout-all",
+    { method: "POST" },
+    { cookieAuth: true },
+  );
   clearSession();
   return response;
 }
@@ -555,7 +632,7 @@ export async function getMe(options?: {
     async () =>
       mergeCurrentUserWithPermissions(
         await apiFetch<CurrentUser>(
-        "/auth/me",
+        "/auth/v2/me",
         { signal: options?.signal },
         { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:me" },
         ),
@@ -574,25 +651,39 @@ export async function getAuthContext(options?: {
   signal?: AbortSignal;
   timeoutMs?: number;
 }): Promise<AuthContext> {
+  const MAX_RETRIES = 1;
+  const RETRY_DELAY_MS = 500;
+
   return withBackendWakeRetry(
     async () => {
-      try {
-        const context = await apiFetch<AuthContext>(
-          "/auth/context",
-          { signal: options?.signal },
-          { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
-        );
-        const user = await getMe(options);
-        return mergeAuthContextWithUserPermissions(context, user);
-      } catch (error) {
-        if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
-          const recovered = await recoverWorkspaceContextFromError(error.status);
-          if (recovered) {
-            return recovered;
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          const context = await apiFetch<AuthContext>(
+            "/auth/v2/context",
+            { signal: options?.signal },
+            { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
+          );
+          const user = await getMe(options);
+          return mergeAuthContextWithUserPermissions(context, user);
+        } catch (error) {
+          const isAuthError = error instanceof ApiError && (error.status === 403 || error.status === 404);
+          if (isAuthError && attempt < MAX_RETRIES) {
+            // Brief delay to allow the session cookie from login to fully propagate
+            // before retrying the context fetch.
+            await delay(RETRY_DELAY_MS);
+            continue;
           }
+          if (isAuthError) {
+            const recovered = await recoverWorkspaceContextFromError(error.status);
+            if (recovered) {
+              return recovered;
+            }
+          }
+          throw error;
         }
-        throw error;
       }
+      // This line is unreachable — the loop always returns or throws.
+      throw new Error("Unreachable");
     },
     {
       retryMessage: "DPR.ai is waking up. Please wait a few seconds while your workspace reloads.",

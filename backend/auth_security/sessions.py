@@ -17,33 +17,49 @@ SESSION_COOKIE = os.getenv("AUTH_SESSION_COOKIE", "auth_session")
 CSRF_COOKIE = os.getenv("AUTH_CSRF_COOKIE", "auth_csrf")
 CSRF_HEADER = os.getenv("AUTH_CSRF_HEADER", "X-CSRF-Token")
 SESSION_TTL_MINUTES = int(os.getenv("AUTH_SESSION_TTL_MINUTES", "1440"))
+SESSION_IDLE_TIMEOUT_MINUTES = int(os.getenv("SESSION_IDLE_TIMEOUT_MINUTES", "30"))
+SESSION_ABSOLUTE_TIMEOUT_HOURS = int(os.getenv("SESSION_ABSOLUTE_TIMEOUT_HOURS", "24"))
 SESSION_SAMESITE = os.getenv("AUTH_SESSION_SAMESITE", "Lax")
-SESSION_SECURE = str(os.getenv("AUTH_SESSION_SECURE", "1")).lower() in {"1", "true", "yes", "on"}
+
+# Raw env var — None means "auto-detect from request scheme"
+_SESSION_SECURE_RAW: str | None = os.getenv("AUTH_SESSION_SECURE")
+
+
+def _should_use_secure_cookie(request: Request) -> bool:
+    """Determine whether to set cookie Secure flag.
+
+    Respect explicit env var if set; otherwise auto-detect from request
+    scheme (Secure only for HTTPS).  This mirrors the pattern in
+    backend/auth_cookies.py so cookies work over plain HTTP in local dev.
+    """
+    if _SESSION_SECURE_RAW is not None:
+        return _SESSION_SECURE_RAW.strip().lower() in {"1", "true", "yes", "on"}
+    return request.url.scheme == "https"
 
 
 def _expires_at() -> datetime:
     return datetime.now(timezone.utc) + timedelta(minutes=SESSION_TTL_MINUTES)
 
 
-def _cookie_kwargs() -> dict:
+def _cookie_kwargs(*, request: Request) -> dict:
     return {
         "httponly": True,
-        "secure": SESSION_SECURE,
+        "secure": _should_use_secure_cookie(request),
         "samesite": SESSION_SAMESITE,
         "path": "/",
     }
 
 
-def _csrf_cookie_kwargs() -> dict:
+def _csrf_cookie_kwargs(*, request: Request) -> dict:
     return {
         "httponly": False,
-        "secure": SESSION_SECURE,
+        "secure": _should_use_secure_cookie(request),
         "samesite": SESSION_SAMESITE,
         "path": "/",
     }
 
 
-def create_session(db: Session, *, user: AuthUser, request: Request, response: Response) -> AuthSession:
+def create_session(db: Session, *, user: AuthUser, request: Request, response: Response, factory_id: str | None = None) -> AuthSession:
     raw_token = generate_token(32)
     csrf_token = generate_token(16)
     token_hash = hash_token(raw_token)
@@ -57,11 +73,12 @@ def create_session(db: Session, *, user: AuthUser, request: Request, response: R
         expires_at=_expires_at(),
         ip_hash=_hash_value(request.client.host if request.client else None),
         user_agent_hash=_hash_value(request.headers.get("user-agent")),
+        factory_id=factory_id,
     )
     db.add(session)
     db.flush()
-    response.set_cookie(SESSION_COOKIE, raw_token, **_cookie_kwargs())
-    response.set_cookie(CSRF_COOKIE, csrf_token, **_csrf_cookie_kwargs())
+    response.set_cookie(SESSION_COOKIE, raw_token, **_cookie_kwargs(request=request))
+    response.set_cookie(CSRF_COOKIE, csrf_token, **_csrf_cookie_kwargs(request=request))
     return session
 
 
@@ -89,14 +106,61 @@ def require_csrf(request: Request, session: AuthSession) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed.")
 
 
+def _ensure_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _session_expired_message(reason: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=f"Session expired: {reason}.",
+        headers={"X-Session-Expired": reason},
+    )
+
+
 def get_current_session(db: Session, request: Request) -> AuthSession:
     raw_token = request.cookies.get(SESSION_COOKIE)
     if not raw_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
     token_hash = hash_token(raw_token)
     session = db.query(AuthSession).filter(AuthSession.token_hash == token_hash).first()
-    if not session or session.revoked_at or session.expires_at <= datetime.now(timezone.utc):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired.")
+    if not session or session.revoked_at:
+        raise _session_expired_message("not_found_or_revoked")
+
+    now = datetime.now(timezone.utc)
+    created_at = _ensure_utc(session.created_at)
+    expires_at = _ensure_utc(session.expires_at)
+
+    # Absolute timeout from creation (max session lifetime)
+    absolute_deadline = created_at + timedelta(hours=SESSION_ABSOLUTE_TIMEOUT_HOURS)
+    if absolute_deadline <= now:
+        session.revoked_at = now
+        db.add(session)
+        db.flush()
+        raise _session_expired_message("absolute_timeout")
+
+    # Expires_at check (legacy absolute expiry from SESSION_TTL_MINUTES)
+    if expires_at <= now:
+        session.revoked_at = now
+        db.add(session)
+        db.flush()
+        raise _session_expired_message("expired")
+
+    # Idle timeout check — if last_used_at is older than threshold
+    if session.last_used_at is not None:
+        last_used = _ensure_utc(session.last_used_at)
+        idle_deadline = last_used + timedelta(minutes=SESSION_IDLE_TIMEOUT_MINUTES)
+        if idle_deadline <= now:
+            session.revoked_at = now
+            db.add(session)
+            db.flush()
+            raise _session_expired_message("idle_timeout")
+
+    # Touch session — update last_used_at on every successful auth check
+    touch_session(db, session)
+    db.flush()
     return session
 
 

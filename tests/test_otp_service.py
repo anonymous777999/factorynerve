@@ -61,7 +61,7 @@ class BrokenRedisClient:
 def _create_user(*, phone: str = "+919876543210") -> User:
     init_db()
     with SessionLocal() as db:
-        org = Organization(org_id=str(uuid4()), name=f"OTP Org {uuid4().hex[:6]}", plan="free")
+        org = Organization(org_id=str(uuid4()), name=f"OTP Org {uuid4().hex[:6]}", plan="pilot")
         db.add(org)
         db.commit()
         user = User(

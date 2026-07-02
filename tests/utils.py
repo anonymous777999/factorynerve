@@ -4,11 +4,28 @@ from urllib.parse import parse_qs, urlparse
 
 import httpx
 
+from datetime import datetime, timezone
+
+from datetime import datetime, timezone
+
+from backend.auth_security.passwords import hash_password as auth_hash_password
 from backend.database import SessionLocal, init_db
+from backend.models.auth_user import AuthUser
 from backend.models.organization import Organization
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
 from backend.plans import normalize_plan
+
+
+def _unwrap_response(data: dict) -> dict:
+    """Unwrap response envelope if present.
+
+    The backend may wrap JSON responses in {success: True, data: ...}
+    when the response envelope middleware is active.
+    """
+    if isinstance(data, dict) and data.get("success") is True and "data" in data:
+        return data["data"]
+    return data
 
 
 def unique_email() -> str:
@@ -17,6 +34,25 @@ def unique_email() -> str:
 
 def unique_factory() -> str:
     return f"QA Factory {uuid.uuid4().hex[:6]}"
+
+
+def _lookup_user(email: str) -> User:
+    init_db()
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        assert user is not None, f"User {email} not found after verification"
+        # Force-load all attributes before closing the session
+        _ = user.id
+        _ = user.org_id
+        _ = user.role
+        _ = user.user_code
+        _ = user.factory_code
+        _ = user.factory_name
+        _ = user.email
+        return user
+    finally:
+        db.close()
 
 
 def register_user(
@@ -41,7 +77,7 @@ def register_user(
     }
     resp = client.post("/auth/register", json=payload)
     assert resp.status_code in (200, 201), resp.text
-    data = resp.json()
+    data = _unwrap_response(resp.json())
     verification_link = data.get("verification_link")
     assert verification_link, f"Expected verification link in test mode: {data}"
 
@@ -51,36 +87,80 @@ def register_user(
     verify = client.post("/auth/email/verify", json={"token": token_values[0]})
     assert verify.status_code == 200, verify.text
 
-    headers = {"X-Use-Cookies": "1"} if use_cookies else None
-    login = client.post(
-        "/auth/login",
-        json={"email": payload["email"], "password": payload["password"]},
-        headers=headers,
-    )
-    assert login.status_code == 200, login.text
-    auth_data = login.json()
-    actual_role = auth_data.get("user", {}).get("role")
-    if requested_role != actual_role:
+    # Look up the user from DB and create an access token directly.
+    # /auth/login is deprecated (returns 410), so we bypass it in tests.
+    user = _lookup_user(normalized_email)
+
+    # Override role if requested role differs from the assigned role
+    if requested_role != user.role.value:
         init_db()
         db = SessionLocal()
         try:
-            user = db.query(User).filter(User.email == payload["email"]).first()
-            assert user is not None
-            user.role = requested_role
-            memberships = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == user.id).all()
+            user_db = db.query(User).filter(User.email == normalized_email).first()
+            assert user_db is not None
+            user_db.role = requested_role
+            memberships = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == user_db.id).all()
             for membership in memberships:
                 membership.role = requested_role
             db.commit()
+            user.role = requested_role
         finally:
             db.close()
+
+    # Ensure an AuthUser record exists for v2 auth endpoints.
+    # Note: AuthUser uses passlib/argon2id hashing, NOT bcrypt (used by legacy User model).
+    init_db()
+    auth_db = SessionLocal()
+    try:
+        existing_auth = auth_db.query(AuthUser).filter(AuthUser.email == normalized_email).first()
+        if not existing_auth:
+            auth_db.add(
+                AuthUser(
+                    email=normalized_email,
+                    password_hash=auth_hash_password(payload["password"]),
+                    is_active=True,
+                    is_email_verified=True,
+                    password_changed_at=datetime.now(timezone.utc),
+                )
+            )
+            auth_db.commit()
+    finally:
+        auth_db.close()
+
+    # Get the first factory membership for auth context
+    init_db()
+    db = SessionLocal()
+    try:
+        membership = (
+            db.query(UserFactoryRole)
+            .filter(UserFactoryRole.user_id == user.id)
+            .order_by(UserFactoryRole.assigned_at.asc())
+            .first()
+        )
+        factory_id = membership.factory_id if membership else None
+        org_id = membership.org_id if membership else user.org_id
+    finally:
+        db.close()
+
+    # Log in via v2 to set session cookies on the test client
+    login_resp = client.post(
+        "/auth/v2/login",
+        json={"email": normalized_email, "password": payload["password"]},
+    )
+    assert login_resp.status_code == 200, login_resp.text
+
+    # Extract the session cookie for tests that need to switch between users
+    session_token = login_resp.cookies.get("auth_session", "")
+
     return {
-        "email": payload["email"],
+        "email": user.email,
         "password": payload["password"],
-        "access_token": auth_data.get("access_token"),
-        "user_id": auth_data.get("user", {}).get("id"),
-        "user_code": auth_data.get("user", {}).get("user_code"),
-        "company_code": auth_data.get("user", {}).get("factory_code"),
-        "factory_name": auth_data.get("user", {}).get("factory_name") or payload["factory_name"],
+        "access_token": "",  # JWT removed — use v2 session cookies
+        "session_token": session_token,
+        "user_id": user.id,
+        "user_code": user.user_code,
+        "company_code": user.factory_code,
+        "factory_name": user.factory_name or payload["factory_name"],
     }
 
 
@@ -107,6 +187,9 @@ def set_org_plan_for_user_email(email: str, plan: str) -> None:
     init_db()
     db = SessionLocal()
     try:
+        from datetime import datetime, timezone
+        from backend.models.subscription import Subscription
+
         user = db.query(User).filter(User.email == email).first()
         assert user is not None
         org = db.query(Organization).filter(Organization.org_id == user.org_id).first()
@@ -114,6 +197,24 @@ def set_org_plan_for_user_email(email: str, plan: str) -> None:
         org.plan = normalize_plan(plan)
         org.plan_expires_at = None
         db.add(org)
+
+        subscription = (
+            db.query(Subscription)
+            .filter(Subscription.org_id == org.org_id, Subscription.status.in_(("active", "trialing")))
+            .first()
+        )
+        if subscription:
+            subscription.plan = normalize_plan(plan)
+        else:
+            db.add(
+                Subscription(
+                    org_id=org.org_id,
+                    plan=normalize_plan(plan),
+                    status="active",
+                    created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
+                )
+            )
         db.commit()
     finally:
         db.close()

@@ -11,6 +11,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 
+from sqlalchemy.exc import IntegrityError
+
 from backend.database import get_db, hash_ip_address
 from backend.models.attendance_event import AttendanceEvent
 from backend.models.attendance_record import AttendanceRecord
@@ -22,7 +24,9 @@ from backend.models.report import AuditLog
 from backend.models.shift_template import ShiftTemplate
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
-from backend.rbac import assert_not_self_approval, require_any_role, require_role
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.security import get_current_user
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.utils import normalize_identifier_code, sanitize_text
@@ -265,6 +269,11 @@ class AttendanceReviewDecisionRequest(BaseModel):
     note: str | None = Field(default=None, max_length=500)
 
 
+class AttendanceForceCloseRequest(BaseModel):
+    """Optional note for supervisor force-close of a missed punch-out."""
+    note: str | None = Field(default=None, max_length=500)
+
+
 class AttendanceReportDay(BaseModel):
     attendance_date: date
     total_people: int
@@ -289,7 +298,7 @@ def _factory_timezone(factory: Factory | None) -> ZoneInfo:
     timezone_name = (factory.timezone if factory else None) or "Asia/Kolkata"
     try:
         return ZoneInfo(timezone_name)
-    except Exception:
+    except Exception as error:
         return ZoneInfo("Asia/Kolkata")
 
 
@@ -398,7 +407,34 @@ def _attendance_users_for_factory(db: Session, *, factory_id: str, org_id: str |
     )
     if org_id:
         query = query.filter(UserFactoryRole.org_id == org_id, User.org_id == org_id)
-    return query.order_by(User.name.asc()).all()
+    return query.order_by(User.name.asc()).limit(500).all()
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Paginated variant for the live attendance view (#25)
+def _attendance_users_for_factory_paginated(
+    db: Session,
+    *,
+    factory_id: str,
+    org_id: str | None,
+    page: int = 1,
+    page_size: int = 50,
+) -> tuple[list[User], int]:
+    """Return a paginated list of users for a factory, plus total count."""
+    query = (
+        db.query(User)
+        .join(UserFactoryRole, UserFactoryRole.user_id == User.id)
+        .filter(
+            UserFactoryRole.factory_id == factory_id,
+            User.is_active.is_(True),
+        )
+    )
+    if org_id:
+        query = query.filter(UserFactoryRole.org_id == org_id, User.org_id == org_id)
+    total = query.count()
+    offset = (page - 1) * page_size
+    users = query.order_by(User.name.asc()).offset(offset).limit(page_size).all()
+    return users, total
 
 
 def _employee_profiles_for_factory(
@@ -750,6 +786,41 @@ def _serialize_today_response(
     )
 
 
+def _default_shift_end_time(
+    *,
+    factory: Factory,
+    attendance_date: date,
+    shift_name: str | None,
+    template: ShiftTemplate | None,
+) -> datetime:
+    """Compute the default punch-out time from the shift template's end time.
+
+    For cross-midnight shifts (e.g. night shift 22:00-06:00), the end time
+    falls on the next calendar day. Falls back to 8 hours after a nominal
+    06:00 start when no template is found.
+    """
+    factory_tz = _factory_timezone(factory)
+    if template:
+        end_date = attendance_date
+        if template.cross_midnight:
+            end_date += timedelta(days=1)
+        naive_end = datetime.combine(end_date, template.end_time, factory_tz)
+        return naive_end.astimezone(timezone.utc)
+    # Fallback: if shift name is known, use standard end times
+    normalized_shift = (shift_name or "").strip().lower()
+    fallback_end: dict[str, time] = {
+        "morning": time(14, 0),
+        "evening": time(22, 0),
+        "night": time(6, 0),
+    }
+    end = fallback_end.get(normalized_shift, time(14, 0))
+    end_date = attendance_date
+    if normalized_shift == "night":
+        end_date += timedelta(days=1)
+    naive_end = datetime.combine(end_date, end, factory_tz)
+    return naive_end.astimezone(timezone.utc)
+
+
 def _serialize_shift_template(template: ShiftTemplate) -> ShiftTemplateItem:
     return ShiftTemplateItem(
         id=template.id,
@@ -769,6 +840,7 @@ def get_my_attendance_today(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceTodayResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.self.view")
     factory = _active_factory_or_400(db, current_user)
     local_now = _factory_now(factory)
     record = _record_for_today_view(
@@ -794,6 +866,7 @@ def punch_attendance(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceTodayResponse:
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.self.punch")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     local_now = _factory_now(factory)
@@ -839,6 +912,30 @@ def punch_attendance(
             factory_id=factory.factory_id,
             shift_name=shift_value,
         )
+        # Use INSERT with unique constraint guard to prevent duplicate attendance
+        # records under concurrent punch-in (e.g. 500 workers clocking in simultaneously).
+        # The UNIQUE INDEX on (user_id, factory_id, attendance_date) and the
+        # preceding read check (today_record) are insufficient under concurrency
+        # because two requests can both pass the read check before either inserts.
+        # We catch the IntegrityError and return the existing record instead.
+        existing_row = _record_for_local_day(
+            db,
+            user_id=current_user.id,
+            factory_id=factory.factory_id,
+            attendance_date=current_date,
+        )
+        if existing_row:
+            if existing_row.punch_out_at is not None:
+                raise HTTPException(status_code=409, detail="Attendance is already closed for today.")
+            return _serialize_today_response(
+                db=db,
+                factory=factory,
+                user_id=current_user.id,
+                attendance_date=current_date,
+                record=existing_row,
+                inferred_shift=existing_row.shift or shift_value,
+            )
+
         punch_time = datetime.now(timezone.utc)
         record = AttendanceRecord(
             org_id=org_id,
@@ -862,7 +959,51 @@ def punch_attendance(
             overtime_minutes=0,
         )
         db.add(record)
-        db.flush()
+        try:
+            # Use a savepoint (nested transaction) so that only the failed INSERT
+            # is rolled back on a unique-constraint violation — not the entire
+            # session.  This is safe under concurrent punch-in from 50+ workers
+            # because the DB-level UNIQUE INDEX on (user_id, factory_id,
+            # attendance_date) guarantees exactly-once semantics even when two
+            # requests pass the application-level read check simultaneously.
+            with db.begin_nested():
+                db.flush()
+        except IntegrityError:  # Unique constraint violation under race condition
+            # The savepoint was rolled back automatically; the outer session is
+            # still alive.  Re-read the row that the winning request inserted.
+            existing = _record_for_local_day(
+                db,
+                user_id=current_user.id,
+                factory_id=factory.factory_id,
+                attendance_date=current_date,
+            )
+            if existing:
+                if existing.punch_out_at is not None:
+                    raise HTTPException(status_code=409, detail="Attendance is already closed for today.")
+                db.add(
+                    AttendanceEvent(
+                        org_id=org_id,
+                        factory_id=factory.factory_id,
+                        user_id=current_user.id,
+                        attendance_record_id=existing.id,
+                        attendance_date=current_date,
+                        shift=shift_value,
+                        event_type="in",
+                        event_time=punch_time,
+                        source="self-service",
+                        note=note,
+                    )
+                )
+                db.commit()
+                return _serialize_today_response(
+                    db=db,
+                    factory=factory,
+                    user_id=current_user.id,
+                    attendance_date=current_date,
+                    record=existing,
+                    inferred_shift=shift_value,
+                )
+            raise
         db.add(
             AttendanceEvent(
                 org_id=org_id,
@@ -918,7 +1059,37 @@ def punch_attendance(
                 shift_template_id=yesterday_record.shift_template_id,
             )
             if yesterday_template and yesterday_template.cross_midnight:
-                record = yesterday_record
+                # Guard: only use yesterday's cross-midnight record if the
+                # current local time is still within the shift's end window.
+                # Without this check, a worker could accidentally close
+                # yesterday's night shift at 11 PM today (Bug #6).
+                # Allow up to 2 hours past the shift's end_time as grace.
+                _CROSS_MIDNIGHT_GRACE_HOURS = 2
+                shift_end = yesterday_template.end_time  # datetime.time
+                local_time = local_now.time()
+                # Build a datetime for the shift end on today's date for comparison
+                shift_end_dt = datetime.combine(current_date, shift_end)
+                shift_end_cutoff = datetime.combine(
+                    current_date,
+                    shift_end,
+                ).replace(
+                    hour=(shift_end.hour + _CROSS_MIDNIGHT_GRACE_HOURS) % 24,
+                    minute=shift_end.minute,
+                    second=0,
+                    microsecond=0,
+                )
+                local_now_naive = local_now.replace(tzinfo=None)
+                if local_now_naive <= shift_end_cutoff:
+                    record = yesterday_record
+                else:
+                    logger.warning(
+                        "Cross-midnight fallback rejected: local_now=%s is past "
+                        "shift end cutoff=%s for user_id=%s factory=%s",
+                        local_now_naive.isoformat(),
+                        shift_end_cutoff.isoformat(),
+                        current_user.id,
+                        factory.factory_id,
+                    )
     if record is None:
         record = open_record or today_record
     if not record or not record.punch_in_at:
@@ -928,7 +1099,7 @@ def punch_attendance(
             db=db,
             factory=factory,
             user_id=current_user.id,
-            attendance_date=current_date,
+            attendance_date=record.attendance_date,
             record=record,
             inferred_shift=record.shift or _infer_shift(db, factory_id=factory.factory_id, local_now=local_now),
         )
@@ -973,7 +1144,7 @@ def punch_attendance(
         db=db,
         factory=factory,
         user_id=current_user.id,
-        attendance_date=current_date,
+        attendance_date=record.attendance_date,
         record=record,
         inferred_shift=record.shift or _infer_shift(db, factory_id=factory.factory_id, local_now=local_now),
     )
@@ -982,17 +1153,22 @@ def punch_attendance(
 @router.get("/live", response_model=AttendanceLiveResponse)
 def get_live_attendance(
     attendance_date: date | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceLiveResponse:
-    require_role(current_user, UserRole.SUPERVISOR)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.team.view")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     local_now = _factory_now(factory)
     selected_date = attendance_date or local_now.date()
     include_open_previous = selected_date == local_now.date()
 
-    users = _attendance_users_for_factory(db, factory_id=factory.factory_id, org_id=org_id)
+    users, total_users = _attendance_users_for_factory_paginated(
+        db, factory_id=factory.factory_id, org_id=org_id,
+        page=page, page_size=page_size,
+    )
     profiles = _employee_profiles_for_factory(db, factory_id=factory.factory_id, org_id=org_id)
     records = _attendance_rows_for_day(
         db,
@@ -1014,7 +1190,7 @@ def get_live_attendance(
 
     rows: list[AttendanceLiveRow] = []
     totals = {
-        "total_people": len(users),
+        "total_people": total_users,
         "punched_in": 0,
         "working": 0,
         "completed": 0,
@@ -1129,7 +1305,7 @@ def get_attendance_employee_profiles(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[EmployeeProfileItem]:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.profile.manage")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     users = _attendance_users_for_factory(db, factory_id=factory.factory_id, org_id=org_id)
@@ -1166,7 +1342,7 @@ def upsert_attendance_employee_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EmployeeProfileItem:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.profile.manage")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     user = (
@@ -1195,6 +1371,23 @@ def upsert_attendance_employee_profile(
     if payload.reporting_manager_id is not None:
         if int(payload.reporting_manager_id) == int(payload.user_id):
             raise HTTPException(status_code=422, detail="Reporting manager cannot be the same employee.")
+        # Prevent indirect reporting loops (A -> B -> ... -> A).
+        # Walk the reporting chain to detect cycles (Bug #38).
+        visited: set[int] = {int(payload.user_id)}
+        current_id: int | None = int(payload.reporting_manager_id)
+        while current_id is not None:
+            if current_id in visited:
+                raise HTTPException(
+                    status_code=422,
+                    detail="This assignment would create a circular reporting chain.",
+                )
+            visited.add(current_id)
+            mgr_profile = db.query(EmployeeProfile).filter(
+                EmployeeProfile.org_id == org_id,
+                EmployeeProfile.factory_id == factory.factory_id,
+                EmployeeProfile.user_id == current_id,
+            ).first()
+            current_id = mgr_profile.reporting_manager_id if mgr_profile else None
         reporting_manager = (
             db.query(User)
             .join(UserFactoryRole, UserFactoryRole.user_id == User.id)
@@ -1270,7 +1463,7 @@ def get_shift_templates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[ShiftTemplateItem]:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.shift_template.manage")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     templates = _shift_templates_for_factory(db, org_id=org_id, factory_id=factory.factory_id)
@@ -1284,7 +1477,7 @@ def upsert_shift_template(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ShiftTemplateItem:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.shift_template.manage")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
 
@@ -1317,6 +1510,35 @@ def upsert_shift_template(
     )
     if conflict and (template is None or conflict.id != template.id):
         raise HTTPException(status_code=409, detail="A shift template with this name already exists.")
+
+    # Guard: check for overlapping shift times (Bug #16)
+    start = _parse_time_value(payload.start_time)
+    end = _parse_time_value(payload.end_time)
+    if start >= end and not payload.cross_midnight:
+        raise HTTPException(
+            status_code=422,
+            detail="Shift end time must be after start time (or set cross_midnight=True for night shifts).",
+        )
+    existing_templates = db.query(ShiftTemplate).filter(
+        ShiftTemplate.org_id == org_id,
+        ShiftTemplate.factory_id == factory.factory_id,
+        ShiftTemplate.is_active.is_(True),
+    ).all()
+    for existing_t in existing_templates:
+        if template is not None and existing_t.id == template.id:
+            continue  # Skip self when updating
+        # Check for time overlap
+        existing_start = existing_t.start_time
+        existing_end = existing_t.end_time
+        if existing_t.cross_midnight != payload.cross_midnight:
+            # Cross-midnight vs non-cross-midnight overlap check is complex;
+            # for now, flag as potential conflict
+            continue
+        if start < existing_end and end > existing_start:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Shift \"{existing_t.shift_name}\" ({_format_time_value(existing_start)}-{_format_time_value(existing_end)}) overlaps with the proposed shift ({payload.start_time}-{payload.end_time}).",
+            )
 
     if not template:
         template = ShiftTemplate(org_id=org_id, factory_id=factory.factory_id)
@@ -1361,6 +1583,7 @@ def create_regularization_request(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceRegularizationItem:
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.self.regularization.request")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     record = (
@@ -1425,7 +1648,7 @@ def get_attendance_review_queue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceReviewResponse:
-    require_any_role(current_user, REPORTING_MANAGER_ALLOWED_ROLES)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.report.view")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     local_now = _factory_now(factory)
@@ -1548,7 +1771,17 @@ def approve_attendance_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceReviewItem:
-    require_any_role(current_user, REPORTING_MANAGER_ALLOWED_ROLES)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="attendance.record.approve",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     record = (
@@ -1562,7 +1795,26 @@ def approve_attendance_review(
     )
     if not record:
         raise HTTPException(status_code=404, detail="Attendance review record not found.")
-    assert_not_self_approval(record.user_id, current_user.id)
+
+    # Step 2: Approval service initiation (maker-checker — replaces assert_not_self_approval)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=record.user_id,
+        workflow_key="attendance.review.approve",
+        action_key="attendance.record.approve",
+        resource_type="AttendanceRecord",
+        resource_id=str(attendance_id),
+        org_id=org_id,
+        factory_id=factory.factory_id,
+        current_workflow_state=record.review_status,
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
 
     regularization = (
         db.query(AttendanceRegularization)
@@ -1638,6 +1890,11 @@ def approve_attendance_review(
     )
     db.commit()
     db.refresh(record)
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     profile = _employee_profile_for_user(db, org_id=org_id, factory_id=factory.factory_id, user_id=record.user_id)
     user = db.query(User).filter(User.id == record.user_id).first()
     if not user:
@@ -1665,6 +1922,175 @@ def approve_attendance_review(
     )
 
 
+@router.post("/review/{attendance_id}/force-close", response_model=AttendanceReviewItem)
+def force_close_attendance(
+    attendance_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    payload: AttendanceForceCloseRequest | None = None,
+) -> AttendanceReviewItem:
+    """Force-close a missed punch-out using the shift template's end time.
+
+    Supervisors use this when a worker clocked in but left without punching out.
+    The system computes the default punch-out time from the shift's end time
+    and calculates worked/overtime/late metrics automatically.
+
+    Only applies to records from *previous* days (not today's open records).
+    """
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="attendance.record.approve",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
+    factory = _active_factory_or_400(db, current_user)
+    org_id = _active_org_or_400(current_user)
+    record = (
+        db.query(AttendanceRecord)
+        .filter(
+            AttendanceRecord.id == attendance_id,
+            AttendanceRecord.org_id == org_id,
+            AttendanceRecord.factory_id == factory.factory_id,
+        )
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="Attendance record not found.")
+
+    # Guard: must have punched in without punching out
+    if not record.punch_in_at:
+        raise HTTPException(
+            status_code=422,
+            detail="Record has no punch-in time. Use the standard approve endpoint instead.",
+        )
+    if record.punch_out_at is not None:
+        raise HTTPException(status_code=409, detail="Attendance record already has a punch-out time.")
+
+    # Guard: only for previous days (cannot force-close today's open records)
+    factory_tz = _factory_timezone(factory)
+    local_now = datetime.now(factory_tz)
+    if record.attendance_date >= local_now.date():
+        raise HTTPException(
+            status_code=422,
+            detail="Force-close is only for missed punch-outs from previous days. "
+            "Use the regular punch-out for today's records.",
+        )
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(
+        db,
+        actor_user_id=current_user.id,
+        subject_user_id=record.user_id,
+        workflow_key="attendance.review.approve",
+        action_key="attendance.record.approve",
+        resource_type="AttendanceRecord",
+        resource_id=str(attendance_id),
+        org_id=org_id,
+        factory_id=factory.factory_id,
+        current_workflow_state=record.review_status,
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # Step 3: Compute default punch-out time from shift template
+    template = _shift_template_for_shift(
+        db,
+        org_id=org_id,
+        factory_id=factory.factory_id,
+        shift_name=record.shift,
+        shift_template_id=record.shift_template_id,
+    )
+    default_punch_out = _default_shift_end_time(
+        factory=factory,
+        attendance_date=record.attendance_date,
+        shift_name=record.shift,
+        template=template,
+    )
+
+    note = sanitize_text(payload.note, max_length=500) if payload and payload.note else None
+
+    # Step 4: Apply the force-close
+    record.punch_out_at = default_punch_out
+    _sync_record_metrics(record=record, factory=factory, template=template, status_value="completed")
+    record.review_status = "approved"
+    record.approved_by_user_id = current_user.id
+    record.approved_at = datetime.now(timezone.utc)
+    if note:
+        record.note = note
+
+    # Log AttendanceEvent
+    db.add(
+        AttendanceEvent(
+            org_id=org_id,
+            factory_id=factory.factory_id,
+            user_id=record.user_id,
+            attendance_record_id=record.id,
+            attendance_date=record.attendance_date,
+            shift=record.shift,
+            event_type="out",
+            event_time=default_punch_out,
+            source="supervisor_force_close",
+            note=note,
+        )
+    )
+
+    _write_attendance_audit(
+        db,
+        current_user=current_user,
+        request=request,
+        factory_id=factory.factory_id,
+        action="ATTENDANCE_FORCE_CLOSED",
+        details=(
+            f"attendance_id={record.id}; "
+            f"punch_out_at={default_punch_out.isoformat()}; "
+            f"worked_minutes={record.worked_minutes}"
+        ),
+    )
+    db.commit()
+    db.refresh(record)
+
+    # Step 5: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
+    profile = _employee_profile_for_user(db, org_id=org_id, factory_id=factory.factory_id, user_id=record.user_id)
+    user = db.query(User).filter(User.id == record.user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+    return AttendanceReviewItem(
+        attendance_id=record.id,
+        attendance_date=record.attendance_date,
+        user_id=user.id,
+        user_code=user.user_code,
+        name=user.name,
+        role=user.role.value,
+        department=profile.department if profile else None,
+        designation=profile.designation if profile else None,
+        shift=record.shift,
+        status=record.status,
+        review_status=record.review_status,
+        punch_in_at=record.punch_in_at,
+        punch_out_at=record.punch_out_at,
+        worked_minutes=record.worked_minutes,
+        late_minutes=record.late_minutes,
+        overtime_minutes=record.overtime_minutes,
+        note=record.note,
+        review_reason="Force-closed by supervisor (missed punch-out)",
+        regularization=None,
+    )
+
+
 @router.post("/review/{attendance_id}/reject", response_model=AttendanceReviewItem)
 def reject_attendance_review(
     attendance_id: int,
@@ -1673,7 +2099,17 @@ def reject_attendance_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceReviewItem:
-    require_any_role(current_user, REPORTING_MANAGER_ALLOWED_ROLES)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="attendance.review.reject",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     record = (
@@ -1687,7 +2123,27 @@ def reject_attendance_review(
     )
     if not record:
         raise HTTPException(status_code=404, detail="Attendance review record not found.")
-    assert_not_self_approval(record.user_id, current_user.id)
+
+    # Step 2: Approval service initiation (maker-checker — replaces assert_not_self_approval)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=record.user_id,
+        workflow_key="attendance.review.reject",
+        action_key="attendance.review.reject",
+        resource_type="AttendanceRecord",
+        resource_id=str(attendance_id),
+        org_id=org_id,
+        factory_id=factory.factory_id,
+        current_workflow_state=record.review_status,
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     note = sanitize_text(payload.note, max_length=500) if payload.note else None
     if not note:
         raise HTTPException(status_code=422, detail="A rejection note is required.")
@@ -1723,6 +2179,11 @@ def reject_attendance_review(
     )
     db.commit()
     db.refresh(record)
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     profile = _employee_profile_for_user(db, org_id=org_id, factory_id=factory.factory_id, user_id=record.user_id)
     user = db.query(User).filter(User.id == record.user_id).first()
     if not user:
@@ -1757,10 +2218,7 @@ def get_attendance_report_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceReportSummary:
-    require_any_role(
-        current_user,
-        {UserRole.ACCOUNTANT, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.report.view")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     local_now = _factory_now(factory)

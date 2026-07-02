@@ -35,6 +35,8 @@ from backend.routers.reports import router as reports_router
 from backend.routers.settings import router as settings_router
 from backend.routers.ocr import router as ocr_router
 from backend.routers.observability import router as observability_router
+from backend.routers.permissions import router as permissions_router
+from backend.routers.approvals import router as approvals_router
 from backend.routers.whatsapp_webhook import router as whatsapp_webhook_router
 from backend.routers.plans import router as plans_router
 from backend.routers.billing import router as billing_router
@@ -42,6 +44,11 @@ from backend.routers.admin_billing import router as admin_billing_router
 from backend.routers.admin_ai import router as admin_ai_router
 from backend.routers.premium import router as premium_router
 from backend.routers.steel import router as steel_router
+from backend.routers.steel_intelligence import router as steel_intelligence_router
+from backend.routers.steel_finance import router as steel_finance_router
+from backend.routers.cron import router as cron_router
+from backend.routers.coil_theft import router as coil_theft_router
+from backend.routers.workforce_intelligence import router as workforce_intelligence_router
 from backend.utils import get_config, setup_logging
 from backend.metrics import (
     record_exception,
@@ -50,20 +57,55 @@ from backend.metrics import (
 )
 from backend.middleware.security import apply_security
 from backend.middleware.response_envelope import apply_response_envelope
-from backend.middleware.csrf_cookie import apply_cookie_csrf
-from backend.auth_cookies import get_access_cookie
-from backend.security import decode_access_token
+import threading
+
 from backend.services.ops_alerts import (
     initialize_ops_alerting,
     record_request_exception as record_ops_request_exception,
     record_request_outcome as record_ops_request_outcome,
     shutdown_ops_alerting,
 )
+
+
+# In-memory cache for User.role_revision to avoid a DB query on every request.
+# role_revision changes infrequently, so a 5-minute TTL is safe.
+_ROLE_REVISION_CACHE: dict[int, tuple[float, int]] = {}
+_ROLE_REVISION_CACHE_TTL: float = 300.0  # 5 minutes
+_ROLE_REVISION_LOCK = threading.Lock()
+
+
+def _get_cached_role_revision(user_id: int) -> int | None:
+    with _ROLE_REVISION_LOCK:
+        entry = _ROLE_REVISION_CACHE.get(user_id)
+        if entry is not None:
+            cached_at, revision = entry
+            if time.monotonic() - cached_at < _ROLE_REVISION_CACHE_TTL:
+                return revision
+            del _ROLE_REVISION_CACHE[user_id]
+    return None
+
+
+def _set_cached_role_revision(user_id: int, revision: int) -> None:
+    with _ROLE_REVISION_LOCK:
+        _ROLE_REVISION_CACHE[user_id] = (time.monotonic(), revision)
 from backend.services.whatsapp_sender import initialize_whatsapp_sender, shutdown_whatsapp_sender
 from backend.services.attendance_absence_service import (
     initialize_attendance_absence_scheduler,
     shutdown_attendance_absence_scheduler,
 )
+from backend.services.approval_expiry_service import (
+    initialize_approval_expiry_scheduler,
+    shutdown_approval_expiry_scheduler,
+)
+from backend.services.feedback_anomaly_detection import (
+    initialize_feedback_anomaly_detector,
+    shutdown_feedback_anomaly_detector,
+)
+from backend.services.attendance_auto_close_service import (
+    initialize_attendance_auto_close_scheduler,
+    shutdown_attendance_auto_close_scheduler,
+)
+from backend.services.email_queue_processor import start_email_processor, stop_email_processor
 from backend.services.billing_manager import (
     enforce_expired_grace_periods,
     normalize_subscription_states,
@@ -103,7 +145,19 @@ async def lifespan(_app: FastAPI):
             logger.exception("Billing recovery failed during startup; continuing without blocking app boot.")
         initialize_whatsapp_sender()
         initialize_attendance_absence_scheduler()
+        initialize_approval_expiry_scheduler()
+        initialize_feedback_anomaly_detector()
+        initialize_attendance_auto_close_scheduler()
         initialize_ops_alerting()
+        start_email_processor()
+
+        # Phase P3: Register approval completion callbacks
+        try:
+            from backend.services.approval_callbacks import register_all_callbacks
+            register_all_callbacks()
+        except Exception:
+            logger.exception("Failed to register approval callbacks; continuing without blocking app boot.")
+
         logger.info("Backend startup completed successfully.")
         yield
     except Exception as error:  # pylint: disable=broad-except
@@ -111,8 +165,12 @@ async def lifespan(_app: FastAPI):
         raise RuntimeError("Backend startup failed.") from error
     finally:
         shutdown_attendance_absence_scheduler()
+        shutdown_approval_expiry_scheduler()
+        shutdown_feedback_anomaly_detector()
+        shutdown_attendance_auto_close_scheduler()
         shutdown_ops_alerting()
         shutdown_whatsapp_sender()
+        stop_email_processor()
 
 
 app = FastAPI(title=config.app_name, version="0.3.0", lifespan=lifespan)
@@ -128,9 +186,10 @@ if sentry_sdk and os.getenv("SENTRY_DSN"):
 app.include_router(auth_router, prefix="/auth")
 app.include_router(auth_google_router, prefix="/auth")
 app.include_router(phone_auth_router, prefix="/auth")
-if os.getenv("ENABLE_AUTH_SECURE", "").strip().lower() in {"1", "true", "yes", "on"}:
-    app.include_router(auth_secure_router, prefix="/auth-secure")
+app.include_router(auth_secure_router, prefix="/auth-secure")
 app.include_router(auth_secure_router, prefix="/auth/v2")
+app.include_router(permissions_router, prefix="/auth")
+app.include_router(approvals_router, prefix="/api")
 app.include_router(jobs_router, prefix="/jobs")
 app.include_router(entries_router, prefix="/entries")
 app.include_router(reports_router, prefix="/reports")
@@ -152,39 +211,13 @@ app.include_router(admin_billing_router)
 app.include_router(admin_ai_router)
 app.include_router(premium_router, prefix="/premium")
 app.include_router(steel_router, prefix="/steel")
+app.include_router(steel_intelligence_router, prefix="/steel")
+app.include_router(steel_finance_router, prefix="/steel")
+app.include_router(workforce_intelligence_router, prefix="/intelligence")
+app.include_router(cron_router)
 
 apply_security(app)
 apply_response_envelope(app)
-apply_cookie_csrf(app)
-
-
-@app.middleware("http")
-async def attach_role_revision_header(request: Request, call_next: Callable) -> Response:
-    response = await call_next(request)
-    token: str | None = None
-    authorization = request.headers.get("Authorization") or ""
-    if authorization.startswith("Bearer "):
-        token = authorization.replace("Bearer ", "", 1).strip()
-    if not token:
-        token = get_access_cookie(request)
-    if not token:
-        return response
-
-    try:
-        payload = decode_access_token(token)
-        user_id = int(payload.get("sub", 0))
-    except Exception:
-        return response
-
-    if user_id <= 0:
-        return response
-
-    with SessionLocal() as db:
-        current_user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
-        if current_user:
-            response.headers["X-Role-Revision"] = str(current_user.role_revision)
-    return response
-
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next: Callable) -> Response:

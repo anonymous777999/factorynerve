@@ -12,6 +12,12 @@ export type EntryPayload = {
   materials_used?: string | null;
   quality_issues: boolean;
   quality_details?: string | null;
+  // ── Phase 1: Structured quality intelligence ───────────────────────────
+  rejection_qty?: number | null;
+  defect_reason_id?: number | null;
+  defect_reason_details?: string | null;
+  rework_required?: boolean;
+  scrap_qty_entry?: number | null;
   notes?: string | null;
 };
 

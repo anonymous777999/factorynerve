@@ -280,7 +280,7 @@ class OCRPipeline:
             )
             return failure
 
-    def _log_usage(self, *, org_id: int, raw: RawAIResponse, reason: str) -> None:
+    def _log_usage(self, *, org_id: str, raw: RawAIResponse, reason: str) -> None:
         self.usage_logger(
             org_id=org_id,
             tokens=raw.usage.total_tokens,

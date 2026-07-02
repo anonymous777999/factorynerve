@@ -55,7 +55,7 @@ def _db_session():
         Organization(
             org_id="org-1",
             name="Org 1",
-            plan="free",
+            plan="pilot",
             ai_daily_token_cap=1000,
             ai_monthly_cost_cap_usd=10.0,
         )
@@ -64,7 +64,7 @@ def _db_session():
         Organization(
             org_id="org-2",
             name="Org 2",
-            plan="free",
+            plan="pilot",
             ai_daily_token_cap=1000,
             ai_monthly_cost_cap_usd=10.0,
         )

@@ -19,6 +19,12 @@ export type Entry = {
   materials_used?: string | null;
   quality_issues: boolean;
   quality_details?: string | null;
+  // ── Phase 1: Structured quality intelligence ───────────────────────────
+  rejection_qty?: number | null;
+  defect_reason_id?: number | null;
+  defect_reason_details?: string | null;
+  rework_required?: boolean;
+  scrap_qty_entry?: number | null;
   notes?: string | null;
   ai_summary?: string | null;
   summary_job_id?: string | null;
@@ -113,9 +119,20 @@ export async function queueEntrySummaryJob(entryId: number): Promise<JobRecord> 
   return apiFetch<JobRecord>(`/entries/${entryId}/summary-jobs`, { method: "POST" });
 }
 
+export type DefectReason = {
+  id: number;
+  code: string;
+  label: string;
+  description?: string | null;
+};
+
+export async function listDefectReasons(): Promise<DefectReason[]> {
+  return apiFetch<DefectReason[]>("/entries/defect-reasons", {}, { cacheTtlMs: 300_000 });
+}
+
 export async function updateEntry(
   entryId: number,
-  payload: Partial<Pick<EntryPayload, "units_target" | "units_produced" | "manpower_present" | "manpower_absent" | "downtime_minutes" | "downtime_reason" | "materials_used" | "quality_issues" | "quality_details" | "notes">>,
+  payload: Partial<Pick<EntryPayload, "units_target" | "units_produced" | "manpower_present" | "manpower_absent" | "downtime_minutes" | "downtime_reason" | "materials_used" | "quality_issues" | "quality_details" | "rejection_qty" | "defect_reason_id" | "defect_reason_details" | "rework_required" | "scrap_qty_entry" | "notes">>,
 ): Promise<Entry> {
   return apiFetch<Entry>(`/entries/${entryId}`, { method: "PUT", body: payload });
 }

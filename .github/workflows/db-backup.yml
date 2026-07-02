@@ -1,0 +1,108 @@
+name: Database Backup
+
+on:
+  schedule:
+    # Runs daily at 2:00 AM UTC = 7:30 AM IST
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    # Allow manual triggering from the GitHub UI
+    inputs:
+      reason:
+        description: 'Reason for manual backup'
+        required: false
+        default: 'Manual trigger'
+
+env:
+  BACKUP_RETENTION_DAYS: 14
+  B2_BUCKET_NAME: factorynerve-backups
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install pg_dump
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client
+          pg_dump --version
+
+      - name: Run pg_dump
+        run: |
+          TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+          FILENAME="factorynerve_${TIMESTAMP}.dump"
+          echo "filename=${FILENAME}" >> $GITHUB_ENV
+          echo "Backing up database to ${FILENAME}..."
+          pg_dump \
+            --format=custom \
+            --no-owner \
+            --compress=9 \
+            --dbname="${{ secrets.DATABASE_URL }}" \
+            --file="${FILENAME}"
+          ls -lh "${FILENAME}"
+
+      - name: Install B2 CLI
+        run: |
+          pip install --upgrade b2
+          b2 version
+
+      - name: Upload backup to Backblaze B2
+        run: |
+          b2 authorize-account \
+            "${{ secrets.B2_APPLICATION_KEY_ID }}" \
+            "${{ secrets.B2_APPLICATION_KEY }}"
+          b2 upload-file \
+            "${{ env.B2_BUCKET_NAME }}" \
+            "${{ env.filename }}" \
+            "${{ env.filename }}"
+          echo "✅ Backup uploaded: ${{ env.filename }}"
+
+      - name: Clean up old backups (keep last 14 days)
+        run: |
+          b2 authorize-account \
+            "${{ secrets.B2_APPLICATION_KEY_ID }}" \
+            "${{ secrets.B2_APPLICATION_KEY }}"
+          
+          CUTOFF=$(date -d "${{ env.BACKUP_RETENTION_DAYS }} days ago" +%Y%m%d)
+          echo "Deleting backups older than ${CUTOFF} (${BACKUP_RETENTION_DAYS} days)..."
+          
+          # List files, parse date from filename, delete if older than cutoff
+          b2 ls "${{ env.B2_BUCKET_NAME }}" --json 2>/dev/null | python3 -c "
+import json, sys, datetime
+
+cutoff = datetime.datetime.strptime('${CUTOFF}', '%Y%m%d')
+bucket = '${{ env.B2_BUCKET_NAME }}'
+deleted = 0
+
+for line in sys.stdin:
+    try:
+        entry = json.loads(line.strip())
+        fname = entry.get('fileName', '')
+        # Parse date from factorynerve_YYYYMMDD_HHMMSS.dump
+        if 'factorynerve_' in fname and fname.endswith('.dump'):
+            date_str = fname.split('_')[1][:8]
+            file_date = datetime.datetime.strptime(date_str, '%Y%m%d')
+            if file_date < cutoff:
+                print(f'Deleting old backup: {fname}')
+                # Use subprocess to call b2 delete
+                import subprocess
+                subprocess.run(['b2', 'delete-file-version', bucket, fname, ''], check=True)
+                deleted += 1
+    except (json.JSONDecodeError, IndexError, ValueError):
+        pass
+
+print(f'Cleaned up {deleted} old backup(s)')
+"
+
+      - name: Print backup summary
+        run: |
+          echo "══════════════════════════════════════════════"
+          echo "  Backup Complete"
+          echo "  File: ${{ env.filename }}"
+          echo "  Bucket: ${{ env.B2_BUCKET_NAME }}"
+          echo "  Retention: ${{ env.BACKUP_RETENTION_DAYS }} days"
+          echo "══════════════════════════════════════════════"

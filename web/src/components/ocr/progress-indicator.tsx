@@ -48,7 +48,7 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
   return (
     <div className="mx-auto grid max-w-6xl gap-6 rounded-[32px] border border-[#e3e8ef] bg-white p-5 shadow-[0_28px_80px_rgba(15,23,42,0.08)] lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:p-8">
       <div className="overflow-hidden rounded-[28px] border border-[#e6ebf1] bg-[#f7f9fb]">
-        <div className="border-b border-[#e6ebf1] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+        <div className="border-b border-[#e6ebf1] px-4 py-3 text-[11px] font-semibold uppercase tracking-label text-[#667085]">
           Current image
         </div>
         <div className="grid min-h-[18rem] place-items-center bg-[linear-gradient(180deg,#f9fbfd_0%,#f3f6f9_100%)] p-4">
@@ -62,7 +62,7 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
       </div>
 
       <div className="flex flex-col">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+        <div className="text-[11px] font-semibold uppercase tracking-label text-[#667085]">
           Processing
         </div>
         <h2 className="mt-3 text-[2rem] font-semibold tracking-tight text-[#101828]">

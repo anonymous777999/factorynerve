@@ -19,7 +19,7 @@ def test_manual_plan_override_is_disabled_by_default(http_client):
     user = register_user(http_client, role="owner")
     headers = {"Authorization": f"Bearer {user['access_token']}"}
 
-    response = http_client.put("/settings/org/plan", json={"plan": "starter"}, headers=headers)
+    response = http_client.put("/settings/org/plan", json={"plan": "operator"}, headers=headers)
 
     assert response.status_code == HTTPStatus.FORBIDDEN, response.text
     assert "disabled" in response.text.lower()
@@ -36,7 +36,7 @@ def test_create_order_rejects_non_inr_currency(http_client):
         with pytest.raises(HTTPException) as raised:
             create_order(
                 CreateOrderRequest(
-                    plan="starter",
+                    plan="operator",
                     billing_cycle="monthly",
                     requested_users=1,
                     requested_factories=1,
@@ -84,8 +84,8 @@ def test_failed_payment_order_can_create_a_fresh_retry(http_client, monkeypatch)
         db.add(
             PaymentOrder(
                 user_id=current_user.id,
-                plan="starter",
-                amount=49900,
+                plan="operator",
+                amount=349900,
                 currency="INR",
                 provider="razorpay",
                 provider_order_id="order_old_failed",
@@ -143,8 +143,8 @@ def test_admin_can_read_billing_but_cannot_write(http_client):
     status_response = http_client.get("/billing/status", headers=headers)
     invoices_response = http_client.get("/billing/invoices", headers=headers)
     config_response = http_client.get("/billing/config", headers=headers)
-    downgrade_response = http_client.post("/billing/downgrade", json={"plan": "free"}, headers=headers)
-    order_response = http_client.post("/billing/orders", json={"plan": "starter"}, headers=headers)
+    downgrade_response = http_client.post("/billing/downgrade", json={"plan": "pilot"}, headers=headers)
+    order_response = http_client.post("/billing/orders", json={"plan": "operator"}, headers=headers)
 
     assert status_response.status_code == HTTPStatus.OK, status_response.text
     assert invoices_response.status_code == HTTPStatus.OK, invoices_response.text
@@ -157,9 +157,9 @@ def test_owner_can_schedule_and_cancel_downgrade(http_client):
     user = register_user(http_client, role="owner")
     headers = {"Authorization": f"Bearer {user['access_token']}"}
 
-    scheduled = http_client.post("/billing/downgrade", json={"plan": "free"}, headers=headers)
+    scheduled = http_client.post("/billing/downgrade", json={"plan": "pilot"}, headers=headers)
     cancelled = http_client.delete("/billing/downgrade", headers=headers)
 
     assert scheduled.status_code == HTTPStatus.OK, scheduled.text
-    assert scheduled.json()["pending_plan"] == "free"
+    assert scheduled.json()["pending_plan"] == "pilot"
     assert cancelled.status_code == HTTPStatus.OK, cancelled.text

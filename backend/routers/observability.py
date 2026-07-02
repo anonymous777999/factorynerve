@@ -18,10 +18,10 @@ from backend.database import get_db
 from backend.metrics import record_frontend_error, snapshot as metrics_snapshot
 from backend.models.ops_alert_event import OpsAlertEvent
 from backend.models.user import User, UserRole
-from backend.rbac import require_any_role
 from backend.security import get_current_user
 from backend.tenancy import resolve_org_id
 from backend.utils import get_config
+from backend.authorization import PDP, ResourceContext
 
 try:
     import sentry_sdk  # type: ignore
@@ -103,8 +103,8 @@ class OpsAlertDetailResponse(BaseModel):
     deliveries: list[OpsAlertHistoryItem]
 
 
-def _require_alert_viewer(current_user: User) -> None:
-    require_any_role(current_user, {UserRole.ADMIN, UserRole.OWNER})
+def _require_alert_viewer(current_user: User, db: Session) -> None:
+    PDP(db=db).require_permission(actor=current_user, permission_key="system.observability.view")
 
 
 def _current_org_id(current_user: User) -> str:
@@ -204,7 +204,7 @@ def get_alert_history(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> OpsAlertHistoryResponse:
-    _require_alert_viewer(current_user)
+    _require_alert_viewer(current_user, db)
     scoped_org_id = _current_org_id(current_user)
     if org_id and org_id != scoped_org_id:
         raise HTTPException(status_code=403, detail="Alerts may only be viewed for your organization.")
@@ -250,7 +250,7 @@ def get_alert_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> OpsAlertDetailResponse:
-    _require_alert_viewer(current_user)
+    _require_alert_viewer(current_user, db)
     scoped_org_id = _current_org_id(current_user)
     rows = (
         db.query(OpsAlertEvent)
