@@ -39,7 +39,7 @@ const isVercel = process.env.VERCEL === "1" || process.env.VERCEL_ENV === "produ
 const explicitOrigin = explicitBackendOrigin.trim().replace(/\/+$/, "");
 
 const defaultOrigin = isVercel
-  ? "https://factorynerve-api-6ttl.onrender.com"
+  ? "https://factorynerve-api.onrender.com"
   : `http://${backendHost}:${backendPort}`;
 
 const resolvedBackendOrigin = explicitOrigin || defaultOrigin;

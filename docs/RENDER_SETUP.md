@@ -134,6 +134,25 @@ alembic upgrade head && uvicorn ...
 
 That keeps first deploy simpler.
 
+## Troubleshooting: `Could not open requirements file`
+
+If Render logs show:
+
+```text
+Running build command 'pip install -r requirements.txt'
+ERROR: Could not open requirements file: [Errno 2] No such file or directory: 'requirements.txt'
+```
+
+your service is not using the Docker Blueprint flow from `render.yaml`.
+
+In this repository, production should run as Docker (`deploy/render/backend.Dockerfile`), not as Render's native Python runtime.
+
+Fix in Render:
+
+1. Recreate the backend via **New + -> Blueprint** so Render uses `render.yaml`.
+2. If you must keep a Python service, set Root Directory to repo root (`.`) or `backend/` (both now contain `requirements.txt`).
+3. If the service was created manually, remove custom Build/Start commands that conflict with Docker deploys.
+
 ## What I Still Cannot Do From Here
 
 I can prepare the repo, but I cannot click inside your Render account unless you connect it and share access/session on your machine.

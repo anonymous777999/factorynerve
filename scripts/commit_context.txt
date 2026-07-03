@@ -1,0 +1,46 @@
+=== Dispatch commit ===
+4293:         ),
+4294:         request=request,
+4295:     )
+4296:     db.commit()
+4297:     db.refresh(dispatch)
+4298:     for row in dispatch_line_rows:
+4299:         db.refresh(row)
+4300:     can_view_dispatch_line_financials = _can_view_steel_financials(current_user) or current_user.role in {
+4301:         UserRole.MANAGER,
+4302:         UserRole.ADMIN,
+4303:         UserRole.ACCOUNTANT,
+4304:     }
+4305: 
+
+=== Payment commit ===
+3470:         ),
+3471:         request=request,
+3472:     )
+3473:     db.commit()
+3474:     db.refresh(payment)
+3475:     for row in created_allocations:
+3476:         db.refresh(row)
+3477:     return {
+3478:         "payment": _serialize_steel_customer_payment(
+3479:             payment,
+3480:             creator=current_user,
+3481:             customer=customer,
+3482:             invoice=invoice,
+
+=== Invoice commit ===
+3907:         ),
+3908:         request=request,
+3909:     )
+3910:     db.commit()
+3911:     db.refresh(invoice)
+3912:     for row in line_rows:
+3913:         db.refresh(row)
+3914: 
+3915:     return {
+3916:         "invoice": _serialize_steel_invoice(
+3917:             invoice,
+3918:             creator=current_user,
+3919:             paid_amount_inr=0.0,
+3920:             outstanding_amount_inr=round(subtotal_amount, 2),
+

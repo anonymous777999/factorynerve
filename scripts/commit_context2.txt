@@ -1,0 +1,17 @@
+=== Batch FOR UPDATE area (4518-4525) ===
+4518:         raise HTTPException(status_code=400, detail="Actual output cannot exceed input quantity.")
+4519: 
+4520:     # Lock both input and output item rows to prevent concurrent stock corruption
+4521:     db.query(SteelInventoryItem).filter(SteelInventoryItem.id == input_item.id).with_for_update().first()
+4522:     db.query(SteelInventoryItem).filter(SteelInventoryItem.id == output_item.id).with_for_update().first()
+4523:     balances = stock_balances_for_factory(db, factory.factory_id)
+4524:     available_input = float(balances.get(input_item.id, 0.0))
+4525:     if available_input + 0.0001 < payload.input_quantity_kg:
+
+=== Batch output_item lock area (4520-4525) ===
+4520:     # Lock both input and output item rows to prevent concurrent stock corruption
+4521:     db.query(SteelInventoryItem).filter(SteelInventoryItem.id == input_item.id).with_for_update().first()
+4522:     db.query(SteelInventoryItem).filter(SteelInventoryItem.id == output_item.id).with_for_update().first()
+4523:     balances = stock_balances_for_factory(db, factory.factory_id)
+4524:     available_input = float(balances.get(input_item.id, 0.0))
+4525:     if available_input + 0.0001 < payload.input_quantity_kg:
