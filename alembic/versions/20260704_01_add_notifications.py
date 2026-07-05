@@ -23,7 +23,7 @@ def upgrade() -> None:
     op.create_table(
         "notifications",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=False, index=True),
+        sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("org_id", sa.String(length=36), nullable=True),
         sa.Column("notification_type", sa.String(length=50), nullable=False, server_default="system"),
         sa.Column("title", sa.String(length=200), nullable=False),
