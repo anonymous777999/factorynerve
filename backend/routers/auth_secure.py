@@ -39,6 +39,7 @@ from backend.auth_security.lockout import (
     reset_failed_login,
 )
 from backend.security import verify_password as legacy_verify_password
+from backend.utils import ensure_utc
 
 
 router = APIRouter(tags=["AuthSecure"])
@@ -232,6 +233,28 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
 
     # On successful login, reset the failed login counter
     reset_failed_login(db, user)
+
+    # Password expiry check (P2): force password change after N days
+    _PASSWORD_EXPIRY_DAYS = int(os.getenv("PASSWORD_EXPIRY_DAYS", "90"))
+    if _PASSWORD_EXPIRY_DAYS > 0 and user.password_changed_at:
+        password_changed_at = ensure_utc(user.password_changed_at)
+        elapsed = (datetime.now(timezone.utc) - password_changed_at).days
+        if elapsed >= _PASSWORD_EXPIRY_DAYS:
+            _log_event(
+                db, action="AUTH_LOGIN_PASSWORD_EXPIRED", user_id=user.id,
+                request=request, meta={"email": email, "days_since_change": elapsed},
+            )
+            db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_423_LOCKED,
+                detail={
+                    "code": "PASSWORD_EXPIRED",
+                    "message": f"Password has expired ({elapsed} days since last change). Please reset your password.",
+                    "must_change_password": True,
+                },
+            )
+
+    # mfa_verified is True ONLY when the user has MFA enabled AND
 
     # mfa_verified is True ONLY when the user has MFA enabled AND
     # successfully completed an MFA challenge during this login session.
@@ -441,7 +464,7 @@ def password_reset(payload: PasswordResetRequest, request: Request, response: Re
         )
         .first()
     )
-    if not reset or reset.expires_at <= datetime.now(timezone.utc):
+    if not reset or ensure_utc(reset.expires_at) <= datetime.now(timezone.utc):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token.")
     user = db.query(AuthUser).filter(AuthUser.id == user_id, AuthUser.is_active.is_(True)).first()
     if not user:

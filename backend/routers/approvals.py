@@ -220,7 +220,7 @@ def advance_approval(
     # Verify the instance exists
     instance = APPROVAL_SERVICE.get_instance(db, instance_id)
     if not instance:
-        raise HTTPException(status_code=404, detail="Approval instance not found.") from error
+        raise HTTPException(status_code=404, detail="Approval instance not found.")
 
     # Self-approval guard: the person who created the request cannot also advance it
     subject_user_id = instance.get("subject_user_id")

@@ -33,6 +33,9 @@ class SteelSalesInvoice(Base):
     total_weight_kg: Mapped[float] = mapped_column(Numeric(14, 3), nullable=False, default=0)
     subtotal_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0)
     total_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0)
+    # P1-8: GST totals
+    taxable_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0.0)
+    gst_total: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0.0)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

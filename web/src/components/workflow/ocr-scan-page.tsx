@@ -13,6 +13,7 @@ import { MobileEntry } from "@/components/ocr/mobile-entry";
 import { OcrErrorBoundary } from "@/components/ocr/OcrErrorBoundary";
 import { ProgressIndicator } from "@/components/ocr/progress-indicator";
 import { RawDataView } from "@/components/ocr/RawDataView";
+import { CrossValidationBanner } from "@/components/ocr/cross-validation-banner";
 import { ShareLinkGenerator } from "@/components/ocr/share-link-generator";
 import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ import {
   type OcrTokenUsage,
   type OcrDebugPayload,
   type OcrVerificationRecord,
+  type CrossValidationResult,
 } from "@/lib/ocr";
 import {
   buildStructuredPdfBlob,
@@ -139,6 +141,7 @@ type ResultPreview = {
   reprocessCount?: number | null;
   userCorrected?: boolean | null;
   reviewRequired?: boolean | null;
+  crossValidation?: CrossValidationResult | null;
 };
 
 type StructuredSheet = {
@@ -1003,6 +1006,7 @@ export default function OcrScanPage() {
       avgConfidence: resultPreview.avgConfidence ?? null,
       warnings: resultPreview.warnings,
       scanQuality: resultPreview.scanQuality ?? null,
+      crossValidation: resultPreview.crossValidation ?? null,
       documentHash,
       docTypeHint: resultPreview.type || "table",
       routingMeta: resultPreview.routingMeta ?? null,
@@ -1158,6 +1162,7 @@ export default function OcrScanPage() {
         reprocessCount: result.reprocess_count ?? null,
         userCorrected: result.user_corrected ?? null,
         reviewRequired: result.review_required ?? null,
+        crossValidation: result.cross_validation ?? null,
       };
 
       setResultPreview(nextPreview);
@@ -1787,6 +1792,10 @@ export default function OcrScanPage() {
                 </button>
               </div>
             </div>
+          )}
+
+          {step === "preview" && resultPreview?.crossValidation && (
+            <CrossValidationBanner data={resultPreview.crossValidation} />
           )}
 
           {(step === "preview" || step === "export") && resultPreview ? (

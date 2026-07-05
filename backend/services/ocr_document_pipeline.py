@@ -17,6 +17,17 @@ from backend.understanding.normalizer import normalize as normalize_understandin
 from backend.understanding.parser_registry import parse_document
 from backend.services.anthropic_usage import normalize_anthropic_model_name
 from backend.services.ocr_confidence import calculate_structural_confidence
+from backend.services.ocr_confidence import calculate_factual_confidence
+
+
+# ── Feature flag: OCR_NEW_CONFIDENCE_ENABLED ─────────────────────────────────
+# When enabled, surfaces factual_confidence alongside structural avg_confidence.
+# Factual confidence blends cross-validation discrepancies into the score:
+#   - Unvalidated: capped at 50% of structural
+#   - Blocked (>30% discrepancy): floored at 10%
+#   - Needs review: penalized proportionally
+# When disabled, factual_confidence is omitted from the output (backward compat).
+_OCR_NEW_CONFIDENCE_ENABLED = os.getenv("OCR_NEW_CONFIDENCE_ENABLED", "true").lower() in ("1", "true", "yes", "on")
 from backend.services.ocr_normalization import normalize_structured_payload
 from backend.services.ocr_normalization import (
     build_cell_confidence_matrix,
@@ -35,6 +46,9 @@ from backend.services.ocr_structural_grouping import (
 )
 from backend.table_scan import extract_table_from_image
 from backend.utils import normalize_confidence
+from backend.services.ocr_cross_validator import OcrCrossValidator, CrossValidationResult
+from backend.services.pipeline_metadata import PipelineMetadata
+from backend.services.ocr_image_preprocessing import preprocess_image, preprocess_image_metadata
 
 
 logger = logging.getLogger(__name__)
@@ -515,6 +529,38 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
     # Get layout confidence from scan_quality if available (NEW)
     layout_confidence = scan_quality.get("layout_confidence", 0.5)
 
+    # NEW (P0-2): Factual confidence from cached cross-validation
+    # Recompute factual confidence from the stored cross-validation dictionary
+    # so cached results show the same dual-score system as fresh results.
+    factual_confidence_payload: dict[str, Any] | None = None
+    if _OCR_NEW_CONFIDENCE_ENABLED:
+        cv = verification.cross_validation or {}
+        if isinstance(cv, dict) and cv.get("status"):
+            # Cross-validation data exists — rebuild factual score from cached state
+            status = str(cv.get("status") or "unvalidated")
+            if status == "verified":
+                factual_score = confidence
+            elif status == "blocked":
+                factual_score = 10.0
+            elif status == "needs_review":
+                factual_score = max(10.0, confidence * 0.8)
+            else:
+                factual_score = min(confidence * 0.5, 50.0)
+            factual_confidence_payload = {
+                "score": round(factual_score, 1),
+                "status": status,
+                "discrepancies": int(cv.get("discrepancies", 0) or 0),
+                "explanation": str(cv.get("explanation") or "Cached cross-validation data."),
+            }
+        else:
+            # No cached cross-validation — cap at 50% to indicate unverified
+            factual_confidence_payload = {
+                "score": round(min(confidence * 0.5, 50.0), 1),
+                "status": "unvalidated",
+                "discrepancies": 0,
+                "explanation": "No cross-validation data available for cached result.",
+            }
+
     return {
         "type": _doc_type(verification.doc_type_hint),
         "title": title,
@@ -537,6 +583,9 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
         "raw_column_added": bool(verification.raw_column_added),
         "reused": True,
         "reused_verification_id": verification.id,
+        "cross_validation": verification.cross_validation,
+        "factual_confidence": factual_confidence_payload if _OCR_NEW_CONFIDENCE_ENABLED else None,
+        "pipeline_metadata": cached_meta.to_dict(),
         "cached": True,
         "cache_created_at": created_at.isoformat(),
         "cache_age_hours": age_hours,
@@ -594,11 +643,42 @@ def build_structured_ocr_result(
     *,
     base_result: OcrResult,
     used_language: str,
-    fallback_used: bool,
+    fallback_used: bool = False,
     template: OcrTemplate | None = None,
     doc_type_hint: str | None = None,
     force_model: str | None = None,
+    pipeline_metadata: PipelineMetadata | None = None,
 ) -> dict[str, Any]:
+    """Build a structured OCR result from a local Tesseract base result.
+
+    Parameters
+    ----------
+    pipeline_metadata :
+        Consolidated pipeline quality state (P0-3). When provided, the value of
+        ``pipeline_metadata.tesseract_fallback_used`` takes precedence over the
+        legacy ``fallback_used`` parameter. New code should prefer passing
+        ``pipeline_metadata`` instead of the individual bool.
+    """
+    # Merge legacy fallback_used into PipelineMetadata for backward compatibility
+    if pipeline_metadata is not None:
+        if fallback_used:
+            pipeline_metadata.tesseract_fallback_used = True
+        fallback_used = pipeline_metadata.tesseract_fallback_used
+    else:
+        pass
+
+    pipeline_metadata = PipelineMetadata(tesseract_fallback_used=fallback_used)
+
+    # Preprocess image for better OCR on factory documents (P0-1)
+    try:
+        preprocessed = preprocess_image(image_bytes)
+        if preprocessed is not None and preprocessed != image_bytes:
+            image_bytes = preprocessed
+            pipeline_metadata.preprocessing_applied = True
+    except Exception as exc:
+        logger.warning("OCR preprocessing failed: %s", exc)
+        pipeline_metadata.preprocessing_applied = False
+
     requested_model = normalize_anthropic_model_name(force_model)
     try:
         route = choose_ocr_route(
@@ -798,6 +878,60 @@ def build_structured_ocr_result(
     heuristic_confidence_matrix = build_cell_confidence_matrix(normalized_headers, normalized_rows)
     final_rows = build_confidence_enriched_rows(normalized_headers, normalized_rows)
 
+    # ==================================================================
+    # CROSS-VALIDATION: Compare AI-enhanced rows against Tesseract base
+    # ==================================================================
+    cross_validation_result: CrossValidationResult | None = None
+    base_rows_for_validation = base_result.rows or []
+    if base_rows_for_validation and normalized_rows:
+        try:
+            validator = OcrCrossValidator()
+            cross_validation_result = validator.validate(
+                image_bytes=image_bytes,
+                ai_extracted_rows=normalized_rows,
+            )
+            
+            # Adjust confidence based on cross-validation
+            # We use the score from the result if we want to influence avg_confidence directly,
+            # but here we'll follow the plan to use it to augment warnings and metadata.
+            if cross_validation_result.status == "blocked":
+                avg_confidence *= 0.5
+                warnings.append(f"CRITICAL: {cross_validation_result.explanation}")
+            elif cross_validation_result.status == "needs_review":
+                avg_confidence *= 0.8
+                warnings.append(f"WARNING: {cross_validation_result.explanation}")
+            
+        except Exception as error:  # pylint: disable=broad-except
+            logger.warning("Cross-validation failed: %s", error, exc_info=True)
+    
+    # ==================================================================
+    # END CROSS-VALIDATION
+    # ==================================================================        # NEW (P0-2): Surface factual confidence alongside structural confidence
+    # Factual confidence measures truth-against-image via cross-validation.
+    # When cross-validation didn't run (no Tesseract rows), factual is capped
+    # at 50% of structural to indicate lack of verification.
+    factual_confidence_payload: dict[str, Any] | None = None
+    if _OCR_NEW_CONFIDENCE_ENABLED:
+        if cross_validation_result is not None:
+            factual_confidence_payload = calculate_factual_confidence(
+                result=cross_validation_result,
+                structural_confidence=avg_confidence,
+            )
+        else:
+            # No cross-validation ran — signal unverified with a synthetic result
+            factual_confidence_payload = {
+                "score": round(min(avg_confidence * 0.5, 50.0), 1),
+                "status": "unvalidated",
+                "discrepancies": 0,
+                "explanation": "No cross-validation data available. Factual confidence capped at 50% of structural.",
+            }
+
+    # NEW (P0-3): Update pipeline metadata with AI result
+    pipeline_metadata.ai_attempted = route_meta.get("ai_attempted", False)
+    pipeline_metadata.ai_succeeded = route_meta.get("ai_applied", False)
+    pipeline_metadata.ai_degraded_to_base = route_meta.get("ai_degraded_to_base", False)
+    pipeline_metadata.ai_failure_reason = route_meta.get("ai_failure_reason")
+
     return {
         "type": normalized.get("type") or _doc_type(doc_type_hint),
         "title": normalized.get("title") or _title_from_hint(doc_type_hint, template),
@@ -841,4 +975,7 @@ def build_structured_ocr_result(
         "reused": False,
         "reused_verification_id": None,
         "ai_degraded_to_base": route_meta.get("ai_degraded_to_base", False),
+        "cross_validation": cross_validation_result.to_dict() if cross_validation_result else None,
+        "factual_confidence": factual_confidence_payload if _OCR_NEW_CONFIDENCE_ENABLED else None,
+        "pipeline_metadata": pipeline_metadata.to_dict(),
     }

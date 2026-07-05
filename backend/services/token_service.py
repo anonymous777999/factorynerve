@@ -11,10 +11,19 @@ from sqlalchemy.orm import Session
 
 from backend.models.refresh_token import RefreshToken
 from backend.models.user import User
-from backend.utils import get_config
+from backend.utils import get_config, load_jwt_rsa_private_key
 
 
 config = get_config()
+
+
+def _jwt_algorithm_and_key() -> tuple[str, str | bytes]:
+    """Return (algorithm, key) preferring RS256 when an RSA private key is configured."""
+    rsa_key = load_jwt_rsa_private_key(config.jwt_rsa_private_key)
+    if rsa_key is not None:
+        return ("RS256", rsa_key)
+    # Fall back to HS256 when no RSA key is configured (dev/test)
+    return ("HS256", config.jwt_secret_key)
 
 
 def create_access_token_short(
@@ -30,7 +39,8 @@ def create_access_token_short(
         "exp": int(expire.timestamp()),
         "jti": f"{user_id}-{int(expire.timestamp())}",
     }
-    return jwt.encode(payload, config.jwt_secret_key, algorithm="HS256")
+    algorithm, key = _jwt_algorithm_and_key()
+    return jwt.encode(payload, key, algorithm=algorithm)
 
 
 def _hash_refresh_token(token: str) -> str:

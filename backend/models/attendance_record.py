@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -13,12 +13,13 @@ from backend.database import Base
 class AttendanceRecord(Base):
     __tablename__ = "attendance_records"
     __table_args__ = (
-        UniqueConstraint("user_id", "factory_id", "attendance_date", name="uq_attendance_records_user_factory_date"),
+        UniqueConstraint("user_id", "factory_id", "attendance_date", "shift", name="uq_attendance_records_user_factory_date_shift"),
         Index("ix_attendance_records_org_date", "org_id", "attendance_date"),
         Index("ix_attendance_records_factory_date", "factory_id", "attendance_date"),
         Index("ix_attendance_records_user_date", "user_id", "attendance_date"),
         Index("ix_attendance_records_status", "status"),
         Index("ix_attendance_records_review_status", "review_status"),
+        Index("ix_attendance_records_shift_bounds", "shift_start_utc", "shift_end_utc"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
@@ -28,6 +29,9 @@ class AttendanceRecord(Base):
     attendance_date: Mapped[date] = mapped_column(Date, nullable=False)
     shift: Mapped[str] = mapped_column(String(16), nullable=False, default="morning")
     shift_template_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    shift_start_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+    shift_end_utc: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    cross_midnight: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="working")
     review_status: Mapped[str] = mapped_column(String(24), nullable=False, default="auto")
     source: Mapped[str] = mapped_column(String(32), nullable=False, default="self-service")

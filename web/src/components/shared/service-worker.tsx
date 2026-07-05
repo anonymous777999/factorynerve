@@ -94,7 +94,19 @@ export function ServiceWorker({ buildVersion }: ServiceWorkerProps) {
     const swUrl = `/sw.js?v=${encodeURIComponent(buildVersion)}`;
     navigator.serviceWorker
       .register(swUrl, { updateViaCache: "none" })
-      .then((registration) => registration.update().catch(() => undefined))
+      .then((registration) => {
+        void registration.update().catch(() => undefined);
+
+        // P0-4: Register for background sync so queued mutations replay on reconnect
+        if ("sync" in registration) {
+          // Wrap in try-catch because some browsers throw if sync is unsupported
+          try {
+            registration.sync.register("sync-mutations").catch(() => undefined);
+          } catch {
+            // Background sync not supported — the periodic sync in useSyncQueue handles it
+          }
+        }
+      })
       .catch(() => undefined);
   }, [buildVersion]);
   return null;

@@ -230,7 +230,21 @@ def _detect_tessdata_prefix() -> str | None:
     return None
 
 
+_OCR_DEPENDENCIES_CHECKED = False
+_OCR_DEPENDENCIES_OK = False
+
+
 def _require_ocr_dependencies() -> None:
+    """Check Tesseract & OpenCV are available.
+
+    The first call performs the full check (which invokes tesseract --version,
+    ~200ms). Subsequent calls use a cached result for O(1) fast-path.
+    """
+    global _OCR_DEPENDENCIES_CHECKED, _OCR_DEPENDENCIES_OK  # noqa: PLW0603
+    if _OCR_DEPENDENCIES_CHECKED:
+        if not _OCR_DEPENDENCIES_OK:
+            raise RuntimeError("Tesseract OCR is not installed or not reachable.")
+        return
     if pytesseract is None:
         raise RuntimeError(f"pytesseract is not available: {_TESS_IMPORT_ERROR}")
     if cv2 is None:
@@ -254,7 +268,11 @@ def _require_ocr_dependencies() -> None:
         os.environ["TESSDATA_PREFIX"] = tessdata_prefix
     try:
         pytesseract.get_tesseract_version()
+        _OCR_DEPENDENCIES_CHECKED = True
+        _OCR_DEPENDENCIES_OK = True
     except Exception as error:  # pylint: disable=broad-except
+        _OCR_DEPENDENCIES_CHECKED = True
+        _OCR_DEPENDENCIES_OK = False
         raise RuntimeError("Tesseract OCR is not installed or not reachable.") from error
 
 

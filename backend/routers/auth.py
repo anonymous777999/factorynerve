@@ -80,8 +80,8 @@ from backend.auth_security.sessions import (
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Authentication"])
 
-LOGIN_ATTEMPT_LIMIT = int(os.getenv("AUTH_REGISTER_RATE_LIMIT", "5"))
-LOGIN_ATTEMPT_WINDOW_SECONDS = int(os.getenv("AUTH_REGISTER_RATE_LIMIT_WINDOW", "60"))
+REGISTER_RATE_LIMIT = int(os.getenv("AUTH_REGISTER_RATE_LIMIT", "5"))
+REGISTER_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("AUTH_REGISTER_RATE_LIMIT_WINDOW", "60"))
 PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "30"))
 PASSWORD_RESET_EMAIL_SUBJECT = os.getenv("PASSWORD_RESET_EMAIL_SUBJECT", "Reset your DPR.ai password")
 EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
@@ -93,7 +93,7 @@ PROFILE_PHOTO_MAX_BYTES = int(os.getenv("PROFILE_PHOTO_MAX_BYTES", str(5 * 1024 
 PROFILE_PHOTO_SIZE = max(256, int(os.getenv("PROFILE_PHOTO_SIZE", "512")))
 PROFILE_PHOTO_DIR = Path(__file__).resolve().parents[2] / "var" / "profile_photos"
 _rate_limit_lock = threading.Lock()
-_login_attempts: dict[str, deque[float]] = defaultdict(deque)
+_register_attempts: dict[str, deque[float]] = defaultdict(deque)
 
 
 @router.on_event("startup")
@@ -244,23 +244,26 @@ def _send_auth_email(
         return False
 
 
-def _check_rate_limit(ip_address: str) -> bool:
+def _check_register_rate_limit(ip_address: str) -> bool:
+    """Return True if the IP has exceeded the registration rate limit."""
     with _rate_limit_lock:
         now = time.time()
-        attempts = _login_attempts[ip_address]
-        while attempts and now - attempts[0] > LOGIN_ATTEMPT_WINDOW_SECONDS:
+        attempts = _register_attempts[ip_address]
+        while attempts and now - attempts[0] > REGISTER_RATE_LIMIT_WINDOW_SECONDS:
             attempts.popleft()
-        return len(attempts) >= LOGIN_ATTEMPT_LIMIT
+        return len(attempts) >= REGISTER_RATE_LIMIT
 
 
-def _register_failed_attempt(ip_address: str) -> None:
+def _record_register_attempt(ip_address: str) -> None:
+    """Record a registration attempt for this IP."""
     with _rate_limit_lock:
-        _login_attempts[ip_address].append(time.time())
+        _register_attempts[ip_address].append(time.time())
 
 
-def _clear_attempts(ip_address: str) -> None:
+def _clear_register_attempts(ip_address: str) -> None:
+    """Clear all registration attempts for this IP (on successful registration)."""
     with _rate_limit_lock:
-        _login_attempts.pop(ip_address, None)
+        _register_attempts.pop(ip_address, None)
 
 
 def _log_auth_event(
@@ -375,6 +378,50 @@ class EmailVerificationRequest(BaseModel):
 
 class EmailVerificationTokenRequest(BaseModel):
     token: str
+
+
+class UserDeactivateRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class UserDeactivateResponse(BaseModel):
+    message: str
+    user_id: int
+    user_name: str
+    user_email: str
+    status: str  # "deactivated" or "pending_approval"
+    approval_instance_id: str | None = None
+
+
+class UserReactivateResponse(BaseModel):
+    message: str
+    user_id: int
+    user_name: str
+    user_email: str
+    status: str  # "reactivated" or "pending_approval"
+    approval_instance_id: str | None = None
+
+
+class UserInviteRequest(BaseModel):
+    email: EmailStr
+    name: str = Field(min_length=2, max_length=120)
+    role: UserRole
+    factory_id: str | None = None
+    phone_number: str | None = Field(default=None, max_length=32)
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone_number(cls, value: str | None) -> str | None:
+        return normalize_phone_number(value)
+
+
+class UserInviteResponse(BaseModel):
+    message: str
+    email: EmailStr
+    invited_role: str
+    factory_name: str
+    status: str  # "created" or "pending_approval"
+    approval_instance_id: str | None = None
 
 
 class RegisterResponse(BaseModel):
@@ -734,6 +781,16 @@ def register_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> RegisterResponse:
+    # IP-based rate limiting to prevent registration floods (Bug Block C)
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_register_rate_limit(client_ip):
+        logger.warning("Registration rate limit exceeded for IP %s", client_ip)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many registration attempts from this IP. Please try again later.",
+        )
+    _record_register_attempt(client_ip)
+
     try:
         if payload.role == UserRole.OWNER:
             raise HTTPException(status_code=403, detail="Owner accounts cannot be created from public registration.")
@@ -806,6 +863,8 @@ def register_user(
                 request,
             )
         db.commit()
+        # On successful registration, clear IP attempts so retry is not penalised
+        _clear_register_attempts(client_ip)
         return RegisterResponse(
             message=message,
             email=payload.email.lower(),
@@ -824,6 +883,509 @@ def register_user(
         db.rollback()
         logger.exception("User registration failed.")
         raise HTTPException(status_code=500, detail="Could not complete registration.") from error
+
+
+INVITE_RATE_LIMIT = int(os.getenv("AUTH_INVITE_RATE_LIMIT", "10"))
+INVITE_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("AUTH_INVITE_RATE_LIMIT_WINDOW", "3600"))
+_invite_attempts: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _check_invite_rate_limit(ip_address: str) -> bool:
+    with _rate_limit_lock:
+        now = time.time()
+        attempts = _invite_attempts[ip_address]
+        while attempts and now - attempts[0] > INVITE_RATE_LIMIT_WINDOW_SECONDS:
+            attempts.popleft()
+        return len(attempts) >= INVITE_RATE_LIMIT
+
+
+def _record_invite_attempt(ip_address: str) -> None:
+    with _rate_limit_lock:
+        _invite_attempts[ip_address].append(time.time())
+
+
+@router.post("/users/invite", response_model=UserInviteResponse)
+def invite_user(
+    payload: UserInviteRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserInviteResponse:
+    """Invite a new user to join a factory (manager+ only, IP-3 maker-checker)."""
+    from backend.authorization import PDP, ResourceContext
+    from backend.authorization.pdp import build_request_context
+    from backend.services.approval_service import approval_service as APPROVAL_SERVICE
+    from backend.plans import enforce_user_limit, get_effective_factory_plan
+
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_invite_rate_limit(client_ip):
+        logger.warning("Invite rate limit exceeded for IP %s", client_ip)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many invitations from this IP. Please try again later.",
+        )
+    _record_invite_attempt(client_ip)
+
+    # Permission check: only manager+ can invite
+    allowed_roles = {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER}
+    if current_user.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Only managers, admins, and owners can invite users.")
+
+    # Self-invite guard: the inviting user cannot invite themselves (P1-21)
+    if payload.email.lower().strip() == current_user.email.lower().strip():
+        raise HTTPException(status_code=422, detail="You cannot invite yourself. Ask another manager to create your account.")
+
+    # Check if email is already registered or pending
+    email_norm = payload.email.lower().strip()
+    existing_user = db.query(User).filter(User.email == email_norm).first()
+    if existing_user and existing_user.is_active:
+        raise HTTPException(status_code=409, detail="User with this email already exists.")
+
+    # Validate role: invited role must not exceed inviter's role rank
+    from backend.models.user import role_rank
+    if role_rank(payload.role) > role_rank(current_user.role):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Cannot invite a user with role '{payload.role.value}' because it exceeds your own role rank.",
+        )
+
+    # Resolve factory
+    from backend.models.factory import Factory
+    from backend.tenancy import resolve_org_id, resolve_factory_id
+    org_id = resolve_org_id(current_user)
+    factory_id = payload.factory_id or resolve_factory_id(db, current_user)
+    if not factory_id:
+        raise HTTPException(status_code=400, detail="Could not resolve factory. Specify a factory_id or ensure you have a default factory.")
+    factory = db.query(Factory).filter(Factory.factory_id == factory_id, Factory.is_active.is_(True)).first()
+    if not factory:
+        raise HTTPException(status_code=404, detail="Factory not found.")
+
+    # Enforce user limit for the plan
+    plan = get_effective_factory_plan(db, factory.name, org_id=factory.org_id, factory_id=factory.factory_id)
+    try:
+        enforce_user_limit(db, factory.name, plan, org_id=factory.org_id, factory_id=factory.factory_id)
+    except ValueError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+    # PDP scope check
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.invite",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
+    # Initiate approval (IP-3: sequential two-stage maker-checker)
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=None,  # Invited user doesn't have an ID yet
+        workflow_key="user.invite",
+        action_key="user.invite",
+        resource_type="User",
+        resource_id=f"invite-{email_norm}-{now_ts}",
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state="active",
+        requested_change={
+            "email": email_norm,
+            "name": sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name.strip(),
+            "role": payload.role.value,
+        },
+        attributes={
+            "is_high_value": payload.role.value in ("admin", "owner"),
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        _log_auth_event(db, "USER_INVITE_PENDING_APPROVAL",
+            f"Invitation for {email_norm} (role={payload.role.value}) submitted for approval.",
+            current_user.id, request, org_id=org_id, factory_id=factory_id,
+        )
+        db.commit()
+        return UserInviteResponse(
+            message="Invitation submitted for approval. A second reviewer must approve it.",
+            email=email_norm,
+            invited_role=payload.role.value,
+            factory_name=factory.name,
+            status="pending_approval",
+            approval_instance_id=approval_decision.instance_id,
+        )
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # ── Approval bypassed or approved — create user now ──────────────────
+    from backend.security import hash_password
+    from backend.models.user_factory_role import UserFactoryRole
+    from backend.services.user_code_service import next_user_code, is_user_code_collision, MAX_USER_CODE_ATTEMPTS
+    import secrets
+
+    temp_password = secrets.token_urlsafe(16)  # 24 char temp password
+    name_clean = sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name.strip()
+
+    # Check user limit one more time before creating
+    try:
+        enforce_user_limit(db, factory.name, plan, org_id=factory.org_id, factory_id=factory.factory_id)
+    except ValueError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+    user = User(
+        org_id=org_id,
+        name=name_clean,
+        email=email_norm,
+        password_hash=hash_password(temp_password),
+        role=payload.role,
+        factory_name=factory.name,
+        factory_code=factory.factory_code,
+        phone_number=payload.phone_number if payload.phone_number else None,
+        phone_e164=normalize_phone_e164(payload.phone_number) if payload.phone_number else None,
+        is_active=True,
+        email_verified_at=datetime.now(timezone.utc),
+    )
+
+    # Generate unique user_code
+    last_error: IntegrityError | None = None
+    for _ in range(MAX_USER_CODE_ATTEMPTS):
+        user.user_code = next_user_code(db, org_id=org_id)
+        try:
+            with db.begin_nested():
+                db.add(user)
+                db.flush()
+            break
+        except IntegrityError as error:
+            last_error = error
+            if not is_user_code_collision(error):
+                raise
+    else:
+        raise HTTPException(status_code=500, detail="Could not generate a unique user code. Please try again.") from last_error
+
+    # Assign factory role
+    db.add(UserFactoryRole(
+        user_id=user.id,
+        factory_id=factory_id,
+        org_id=org_id,
+        role=payload.role,
+    ))
+
+    # Audit log
+    _log_auth_event(db, "USER_INVITED",
+        f"User {name_clean} ({email_norm}) invited with role={payload.role.value}",
+        user.id, request, org_id=org_id, factory_id=factory_id,
+    )
+
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        if "email" in str(error).lower():
+            raise HTTPException(status_code=409, detail="Email already registered.") from error
+        raise HTTPException(status_code=500, detail="Could not create user. Please try again.") from error
+
+    db.refresh(user)
+
+    # Complete approval if instance was created
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
+    # Send invitation email with temp password
+    try:
+        from backend.email_utils import queue_and_send_email
+        queue_and_send_email(
+            to_emails=[email_norm],
+            subject="You've been invited to join FactoryNerve",
+            body=(
+                f"You've been invited to join {factory.name} on FactoryNerve.\n\n"
+                f"Your account has been created with the role: {payload.role.value}.\n\n"
+                f"Temporary password: {temp_password}\n\n"
+                "Please log in and change your password immediately.\n\n"
+                f"Login page: {os.getenv('FRONTEND_URL', 'https://dpr.ai')}/login\n"
+            ),
+            user_id=user.id,
+            factory_name=factory.name,
+        )
+    except Exception:
+        logger.exception("Failed to send invitation email to %s", email_norm)
+
+    return UserInviteResponse(
+        message=f"User invited successfully. An invitation email has been sent.",
+        email=email_norm,
+        invited_role=payload.role.value,
+        factory_name=factory.name,
+        status="created",
+    )
+
+
+@router.post("/users/{user_id}/deactivate", response_model=UserDeactivateResponse)
+def deactivate_user(
+    user_id: int,
+    payload: UserDeactivateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserDeactivateResponse:
+    """Deactivate a user account (admin+ only, IP-3 maker-checker)."""
+    from backend.authorization import PDP, ResourceContext
+    from backend.authorization.pdp import build_request_context
+    from backend.services.approval_service import approval_service as APPROVAL_SERVICE
+    from backend.tenancy import resolve_org_id
+
+    # Permission check: only admin+ can deactivate
+    allowed_roles = {UserRole.ADMIN, UserRole.OWNER}
+    if current_user.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Only admins and owners can deactivate users.")
+
+    # Self-deactivation guard
+    if user_id == current_user.id:
+        raise HTTPException(status_code=422, detail="You cannot deactivate yourself. Ask another admin to deactivate your account.")
+
+    # Find target user
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if not target_user.is_active:
+        raise HTTPException(status_code=400, detail="User is already deactivated.")
+
+    # Must be same org
+    org_id = resolve_org_id(current_user)
+    if target_user.org_id != org_id:
+        raise HTTPException(status_code=403, detail="You can only deactivate users in your own organization.")
+
+    # PDP scope check
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.deactivate",
+        resource=ResourceContext(factory_id=None),
+        request_context=build_request_context(request),
+    )
+
+    reason = sanitize_text(payload.reason, max_length=500, preserve_newlines=False) if payload.reason else None
+
+    # Initiate approval (IP-3: sequential two-stage maker-checker)
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=user_id,
+        workflow_key="user.deactivate",
+        action_key="user.deactivate",
+        resource_type="User",
+        resource_id=str(user_id),
+        org_id=org_id,
+        factory_id=None,
+        current_workflow_state="active",
+        requested_change={
+            "new_status": "deactivated",
+            "reason": reason or "No reason provided",
+            "target_email": target_user.email,
+            "target_role": target_user.role.value,
+        },
+        attributes={
+            "is_high_value": target_user.role.value in ("admin", "owner"),
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        _log_auth_event(db, "USER_DEACTIVATE_PENDING_APPROVAL",
+            f"Deactivation of user {target_user.id} ({target_user.email}) submitted for approval.",
+            current_user.id, request, org_id=org_id, factory_id=None,
+        )
+        db.commit()
+        return UserDeactivateResponse(
+            message="Deactivation submitted for approval. A second reviewer must approve it.",
+            user_id=target_user.id,
+            user_name=target_user.name,
+            user_email=target_user.email,
+            status="pending_approval",
+            approval_instance_id=approval_decision.instance_id,
+        )
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # ── Approval bypassed or approved — deactivate now ───────────────────
+    target_user.is_active = False
+    target_user.profile_picture = None
+
+    # Revoke all v2 sessions so the user is immediately logged out
+    try:
+        from backend.models.auth_user import AuthUser
+        auth_user = db.query(AuthUser).filter(
+            AuthUser.email == target_user.email,
+            AuthUser.is_active.is_(True),
+        ).first()
+        if auth_user:
+            revoke_all_v2_sessions(db, user_id=auth_user.id)
+    except Exception:
+        logger.exception("Failed to revoke sessions for deactivated user %s", target_user.id)
+
+    _log_auth_event(db, "USER_DEACTIVATED",
+        f"User {target_user.name} ({target_user.email}) deactivated by {current_user.name}."
+        + (f" Reason: {reason}" if reason else ""),
+        target_user.id, request, org_id=org_id, factory_id=None,
+    )
+    db.commit()
+
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
+    # Send notification email (best-effort)
+    try:
+        from backend.email_utils import queue_and_send_email
+        queue_and_send_email(
+            to_emails=[target_user.email],
+            subject="Your FactoryNerve account has been deactivated",
+            body=(
+                f"Hi {target_user.name},\n\n"
+                f"Your FactoryNerve account has been deactivated by {current_user.name}.\n"
+                + (f"\nReason: {reason}\n\n" if reason else "\n")
+                + "If you believe this was done in error, please contact your factory admin or owner.\n"
+            ),
+            user_id=target_user.id,
+            factory_name=target_user.factory_name,
+        )
+    except Exception:
+        logger.exception("Failed to send deactivation notification email to %s", target_user.email)
+
+    return UserDeactivateResponse(
+        message=f"User {target_user.name} has been deactivated.",
+        user_id=target_user.id,
+        user_name=target_user.name,
+        user_email=target_user.email,
+        status="deactivated",
+    )
+
+
+@router.post("/users/{user_id}/reactivate", response_model=UserReactivateResponse)
+def reactivate_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserReactivateResponse:
+    """Reactivate a deactivated user account (admin+ only, IP-2 maker-checker)."""
+    from backend.authorization import PDP, ResourceContext
+    from backend.authorization.pdp import build_request_context
+    from backend.services.approval_service import approval_service as APPROVAL_SERVICE
+    from backend.tenancy import resolve_org_id
+
+    # Permission check: only admin+ can reactivate
+    allowed_roles = {UserRole.ADMIN, UserRole.OWNER}
+    if current_user.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Only admins and owners can reactivate users.")
+
+    # Find target user
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if target_user.is_active:
+        raise HTTPException(status_code=400, detail="User is already active.")
+
+    # Must be same org
+    org_id = resolve_org_id(current_user)
+    if target_user.org_id != org_id:
+        raise HTTPException(status_code=403, detail="You can only reactivate users in your own organization.")
+
+    # PDP scope check
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.reactivate",
+        resource=ResourceContext(factory_id=None),
+        request_context=build_request_context(request),
+    )
+
+    # Initiate approval (IP-2: single stage maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=user_id,
+        workflow_key="user.reactivate",
+        action_key="user.reactivate",
+        resource_type="User",
+        resource_id=str(user_id),
+        org_id=org_id,
+        factory_id=None,
+        current_workflow_state="inactive",
+        requested_change={
+            "new_status": "active",
+            "target_email": target_user.email,
+            "target_role": target_user.role.value,
+        },
+        attributes={
+            "is_high_value": target_user.role.value in ("admin", "owner"),
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        _log_auth_event(db, "USER_REACTIVATE_PENDING_APPROVAL",
+            f"Reactivation of user {target_user.id} ({target_user.email}) submitted for approval.",
+            current_user.id, request, org_id=org_id, factory_id=None,
+        )
+        db.commit()
+        return UserReactivateResponse(
+            message="Reactivation submitted for approval. A reviewer must approve it.",
+            user_id=target_user.id,
+            user_name=target_user.name,
+            user_email=target_user.email,
+            status="pending_approval",
+            approval_instance_id=approval_decision.instance_id,
+        )
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # ── Approval bypassed or approved — reactivate now ─────────────────
+    target_user.is_active = True
+
+    _log_auth_event(db, "USER_REACTIVATED",
+        f"User {target_user.name} ({target_user.email}) reactivated by {current_user.name}.",
+        target_user.id, request, org_id=org_id, factory_id=None,
+    )
+    db.commit()
+
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
+    # Send notification email (best-effort)
+    try:
+        from backend.email_utils import queue_and_send_email
+        queue_and_send_email(
+            to_emails=[target_user.email],
+            subject="Your FactoryNerve account has been reactivated",
+            body=(
+                f"Hi {target_user.name},\n\n"
+                f"Your FactoryNerve account has been reactivated by {current_user.name}.\n\n"
+                "You can now log in with your existing credentials.\n\n"
+                f"Login page: {os.getenv('FRONTEND_URL', 'https://dpr.ai')}/login\n"
+            ),
+            user_id=target_user.id,
+            factory_name=target_user.factory_name,
+        )
+    except Exception:
+        logger.exception("Failed to send reactivation notification email to %s", target_user.email)
+
+    return UserReactivateResponse(
+        message=f"User {target_user.name} has been reactivated.",
+        user_id=target_user.id,
+        user_name=target_user.name,
+        user_email=target_user.email,
+        status="reactivated",
+    )
 
 
 @router.post("/login")
@@ -1166,6 +1728,29 @@ def password_forgot(
     user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
     delivery_mode = "preview" if _should_expose_reset_link() else "email"
     reset_link: str | None = None
+
+    # Lockout check: if the AuthUser account is locked, silently return
+    # the generic message so we don't reveal the locked state to an attacker.
+    if user:
+        from backend.models.auth_user import AuthUser
+        auth_user = db.query(AuthUser).filter(
+            AuthUser.email == email, AuthUser.is_active.is_(True)
+        ).first()
+        if auth_user:
+            from backend.auth_security.lockout import check_account_locked
+            if check_account_locked(auth_user):
+                logger.info(
+                    "Password reset requested for locked account %s — silently ignored.",
+                    email,
+                )
+                db.add(auth_user)
+                db.commit()
+                return PasswordForgotResponse(
+                    message="If an account exists for this email, you will receive a reset link.",
+                    reset_link=None,
+                    delivery_mode=delivery_mode,
+                )
+
     if user:
         token = create_reset_token(db, user=user, ttl_minutes=PASSWORD_RESET_TTL_MINUTES)
         reset_link = _frontend_reset_link_from_request(request, token) or build_reset_link(token)
@@ -1229,9 +1814,36 @@ def password_reset(
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
 
+    # Lockout check: prevent resetting password for locked accounts
+    from backend.models.auth_user import AuthUser as AuthUserModel
+    from backend.auth_security.lockout import check_account_locked
+    auth_user_locked = db.query(AuthUserModel).filter(
+        AuthUserModel.email == user.email, AuthUserModel.is_active.is_(True)
+    ).first()
+    if auth_user_locked and check_account_locked(auth_user_locked):
+        logger.info(
+            "Password reset blocked for locked account %s (user_id=%s).",
+            user.email,
+            user.id,
+        )
+        db.add(auth_user_locked)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Account temporarily locked due to too many failed login attempts. Try again later.",
+        )
+
     now = datetime.now(timezone.utc)
     user.password_hash = hash_password(payload.new_password)
     record.used_at = now
+
+    # Sync the new password hash to AuthUser (argon2) so v2 login also works
+    if auth_user_locked:
+        from backend.auth_security.passwords import hash_password as auth_hash_password
+        auth_user_locked.password_hash = auth_hash_password(payload.new_password)
+        auth_user_locked.password_changed_at = now
+        auth_user_locked.updated_at = now
+        db.add(auth_user_locked)
 
     # Invalidate all other pending reset tokens for this user
     from backend.models.password_reset_token import PasswordResetToken
@@ -1496,9 +2108,36 @@ def change_password(
     require_v2_csrf(request, session)
     if not verify_password(payload.old_password, current_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
+
+    # Lockout check: prevent password change for locked accounts
+    from backend.models.auth_user import AuthUser as AuthUserModel
+    from backend.auth_security.lockout import check_account_locked
+    auth_user_change = db.query(AuthUserModel).filter(
+        AuthUserModel.email == current_user.email, AuthUserModel.is_active.is_(True)
+    ).first()
+    if auth_user_change and check_account_locked(auth_user_change):
+        logger.info(
+            "Password change blocked for locked account %s (user_id=%s).",
+            current_user.email,
+            current_user.id,
+        )
+        db.add(auth_user_change)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Account temporarily locked due to too many failed login attempts. Try again later.",
+        )
+
     try:
         validate_password_strength(payload.new_password)
         current_user.password_hash = hash_password(payload.new_password)
+
+        # Sync the new password hash to AuthUser (argon2) so v2 login stays in sync
+        if auth_user_change:
+            from backend.auth_security.passwords import hash_password as auth_hash_password
+            auth_user_change.password_hash = auth_hash_password(payload.new_password)
+            auth_user_change.password_changed_at = datetime.now(timezone.utc)
+            auth_user_change.updated_at = datetime.now(timezone.utc)
         # Invalidate any pending password reset tokens
         from backend.models.password_reset_token import PasswordResetToken
         now = datetime.now(timezone.utc)

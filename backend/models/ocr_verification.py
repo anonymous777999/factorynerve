@@ -32,6 +32,7 @@ class OcrVerification(Base):
     original_rows = Column(JSON, nullable=True)
     reviewed_rows = Column(JSON, nullable=True)
     raw_column_added = Column(Boolean, nullable=False, default=False)
+    cross_validation = Column(JSON, nullable=True)
     status = Column(String(20), nullable=False, default="draft")
     reviewer_notes = Column(Text, nullable=True)
     rejection_reason = Column(Text, nullable=True)

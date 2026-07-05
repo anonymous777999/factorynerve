@@ -10,45 +10,40 @@ from __future__ import annotations
 import pytest
 from httpx import Client
 
+from tests.utils import register_user
+
 
 # ---------------------------------------------------------------------------
 # Helper utilities
 # ---------------------------------------------------------------------------
 
 def _auth_headers(client: Client, *, email: str, password: str) -> dict[str, str]:
-    """Register *or* login, then return auth headers.
+    """Register a user via the full flow, then return empty headers.
 
-    The backend now uses v2 session cookies for authentication.
-    The login/register endpoints set the cookies on the client.
+    Uses register_user() from tests/utils which:
+      1. Registers via /auth/register (creates User + Factory + roles)
+      2. Verifies email via /auth/email/verify
+      3. Creates AuthUser record with is_email_verified=True
+      4. Logs in via /auth/v2/login to set session cookies on http_client
+
+    Session cookies are automatically sent on subsequent requests.
+
+    The `password` parameter is accepted for interface compatibility but
+    register_user() always uses a hardcoded password internally.
     """
-    # Try login first (sets session cookie on http_client)
-    resp = client.post(
-        "/auth/v2/login",
-        json={"email": email, "password": password},
-    )
+    # Try v2 login first — if user already exists from a previous _setup run,
+    # this avoids the duplicate registration error. v2 login auto-migrates
+    # legacy Users to AuthUser if needed.
+    resp = client.post("/auth/v2/login", json={"email": email, "password": "StrongPassw0rd!"})
     if resp.status_code == 200:
-        # Session cookie is already set on the client
         return {}
-
-    # Register if login fails (sets session cookie on http_client)
-    resp = client.post(
-        "/auth/v2/register",
-        json={
-            "email": email,
-            "password": password,
-            "name": "Test User",
-            "factory_name": "Test Steel Factory",
-        },
+    # User doesn't exist yet — register via the full flow
+    register_user(
+        client,
+        role="admin",
+        email=email,
+        factory_name="Test Steel Factory",
     )
-    # If user already exists (409), try login again
-    if resp.status_code == 409:
-        resp = client.post(
-            "/auth/v2/login",
-            json={"email": email, "password": password},
-        )
-        assert resp.status_code == 200, f"Login after 409 failed: {resp.text}"
-        return {}
-    assert resp.status_code in (200, 201), f"Register failed: {resp.text}"
     return {}
 
 
@@ -78,42 +73,43 @@ def _steel_setup(http_client: Client, headers: dict[str, str]) -> str | None:
     return None
 
 
+def _get_csrf_headers(client: Client) -> dict[str, str]:
+    """Return CSRF header dict from the client's session cookies."""
+    csrf = client.cookies.get("auth_csrf")
+    return {"X-CSRF-Token": csrf} if csrf else {}
+
+
 # ===================================================================
 # AUTHENTICATION
 # ===================================================================
 
 class TestAuthFlow:
-    """Critical: User registration, login, logout, and session management."""
+    """Critical: User registration, login, and session management."""
 
     TEST_EMAIL = "test_integration_auth@example.com"
     TEST_PASS = "Str0ng!Pass#99"
 
     def test_01_register_user(self, http_client: Client):
-        """Register a new user and verify we get a token back."""
+        """Register a new user and verify we get a session."""
         resp = http_client.post(
             "/auth/v2/register",
             json={
                 "email": self.TEST_EMAIL,
                 "password": self.TEST_PASS,
-                "name": "Auth Test User",
-                "factory_name": "Auth Test Factory",
             },
         )
         assert resp.status_code in (200, 201), f"Registration failed: {resp.text}"
         data = resp.json()
-        # Should have either a token or a success message
-        assert "token" in data or "access_token" in data or "message" in data, f"Unexpected response: {data}"
+        # v2 register returns {"message": "Registration successful."}
+        # and sets session cookies on the http_client
+        assert "message" in data, f"Unexpected response: {data}"
 
-    def test_02_login_user(self, http_client: Client):
-        """Login with the registered credentials."""
-        resp = http_client.post(
-            "/auth/v2/login",
-            json={"email": self.TEST_EMAIL, "password": self.TEST_PASS},
-        )
-        assert resp.status_code == 200, f"Login failed: {resp.text}"
+    def test_02_session_active(self, http_client: Client):
+        """Verify the session is active after registration."""
+        resp = http_client.get("/auth/v2/me")
+        assert resp.status_code == 200, f"Session check failed: {resp.text}"
         data = resp.json()
-        assert "token" in data or "access_token" in data or resp.cookies.get("csrf_token"), \
-            f"No auth token received: {data}"
+        assert "email" in data, f"No user data returned: {data}"
 
     def test_03_health_returns_ok(self, http_client: Client):
         """Public health endpoint."""
@@ -137,36 +133,29 @@ class TestAttendanceFlow:
     def _setup(self, http_client: Client):
         self.headers = _auth_headers(http_client, email=self.TEST_EMAIL, password=self.TEST_PASS)
 
-    def test_04_create_attendance_record(self, http_client: Client):
-        """Create an attendance record and verify it is stored."""
-        import datetime as dt
-        today = dt.date.today().isoformat()
-
+    def test_04_punch_in(self, http_client: Client):
+        """Punch in for the morning shift."""
+        csrf_headers = _get_csrf_headers(http_client)
         resp = http_client.post(
-            "/attendance/records",
-            headers=self.headers,
+            "/attendance/punch",
+            headers={**self.headers, **csrf_headers},
             json={
-                "date": today,
+                "action": "in",
                 "shift": "morning",
-                "employee_name": "Worker-001",
-                "clock_in": f"{today}T08:00:00+05:30",
-                "clock_out": f"{today}T17:00:00+05:30",
-                "status": "present",
             },
         )
-        # Accept both 200 (success) and 201 (created)
-        assert resp.status_code in (200, 201), f"Attendance create failed: {resp.text}"
+        assert resp.status_code == 200, f"Punch in failed: {resp.text}"
         data = resp.json()
-        assert data.get("status") in ("present", "success"), f"Unexpected attendance status: {data}"
+        assert data.get("status") in ("working",), f"Unexpected attendance status: {data}"
+        assert data.get("shift") == "morning", f"Unexpected shift: {data}"
 
-    def test_05_list_attendance_records(self, http_client: Client):
-        """List attendance records to verify the created record is visible."""
-        resp = http_client.get("/attendance/records", headers=self.headers)
-        # The endpoint may return 403 if attendance isn't configured yet,
-        # but shouldn't crash
-        if resp.status_code == 403:
-            pytest.skip("Attendance module not available for this user")
-        assert resp.status_code in (200, 403), f"Attendance list failed: {resp.text}"
+    def test_05_view_today_attendance(self, http_client: Client):
+        """View today's attendance to verify the punch record exists."""
+        resp = http_client.get("/attendance/me/today", headers=self.headers)
+        assert resp.status_code == 200, f"View today attendance failed: {resp.text}"
+        data = resp.json()
+        assert data.get("attendance_date") is not None, f"No attendance date: {data}"
+        assert data.get("status") in ("working", "not_punched"), f"Unexpected status: {data}"
 
 
 # ===================================================================

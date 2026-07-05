@@ -622,7 +622,9 @@ def create_entry(
             existing_by_request = existing_by_request.filter(Entry.org_id == org_id)
         else:
             existing_by_request = existing_by_request.filter(Entry.user_id == current_user.id)
-        existing_by_request = existing_by_request.first()
+        # Use pessimistic row-level locking to serialize concurrent
+        # entry creation retries with the same client_request_id (Bug #11).
+        existing_by_request = existing_by_request.with_for_update().first()
         if existing_by_request:
             response.status_code = status.HTTP_200_OK
             return existing_by_request

@@ -46,8 +46,10 @@ from backend.routers.premium import router as premium_router
 from backend.routers.steel import router as steel_router
 from backend.routers.steel_intelligence import router as steel_intelligence_router
 from backend.routers.steel_finance import router as steel_finance_router
+from backend.routers.steel_bom import router as steel_bom_router
 from backend.routers.cron import router as cron_router
 from backend.routers.coil_theft import router as coil_theft_router
+from backend.routers.notifications import router as notifications_router
 from backend.routers.workforce_intelligence import router as workforce_intelligence_router
 from backend.utils import get_config, setup_logging
 from backend.metrics import (
@@ -55,6 +57,7 @@ from backend.metrics import (
     record_request,
     snapshot as metrics_snapshot,
 )
+from backend.middleware.idempotency import IdempotencyMiddleware
 from backend.middleware.security import apply_security
 from backend.middleware.response_envelope import apply_response_envelope
 import threading
@@ -213,9 +216,12 @@ app.include_router(premium_router, prefix="/premium")
 app.include_router(steel_router, prefix="/steel")
 app.include_router(steel_intelligence_router, prefix="/steel")
 app.include_router(steel_finance_router, prefix="/steel")
+app.include_router(steel_bom_router, prefix="/steel")
+app.include_router(notifications_router, prefix="/notifications")
 app.include_router(workforce_intelligence_router, prefix="/intelligence")
 app.include_router(cron_router)
 
+app.add_middleware(IdempotencyMiddleware)
 apply_security(app)
 apply_response_envelope(app)
 

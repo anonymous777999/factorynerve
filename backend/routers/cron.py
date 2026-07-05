@@ -135,3 +135,67 @@ def cron_health() -> dict:
         "service": "cron",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@router.post("/cron/calculate-reorder-points", dependencies=[Depends(verify_cron_secret)])
+def cron_calculate_reorder_points() -> dict:
+    """Auto-calculate reorder points for all steel factories.
+
+    Iterates over all active steel factories and triggers reorder point
+    and safety stock calculations.  Designed to run daily via external
+    cron scheduler (cron-job.org, GitHub Actions, etc.).
+
+    Schedule: daily at 3:00 AM IST (21:30 UTC previous day).
+    """
+    from backend.database import SessionLocal
+    from backend.models.factory import Factory
+    from backend.services.steel_service import calculate_reorder_points, calculate_safety_stock
+
+    db = SessionLocal()
+    try:
+        factories = (
+            db.query(Factory)
+            .filter(
+                Factory.is_active.is_(True),
+                Factory.industry_type == "steel",
+            )
+            .all()
+        )
+        results: list[dict] = []
+        total_reorder_updated = 0
+        total_safety_updated = 0
+
+        for factory in factories:
+            reorder_result = calculate_reorder_points(db, factory_id=factory.factory_id)
+            safety_result = calculate_safety_stock(db, factory_id=factory.factory_id)
+            total_reorder_updated += reorder_result["updated"]
+            total_safety_updated += safety_result["updated"]
+            results.append({
+                "factory_id": factory.factory_id,
+                "factory_name": factory.name,
+                "reorder_updated": reorder_result["updated"],
+                "safety_updated": safety_result["updated"],
+                "total_items": reorder_result["total"],
+            })
+
+        db.commit()
+        logger.info(
+            "Cron reorder-points: %d factories processed, "
+            "%d reorder points updated, %d safety stock values updated",
+            len(factories),
+            total_reorder_updated,
+            total_safety_updated,
+        )
+        return {
+            "status": "ok",
+            "factories_processed": len(factories),
+            "total_reorder_points_updated": total_reorder_updated,
+            "total_safety_stock_updated": total_safety_updated,
+            "results": results,
+        }
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Cron reorder-points calculation failed.")
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+    finally:
+        db.close()

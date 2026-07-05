@@ -90,6 +90,32 @@ export type OcrDebugPayload = {
   raw_api_response?: Record<string, unknown> | null;
 };
 
+export type CrossValidationDiscrepancy = {
+  row: number;
+  col: number;
+  header: string;
+  ai_value: string;
+  base_value: string;
+  ai_numeric?: number | null;
+  base_numeric?: number | null;
+  diff_pct?: number | null;
+  critical?: boolean;
+};
+
+export type CrossValidationResult = {
+  score: number;
+  band: "high" | "medium" | "low" | "unvalidated";
+  method: string;
+  total_numeric_cells: number;
+  agreeing_cells: number;
+  disagreeing_cells: number;
+  critical_discrepancies: number;
+  discrepancies: CrossValidationDiscrepancy[];
+  ai_only_values?: Array<{ row: number; col: number; header: string; value: string; numeric?: number | null }>;
+  base_only_values?: Array<{ row: number; col: number; header: string; value: string; numeric?: number | null }>;
+  warnings: string[];
+};
+
 export type OcrScanQuality = {
   confidence_band: "high" | "medium" | "low" | "unknown";
   quality_signals: string[];
@@ -144,6 +170,7 @@ export type OcrPreviewResult = {
   columns: number;
   avg_confidence: number;
   warnings: string[];
+  cross_validation?: CrossValidationResult | null;
   scan_quality?: OcrScanQuality | null;
   cell_confidence?: OcrConfidenceMatrix;
   cell_boxes?: Array<Array<{ x: number; y: number; width: number; height: number } | null>> | null;
@@ -215,6 +242,7 @@ export type OcrVerificationRecord = {
   language: string;
   avg_confidence: number;
   warnings: string[];
+  cross_validation?: CrossValidationResult | null;
   scan_quality?: OcrScanQuality | null;
   document_hash?: string | null;
   doc_type_hint?: string | null;
@@ -252,6 +280,7 @@ export type OcrVerificationSavePayload = {
   avgConfidence?: number | null;
   warnings?: string[];
   scanQuality?: OcrScanQuality | null;
+  crossValidation?: CrossValidationResult | null;
   documentHash?: string | null;
   docTypeHint?: string | null;
   routingMeta?: OcrRoutingMeta | null;
@@ -554,6 +583,9 @@ function buildVerificationFormData(payload: OcrVerificationSavePayload) {
   if (payload.scanQuality) {
     formData.set("scan_quality", JSON.stringify(payload.scanQuality));
   }
+  if (payload.crossValidation) {
+    formData.set("cross_validation", JSON.stringify(payload.crossValidation));
+  }
   if (payload.documentHash) {
     formData.set("document_hash", payload.documentHash);
   }
@@ -641,6 +673,7 @@ export async function updateOcrVerification(
         typeof payload.avgConfidence === "number" ? payload.avgConfidence : null,
       warnings: payload.warnings ?? [],
       scan_quality: payload.scanQuality ?? null,
+      cross_validation: payload.crossValidation ?? null,
       document_hash: payload.documentHash ?? null,
       doc_type_hint: payload.docTypeHint ?? null,
       routing_meta: payload.routingMeta ?? null,

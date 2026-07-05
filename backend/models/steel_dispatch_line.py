@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -17,6 +17,7 @@ class SteelDispatchLine(Base):
         Index("ix_steel_dispatch_lines_invoice_line_id", "invoice_line_id"),
         Index("ix_steel_dispatch_lines_item_id", "item_id"),
         Index("ix_steel_dispatch_lines_batch_id", "batch_id"),
+        Index("ix_steel_dispatch_lines_heat_number", "heat_number"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -24,6 +25,8 @@ class SteelDispatchLine(Base):
     invoice_line_id: Mapped[int] = mapped_column(ForeignKey("steel_sales_invoice_lines.id"), nullable=False)
     item_id: Mapped[int] = mapped_column(ForeignKey("steel_inventory_items.id"), nullable=False)
     batch_id: Mapped[int | None] = mapped_column(ForeignKey("steel_production_batches.id"), nullable=True)
+    # P1-6: Heat number for BIS/ISI traceability (denormalized from batch for search)
+    heat_number: Mapped[str | None] = mapped_column(String(40), nullable=True, default=None)
     weight_kg: Mapped[float] = mapped_column(Numeric(14, 3), nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False

@@ -53,11 +53,12 @@ def test_register_rejects_email_like_phone_number(http_client):
 
 def test_employee_profile_rejects_email_like_employee_code(http_client):
     manager = register_user(http_client, role="manager")
-    headers = {"Authorization": f"Bearer {manager['access_token']}"}
+    csrf = http_client.cookies.get("auth_csrf")
+    csrf_headers = {"X-CSRF-Token": csrf} if csrf else {}
 
     response = http_client.post(
         "/attendance/settings/employees",
-        headers=headers,
+        headers=csrf_headers,
         json={
             "user_id": manager["user_id"],
             "employee_code": "emp@example.com",

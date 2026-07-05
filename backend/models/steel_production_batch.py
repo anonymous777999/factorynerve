@@ -17,6 +17,7 @@ class SteelProductionBatch(Base):
         Index("ix_steel_production_batches_batch_code", "batch_code", unique=True),
         Index("ix_steel_production_batches_operator_user_id", "operator_user_id"),
         Index("ix_steel_production_batches_production_date", "production_date"),
+        Index("ix_steel_production_batches_heat_number", "heat_number"),  # P1-6: Heat number traceability
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -42,7 +43,7 @@ class SteelProductionBatch(Base):
     coil_weight_variance_kg: Mapped[float | None] = mapped_column(Float, nullable=True)
     coil_weight_variance_percent: Mapped[float | None] = mapped_column(Float, nullable=True)
     is_coil_theft_suspected: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
-    # ── Phase 2: Rejection, scrap, line, machine ──────────────────────────
+    # ── Phase 2: Rejection, scrap, line, machine, heat number ───────────────
     rejection_qty_kg: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     scrap_qty_kg: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
     line_id: Mapped[int | None] = mapped_column(
@@ -51,6 +52,10 @@ class SteelProductionBatch(Base):
     machine_id: Mapped[int | None] = mapped_column(
         ForeignKey("steel_machines.id"), nullable=True, default=None
     )
+    # ── P1-6: Heat number for BIS/ISI traceability ────────────────────────
+    heat_number: Mapped[str | None] = mapped_column(String(40), nullable=True, default=None)
+    # Index on heat_number for search/traceability queries
+    # (index added via __table_args__)
 
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_at: Mapped[datetime] = mapped_column(

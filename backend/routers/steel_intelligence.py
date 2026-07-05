@@ -17,6 +17,7 @@ from backend.services.steel_intelligence import (
     build_owner_dashboard,
     build_sales_intelligence,
 )
+from backend.services.decision_intelligence import build_decision_dashboard
 from backend.services.quality_intelligence import build_quality_intelligence as build_entry_quality_intelligence
 from backend.services.steel_inventory_intelligence import build_inventory_intelligence
 from backend.services.steel_production_intelligence import build_production_intelligence
@@ -180,6 +181,34 @@ def get_steel_owner_dashboard(
         resource=ResourceContext(factory_id=factory.factory_id),
     )
     return build_owner_dashboard(db, factory)
+
+
+@router.get("/decision/dashboard")
+def get_steel_decision_dashboard(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Decision-grade owner dashboard with top cost problems, focus recommendations,
+    period-over-period trends, and composite health score (owner-only).
+
+    Enhances the basic owner dashboard with actionable decision intelligence:
+    - Top 5 problems costing money, ranked by estimated financial impact
+    - Prioritized focus recommendations for what to do today
+    - Week-over-week and month-over-month KPI comparisons
+    - Composite health score (0-100)
+    """
+    if current_user.role not in (UserRole.OWNER, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Decision dashboard is restricted to owner and admin roles.")
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="admin.billing.quota.reset",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
+    return build_decision_dashboard(db, factory)
 
 
 @router.get("/production/intelligence")

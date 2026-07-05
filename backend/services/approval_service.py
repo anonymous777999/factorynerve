@@ -129,11 +129,13 @@ WORKFLOW_TTL_HOURS: dict[str, int] = {
     "payment.record.reallocate": 72,
     "payment.record.reverse": 72,
     "production.batch.variance.approve": 72,
+    "dispatch.record.create": 24,  # time-sensitive — auto-escalate
     "factory.create": 72,
     "user.invite": 72,
     "user.role.assign": 72,
     "user.membership.assign": 72,
     "user.deactivate": 72,
+    "user.reactivate": 72,
     "billing.plan.downgrade": 72,  # auto-reject on expiry
     "billing.plan.change": 72,  # auto-reject on expiry
 }
@@ -143,6 +145,7 @@ AUTO_ESCALATE_WORKFLOWS: set[str] = {
     "inventory.reconciliation.approve",
     "inventory.reconciliation.reject",
     "dispatch.status.update",
+    "dispatch.record.create",
     "dispatch.record.cancel",
 }
 
@@ -176,6 +179,7 @@ WORKFLOW_PATTERNS: dict[str, ApprovalPattern] = {
     "inventory.reconciliation.approve": ApprovalPattern.IP_2,
     "inventory.reconciliation.reject": ApprovalPattern.IP_2,
     "dispatch.status.update": ApprovalPattern.IP_2,
+    "dispatch.record.create": ApprovalPattern.IP_2,
     "dispatch.record.cancel": ApprovalPattern.IP_2,
     "customer.verification.review": ApprovalPattern.IP_2,
     "customer.status.update": ApprovalPattern.IP_2,
@@ -188,6 +192,7 @@ WORKFLOW_PATTERNS: dict[str, ApprovalPattern] = {
     "factory.create": ApprovalPattern.IP_3,
     "user.invite": ApprovalPattern.IP_3,
     "user.deactivate": ApprovalPattern.IP_3,
+    "user.reactivate": ApprovalPattern.IP_2,
     "user.membership.assign": ApprovalPattern.IP_3,
     # IP-4: Cross-domain/parallel
     "user.role.assign": ApprovalPattern.IP_4,
@@ -218,6 +223,9 @@ IP2_CONDITIONAL_THRESHOLDS: dict[str, list[dict[str, Any]]] = {
     ],
     "dispatch.status.update": [
         {"key": "is_cancellation", "max_bool": False},
+    ],
+    "dispatch.record.create": [
+        {"key": "total_weight_kg", "max": 5000.0},
     ],
 }
 
@@ -576,6 +584,10 @@ class ApprovalService:
                     timestamp=datetime.now(timezone.utc),
                 )
             )
+            # User-facing notification so the admin/owner is aware a bypass occurred.
+            # Without this, high-value reconciliations or payments can be auto-approved
+            # with no visible signal to anyone on the team.
+            self._send_bypass_notification(db, instance)
 
         # Commit state change BEFORE firing callback so callback failures
         # don't roll back the completion (Bug #39 fix).
@@ -968,6 +980,27 @@ class ApprovalService:
         if status in ("pending_l1", "pending_l2"):
             db.commit()
         return instance
+
+    def _send_bypass_notification(self, db: Session, instance: ApprovalInstance) -> None:
+        """Send in-app notification about an IP-2 conditional bypass.
+
+        Notifies the subject user (if any) and falls back to the actor user.
+        This is called from complete_approval() when the instance has
+        status="no_approval_required".
+        """
+        try:
+            from backend.services.notification_service import notify_approval_bypass
+            notify_approval_bypass(
+                db,
+                recipient_user_id=instance.subject_user_id or instance.actor_user_id,
+                org_id=instance.org_id,
+                workflow_key=instance.workflow_key,
+                resource_type=instance.resource_type,
+                resource_id=instance.resource_id,
+                instance_id=instance.instance_id,
+            )
+        except Exception:
+            logger.exception("Failed to send bypass notification for instance %s", instance.instance_id)
 
     def _check_ip2_bypass(self, workflow_key: str, attributes: dict[str, Any]) -> bool:
         """Check if an IP-2 workflow can bypass approval based on thresholds.

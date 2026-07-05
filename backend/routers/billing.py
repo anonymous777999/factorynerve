@@ -342,8 +342,15 @@ def _activate_paid_order(
     event_type: str,
 ) -> None:
     # Idempotency guard: skip if subscription is already active for this period
+    # Use FOR UPDATE row-level lock to serialize concurrent webhook processing
+    # so two identical webhooks cannot both pass the check and double-activate.
     if org_id:
-        existing_sub = get_mutable_subscription(db, org_id)
+        existing_sub = (
+            db.query(Subscription)
+            .filter(Subscription.org_id == org_id)
+            .with_for_update()
+            .first()
+        )
         if existing_sub is not None:
             now = datetime.now(timezone.utc)
             period_end = ensure_utc(existing_sub.current_period_end_at)
@@ -621,11 +628,11 @@ def _resolve_checkout_quote(
 ) -> dict:
     plan_info = get_plan(plan)
     if is_sales_only_plan(plan):
-        raise HTTPException(status_code=400, detail=f"{plan_info.get('name', 'This plan')} is sales-assisted and cannot be self-checked out.") from error
+        raise HTTPException(status_code=400, detail=f"{plan_info.get('name', 'This plan')} is sales-assisted and cannot be self-checked out.")
     monthly_price = int(plan_info.get("monthly_price", 0) or 0)
     cycle = (billing_cycle or "monthly").strip().lower()
     if cycle not in {"monthly", "yearly"}:
-        raise HTTPException(status_code=400, detail="Invalid billing cycle.") from error
+        raise HTTPException(status_code=400, detail="Invalid billing cycle.")
     multiplier = 1 if cycle == "monthly" else int(PRICING_META.get("yearly_multiplier", 12) or 12)
     included_users = int(plan_info.get("user_limit", 0) or 0)
     included_factories = int(plan_info.get("factory_limit", 0) or 0)
@@ -681,7 +688,7 @@ def _resolve_checkout_quote(
         addon_monthly_total += addon_payload["price"] * incremental_quantity
     monthly_total = monthly_price + extra_user_monthly + extra_factory_monthly + addon_monthly_total
     if monthly_total <= 0:
-        raise HTTPException(status_code=400, detail="Selected configuration is not billable.") from error
+        raise HTTPException(status_code=400, detail="Selected configuration is not billable.")
     return {
         "billing_cycle": cycle,
         "amount_paise": monthly_total * multiplier * 100,
@@ -844,7 +851,7 @@ def download_invoice_pdf(
     PDP(db=db).require_permission(actor=current_user, permission_key="billing.invoice.view")
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found.") from error
+        raise HTTPException(status_code=404, detail="Invoice not found.")
     # Access check: user must own the invoice or belong to its org
     user_owns = invoice.user_id is not None and invoice.user_id == current_user.id
     if not user_owns:
@@ -852,7 +859,7 @@ def download_invoice_pdf(
         org = db.query(OrgModel).filter(OrgModel.org_id == invoice.org_id).first()
         user_org_id = resolve_org_id(current_user)
         if not org or not user_org_id or org.org_id != user_org_id:
-            raise HTTPException(status_code=403, detail="Access denied to this invoice.") from error
+            raise HTTPException(status_code=403, detail="Access denied to this invoice.")
     try:
         pdf_bytes = generate_invoice_pdf(db, invoice)
     except Exception as error:
@@ -908,6 +915,13 @@ def schedule_plan_downgrade(
     if approval_decision.result == "denied":
         raise HTTPException(status_code=403, detail=approval_decision.reason)
 
+    if approval_decision.result == "approval_required":
+        return {
+            "message": "Downgrade request submitted for approval.",
+            "pending_plan": normalized,
+            "approval_instance_id": approval_decision.instance_id,
+        }
+
     if approval_decision.result not in ("approved", "no_approval_required"):
         raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
 
@@ -943,7 +957,7 @@ def cancel_plan_downgrade(
     # Step 2: Approval service initiation
     approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
         actor_user_id=current_user.id,
-        subject_user_id=current_user.id,
+        subject_user_id=None,
         workflow_key="billing.plan.downgrade",
         action_key="billing.plan.change",
         resource_type="Subscription",
@@ -956,6 +970,12 @@ def cancel_plan_downgrade(
 
     if approval_decision.result == "denied":
         raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {
+            "message": "Downgrade cancellation submitted for approval.",
+            "approval_instance_id": approval_decision.instance_id,
+        }
 
     if approval_decision.result not in ("approved", "no_approval_required"):
         raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
@@ -981,6 +1001,8 @@ async def create_order(
     try:
         PDP(db=db).require_permission(actor=current_user, permission_key="billing.order.create")
         normalized_plan = _resolve_checkout_plan(request, payload)
+        if not normalized_plan:
+            raise HTTPException(status_code=400, detail="A valid plan is required.")
         if is_sales_only_plan(normalized_plan):
             raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")
         requested_currency = str(payload.currency or SUPPORTED_CURRENCY).strip().upper()

@@ -16,6 +16,7 @@ and call db.commit() to persist the changes.
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timezone
 from typing import Any
 
@@ -28,6 +29,8 @@ from backend.models.steel_inventory_transaction import SteelInventoryTransaction
 from backend.models.steel_customer import SteelCustomer
 from backend.models.steel_dispatch import SteelDispatch
 from backend.models.attendance_record import AttendanceRecord
+from backend.models.user import User
+from backend.models.user_factory_role import UserFactoryRole
 
 logger = logging.getLogger(__name__)
 
@@ -337,6 +340,18 @@ def _on_user_deactivate_completed(db: Session, instance: dict[str, Any]) -> None
     if final_status == "approved":
         user.is_active = False
         user.profile_picture = None
+        # Revoke all v2 sessions so the user is immediately logged out
+        try:
+            from backend.models.auth_user import AuthUser
+            from backend.auth_security.sessions import revoke_all_sessions as _revoke_sessions
+            _auth = db.query(AuthUser).filter(
+                AuthUser.email == user.email,
+                AuthUser.is_active.is_(True),
+            ).first()
+            if _auth:
+                _revoke_sessions(db, user_id=_auth.id)
+        except Exception:
+            logger.exception("Failed to revoke sessions for deactivated user %s", user_id)
         logger.info("User %s deactivated via approval completion", user_id)
 
     _write_audit(
@@ -348,6 +363,326 @@ def _on_user_deactivate_completed(db: Session, instance: dict[str, Any]) -> None
         details=f"user_id={user.id} role={user.role.value} status={final_status}",
     )
     db.flush()
+
+
+def _on_user_reactivate_completed(db: Session, instance: dict[str, Any]) -> None:
+    """Reactivate a user when the approval completes."""
+    resource_id = instance.get("resource_id")
+    actor_user_id = (
+        instance.get("approved_by_user_id")
+        or instance.get("rejected_by_user_id")
+        or instance.get("actor_user_id")
+    )
+    final_status = instance.get("status")
+
+    if not resource_id:
+        return
+
+    try:
+        user_id = int(resource_id)
+    except (ValueError, TypeError):
+        return
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        logger.warning("on_user_reactivate_completed: user %s not found", user_id)
+        return
+
+    if final_status != "approved":
+        logger.info("User %s reactivation was %s — no action taken.", user_id, final_status)
+        _write_audit(
+            db,
+            user_id=actor_user_id,
+            org_id=instance.get("org_id"),
+            factory_id=instance.get("factory_id"),
+            action=f"USER_REACTIVATE_{final_status.upper()}",
+            details=f"user_id={user.id} email={user.email} status={final_status}",
+        )
+        db.flush()
+        return
+
+    # ── Approval granted — reactivate ─────────────────────────────────
+    user.is_active = True
+    logger.info("User %s reactivated via approval completion", user_id)
+
+    _write_audit(
+        db,
+        user_id=actor_user_id,
+        org_id=instance.get("org_id"),
+        factory_id=instance.get("factory_id"),
+        action="USER_REACTIVATED_VIA_APPROVAL",
+        details=f"user_id={user.id} email={user.email} role={user.role.value}",
+    )
+    db.flush()
+
+    # Send notification email (best-effort)
+    try:
+        from backend.email_utils import queue_and_send_email
+        queue_and_send_email(
+            to_emails=[user.email],
+            subject="Your FactoryNerve account has been reactivated",
+            body=(
+                f"Hi {user.name},\n\n"
+                f"Your FactoryNerve account has been reactivated.\n\n"
+                "You can now log in with your existing credentials.\n\n"
+                f"Login page: {os.getenv('FRONTEND_URL', 'https://dpr.ai')}/login\n"
+            ),
+            user_id=user.id,
+            factory_name=user.factory_name,
+        )
+    except Exception:
+        logger.exception("Failed to send reactivation notification email to %s", user.email)
+
+
+def _on_user_invite_completed(db: Session, instance: dict[str, Any]) -> None:
+    """Create the invited user when the approval completes.
+
+    Reads the invitation data from ``requested_change`` (email, name, role)
+    and the resource_id for additional context.  On approval, creates the
+    User record, assigns a UserFactoryRole, and sends an invitation email.
+    On rejection, simply logs the outcome.
+    """
+    resource_id = instance.get("resource_id", "")
+    requested_change = instance.get("requested_change") or {}
+    final_status = instance.get("status", "unknown")
+    org_id = instance.get("org_id")
+    factory_id = instance.get("factory_id")
+    actor_user_id = (
+        instance.get("approved_by_user_id")
+        or instance.get("rejected_by_user_id")
+        or instance.get("actor_user_id")
+    )
+
+    email = (requested_change.get("email") or "").lower().strip()
+    name = requested_change.get("name", "Invited User")
+    role_value = requested_change.get("role", "attendance")
+
+    if not email:
+        logger.warning("on_user_invite_completed: no email in requested_change")
+        return
+
+    if final_status != "approved":
+        logger.info(
+            "User invitation for %s was %s (resource=%s) — no user created.",
+            email, final_status, resource_id,
+        )
+        _write_audit(
+            db,
+            user_id=actor_user_id,
+            org_id=org_id,
+            factory_id=factory_id,
+            action=f"USER_INVITE_{final_status.upper()}",
+            details=f"invite_email={email} role={role_value} resource={resource_id}",
+        )
+        db.flush()
+        return
+
+    # ── Approval granted — create the user ─────────────────────────────
+    from backend.security import hash_password
+    from backend.services.user_code_service import next_user_code, is_user_code_collision, MAX_USER_CODE_ATTEMPTS
+    import secrets
+
+    # Guard: skip if user already exists (idempotent)
+    existing = db.query(User).filter(User.email == email).first()
+    if existing:
+        logger.info("on_user_invite_completed: user %s already exists — skipping creation", email)
+        return
+
+    from backend.models.factory import Factory
+    factory = db.query(Factory).filter(Factory.factory_id == factory_id, Factory.is_active.is_(True)).first()
+    if not factory:
+        logger.warning("on_user_invite_completed: factory %s not found", factory_id)
+        return
+
+    from backend.models.user import UserRole
+    try:
+        role_enum = UserRole(role_value)
+    except ValueError:
+        logger.warning("on_user_invite_completed: invalid role=%s", role_value)
+        return
+
+    temp_password = secrets.token_urlsafe(16)
+    now = datetime.now(timezone.utc)
+
+    user = User(
+        org_id=org_id,
+        name=name,
+        email=email,
+        password_hash=hash_password(temp_password),
+        role=role_enum,
+        factory_name=factory.name,
+        factory_code=factory.factory_code,
+        is_active=True,
+        email_verified_at=now,
+    )
+
+    # Generate unique user_code
+    from sqlalchemy.exc import IntegrityError
+    last_error: IntegrityError | None = None
+    for _ in range(MAX_USER_CODE_ATTEMPTS):
+        user.user_code = next_user_code(db, org_id=org_id)
+        try:
+            with db.begin_nested():
+                db.add(user)
+                db.flush()
+            break
+        except IntegrityError as error:
+            last_error = error
+            if not is_user_code_collision(error):
+                raise
+    else:
+        logger.error("on_user_invite_completed: failed to generate user_code for %s", email)
+        return
+
+    # Assign factory role
+    db.add(UserFactoryRole(
+        user_id=user.id,
+        factory_id=factory_id,
+        org_id=org_id,
+        role=role_enum,
+    ))
+
+    _write_audit(
+        db,
+        user_id=actor_user_id,
+        org_id=org_id,
+        factory_id=factory_id,
+        action="USER_INVITE_CREATED",
+        details=f"user_id={user.id} email={email} role={role_value}",
+    )
+
+    db.flush()
+
+    # Send invitation email (best-effort — do not block on failure)
+    try:
+        from backend.email_utils import queue_and_send_email
+        queue_and_send_email(
+            to_emails=[email],
+            subject="You've been invited to join FactoryNerve",
+            body=(
+                f"You've been invited to join {factory.name} on FactoryNerve.\n\n"
+                f"Your account has been created with the role: {role_value}.\n\n"
+                f"Temporary password: {temp_password}\n\n"
+                "Please log in and change your password immediately.\n\n"
+                f"Login page: {os.getenv('FRONTEND_URL', 'https://dpr.ai')}/login\n"
+            ),
+            user_id=user.id,
+            factory_name=factory.name,
+        )
+    except Exception:
+        logger.exception("Failed to send invitation email to %s", email)
+
+    logger.info("User %s (%s) created via approval callback with role=%s", name, email, role_value)
+
+
+def _on_dispatch_create_completed(db: Session, instance: dict[str, Any]) -> None:
+    """Create inventory movements when a dispatch creation is approved.
+
+    Reads the dispatch resource_id from the approval instance and posts
+    inventory transactions for each dispatch line. Idempotent: skips if
+    inventory has already been posted for this dispatch.
+    """
+    resource_id = instance.get("resource_id")
+    final_status = instance.get("status")
+
+    if not resource_id:
+        return
+
+    # Rejection means no inventory action needed
+    if final_status == "rejected":
+        logger.info("on_dispatch_create_completed: dispatch %s creation was rejected", resource_id)
+        return
+
+    # Try to parse the dispatch ID from the resource_id (format: "pending-{user_id}-{timestamp}")
+    # If it's a pending resource_id, the actual dispatch hasn't been created yet, so
+    # the inventory posting happens in the main flow via complete_approval -> _fire_callback.
+    # The main create_steel_dispatch() will call complete_approval AFTER creating the
+    # dispatch, which fires this callback. At that point, resource_id will be the actual
+    # dispatch ID.
+    requested_change = instance.get("requested_change") or {}
+    # The resource_id is updated to the real dispatch ID by the caller
+    # (create_steel_dispatch) after the dispatch is created.
+    dispatch_id = instance.get("resource_id")
+    if not dispatch_id or dispatch_id.startswith("pending-"):
+        return
+
+    actor_user_id = (
+        instance.get("approved_by_user_id")
+        or instance.get("rejected_by_user_id")
+        or instance.get("actor_user_id")
+    )
+
+    try:
+        d_id = int(dispatch_id)
+    except (ValueError, TypeError):
+        return
+
+    dispatch = db.query(SteelDispatch).filter(SteelDispatch.id == d_id).first()
+    if not dispatch:
+        logger.warning("on_dispatch_create_completed: dispatch %s not found", d_id)
+        return
+
+    # Idempotent: skip if inventory already posted
+    from backend.services.steel_service import coerce_utc_datetime
+    if coerce_utc_datetime(dispatch.inventory_posted_at) is not None:
+        logger.info("on_dispatch_create_completed: dispatch %s already has inventory posted", d_id)
+        return
+
+    # Lock and post inventory movements
+    locked = (
+        db.query(SteelDispatch)
+        .filter(SteelDispatch.id == dispatch.id)
+        .with_for_update()
+        .first()
+    )
+    if locked is None or coerce_utc_datetime(locked.inventory_posted_at) is not None:
+        return
+
+    # Update dispatch status from "pending" to the final requested status
+    # The original status is stored in _final_status by create_steel_dispatch()
+    final_status = requested_change.get("_final_status", requested_change.get("status", "dispatched"))
+    if locked.status in ("pending", "draft"):
+        locked.status = final_status
+        _write_audit(
+            db,
+            user_id=actor_user_id,
+            org_id=instance.get("org_id"),
+            factory_id=instance.get("factory_id"),
+            action="STEEL_DISPATCH_STATUS_FINALIZED",
+            details=f"dispatch_id={locked.id} status={final_status} (pending->final on approval)",
+        )
+
+    lines = (
+        db.query(backend.models.steel_dispatch_line.SteelDispatchLine)
+        .filter(backend.models.steel_dispatch_line.SteelDispatchLine.dispatch_id == dispatch.id)
+        .all()
+    )
+    for line in lines:
+        db.add(
+            backend.models.steel_inventory_transaction.SteelInventoryTransaction(
+                org_id=dispatch.org_id,
+                factory_id=dispatch.factory_id,
+                item_id=line.item_id,
+                transaction_type="dispatch_out",
+                quantity_kg=-float(line.weight_kg or 0.0),
+                reference_type="steel_dispatch",
+                reference_id=dispatch.dispatch_number,
+                notes=f"Auto-posted on approval for dispatch {dispatch.dispatch_number}",
+                created_by_user_id=actor_user_id,
+            )
+        )
+    locked.inventory_posted_at = datetime.now(timezone.utc)
+
+    _write_audit(
+        db,
+        user_id=actor_user_id,
+        org_id=instance.get("org_id"),
+        factory_id=instance.get("factory_id"),
+        action="STEEL_DISPATCH_INVENTORY_POSTED",
+        details=f"dispatch_id={dispatch.id} number={dispatch.dispatch_number} posted via approval",
+    )
+    db.flush()
+    logger.info("Posted inventory movements for dispatch %s via approval callback", dispatch.dispatch_number)
 
 
 def _on_generic_completed(db: Session, instance: dict[str, Any]) -> None:
@@ -375,6 +710,7 @@ APPROVAL_CALLBACKS: dict[str, Any] = {
     "inventory.reconciliation.reject": _on_reconciliation_completed,
     "customer.verification.review": _on_customer_verification_completed,
     "dispatch.status.update": _on_dispatch_status_completed,
+    "dispatch.record.create": _on_dispatch_create_completed,
     # Production entries
     "production.entry.approve": _on_entry_completed,
     "production.entry.delete": _on_entry_completed,
@@ -394,9 +730,10 @@ APPROVAL_CALLBACKS: dict[str, Any] = {
     "ocr.verification.reject": _on_generic_completed,
     # Settings
     "factory.create": _on_generic_completed,
-    "user.invite": _on_generic_completed,
+    "user.invite": _on_user_invite_completed,
     "user.role.assign": _on_generic_completed,
     "user.membership.assign": _on_generic_completed,
+    "user.reactivate": _on_user_reactivate_completed,
     "user.deactivate": _on_user_deactivate_completed,
     # Billing
     "billing.plan.downgrade": _on_generic_completed,

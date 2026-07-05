@@ -9,6 +9,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from backend.models.auth_user import AuthUser
+from backend.utils import ensure_utc
 logger = logging.getLogger(__name__)
 
 # Config from env vars
@@ -28,9 +29,7 @@ def check_account_locked(user: AuthUser) -> bool:
     if user.locked_until is None:
         return False
     now = datetime.now(timezone.utc)
-    locked_until = user.locked_until
-    if locked_until.tzinfo is None:
-        locked_until = locked_until.replace(tzinfo=timezone.utc)
+    locked_until = ensure_utc(user.locked_until)
     if locked_until <= now:
         user.locked_until = None
         user.failed_login_attempts = 0

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { FnLogo } from "@/components/shared/fn-logo";
+import { NotificationBell } from "@/components/shared/notification-bell";
 import { FeedbackActivityTracker } from "@/components/shared/feedback-activity-tracker";
 import { ErrorFeedbackPrompt } from "@/components/shared/error-feedback-prompt";
 import { FeedbackWidget } from "@/components/shared/feedback-widget";
@@ -109,6 +110,13 @@ const navSections: NavSection[] = [
         description: "Cross-app queue for daily work, review load, and unread alerts",
         badgeKey: "alerts",
         match: (pathname) => pathname === "/work-queue" || pathname.startsWith("/work-queue/"),
+      },
+      {
+        label: "Notifications",
+        href: "/notifications",
+        description: "Review system notifications, approval updates, and activity alerts",
+        match: (pathname) =>
+          pathname === "/notifications" || pathname.startsWith("/notifications/"),
       },
       {
         label: "Attendance",
@@ -493,6 +501,10 @@ const SECTION_LABEL_KEY: Record<string, string> = {
 };
 
 const ITEM_TRANSLATION_KEY: Record<string, { label: string; description: string }> = {
+  "/notifications": {
+    label: "nav.notifications.label",
+    description: "nav.notifications.description",
+  },
   "/work-queue": {
     label: "nav.work_queue.label",
     description: "nav.work_queue.description",
@@ -825,6 +837,8 @@ function formatBadgeCount(value: number) {
 
 function getNavIconName(href: string): NavIconName {
   switch (href) {
+    case "/notifications":
+      return "queue";
     case "/work-queue":
       return "queue";
     case "/attendance":
@@ -1934,14 +1948,17 @@ function AppShellFrame({
                   {organization?.plan ? ` • ${organization.plan} ${t("common.plan", "plan")}` : ""}
                 </div>
               </div>
-              <button
-                type="button"
-                aria-label={t("shell.close_sidebar", "Close sidebar")}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)] lg:hidden"
-                onClick={() => setSidebarState(false)}
-              >
-                {"<"}
-              </button>
+              <div className="flex items-center gap-2">
+                <NotificationBell />
+                <button
+                  type="button"
+                  aria-label={t("shell.close_sidebar", "Close sidebar")}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)] lg:hidden"
+                  onClick={() => setSidebarState(false)}
+                >
+                  {"<"}
+                </button>
+              </div>
             </div>
 
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -2188,20 +2205,23 @@ function AppShellFrame({
                 <div className="truncate text-sm font-semibold text-[var(--text)]">{currentItem.label}</div>
               </div>
 
-              <button
-                type="button"
-                aria-label={
-                  sidebarOpen
-                    ? t("shell.hide_sidebar", "Hide sidebar")
-                    : t("shell.show_sidebar", "Show sidebar")
-                }
-                className="ui-no-select ui-no-callout inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
-                onClick={toggleSidebar}
-              >
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                  <path d="M4 6h12M4 10h12M4 14h12" strokeLinecap="round" />
-                </svg>
-              </button>
+              <div className="flex items-center gap-2">
+                <NotificationBell />
+                <button
+                  type="button"
+                  aria-label={
+                    sidebarOpen
+                      ? t("shell.hide_sidebar", "Hide sidebar")
+                      : t("shell.show_sidebar", "Show sidebar")
+                  }
+                  className="ui-no-select ui-no-callout inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
+                  onClick={toggleSidebar}
+                >
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+                    <path d="M4 6h12M4 10h12M4 14h12" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         ) : null}

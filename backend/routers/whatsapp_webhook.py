@@ -216,14 +216,14 @@ async def verify_whatsapp_webhook(request: Request) -> Response:
     verify_token = _webhook_verify_token()
     if not verify_token:
         logger.warning("whatsapp_webhook_verify_rejected reason=verify_token_missing")
-        raise HTTPException(status_code=403, detail="Webhook verification denied.") from error
+        raise HTTPException(status_code=403, detail="Webhook verification denied.")
 
     mode = request.query_params.get("hub.mode", "").strip()
     challenge = request.query_params.get("hub.challenge", "")
     provided_token = request.query_params.get("hub.verify_token", "").strip()
     if mode != "subscribe" or not hmac.compare_digest(provided_token, verify_token):
         logger.warning("whatsapp_webhook_verify_rejected reason=token_mismatch mode=%s", mode or "-")
-        raise HTTPException(status_code=403, detail="Webhook verification denied.") from error
+        raise HTTPException(status_code=403, detail="Webhook verification denied.")
 
     logger.info("whatsapp_webhook_verified mode=%s", mode)
     return Response(content=challenge, media_type="text/plain")
@@ -236,13 +236,13 @@ async def receive_whatsapp_webhook(request: Request) -> dict[str, Any]:
 
     if not _app_secret():
         logger.error("whatsapp_webhook_rejected reason=app_secret_missing")
-        raise HTTPException(status_code=503, detail="Webhook secret not configured.") from error
+        raise HTTPException(status_code=503, detail="Webhook secret not configured.")
     if not signature_header:
         logger.warning("whatsapp_webhook_rejected reason=signature_missing")
-        raise HTTPException(status_code=401, detail="Invalid webhook signature.") from error
+        raise HTTPException(status_code=401, detail="Invalid webhook signature.")
     if not _verify_signature(payload=raw_body, signature_header=signature_header):
         logger.warning("whatsapp_webhook_rejected reason=signature_invalid")
-        raise HTTPException(status_code=401, detail="Invalid webhook signature.") from error
+        raise HTTPException(status_code=401, detail="Invalid webhook signature.")
 
     try:
         payload = json.loads(raw_body.decode("utf-8"))

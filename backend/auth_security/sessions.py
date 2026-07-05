@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from backend.models.auth_session import AuthSession
 from backend.models.auth_user import AuthUser
 from backend.auth_security.tokens import generate_token, hash_token
+from backend.utils import ensure_utc
 
 
 SESSION_COOKIE = os.getenv("AUTH_SESSION_COOKIE", "auth_session")
@@ -106,12 +107,6 @@ def require_csrf(request: Request, session: AuthSession) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed.")
 
 
-def _ensure_utc(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
-
-
 def _session_expired_message(reason: str) -> HTTPException:
     return HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -130,8 +125,8 @@ def get_current_session(db: Session, request: Request) -> AuthSession:
         raise _session_expired_message("not_found_or_revoked")
 
     now = datetime.now(timezone.utc)
-    created_at = _ensure_utc(session.created_at)
-    expires_at = _ensure_utc(session.expires_at)
+    created_at = ensure_utc(session.created_at)
+    expires_at = ensure_utc(session.expires_at)
 
     # Absolute timeout from creation (max session lifetime)
     absolute_deadline = created_at + timedelta(hours=SESSION_ABSOLUTE_TIMEOUT_HOURS)
@@ -150,7 +145,7 @@ def get_current_session(db: Session, request: Request) -> AuthSession:
 
     # Idle timeout check — if last_used_at is older than threshold
     if session.last_used_at is not None:
-        last_used = _ensure_utc(session.last_used_at)
+        last_used = ensure_utc(session.last_used_at)
         idle_deadline = last_used + timedelta(minutes=SESSION_IDLE_TIMEOUT_MINUTES)
         if idle_deadline <= now:
             session.revoked_at = now

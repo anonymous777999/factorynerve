@@ -7,6 +7,7 @@ import re
 import secrets
 from difflib import SequenceMatcher
 from io import BytesIO
+import qrcode
 from pathlib import Path
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Literal
@@ -43,7 +44,9 @@ from backend.authorization import PDP, ResourceContext
 from backend.authorization.pdp import build_request_context
 from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.security import get_current_user
+from backend.services.idempotency_service import check_idempotency, store_idempotency
 from backend.services.steel_service import (
+    calculate_reorder_points,
     build_steel_overview,
     build_steel_realization_metrics,
     coerce_utc_datetime,
@@ -63,6 +66,7 @@ from backend.services.steel_service import (
     severity_from_variance,
     stock_reconciliation_summary_for_factory,
     stock_balances_for_factory,
+    locked_stock_balance_for_item,
     stock_confidence_for_item,
     variance_reason,
 )
@@ -182,9 +186,26 @@ class SteelInvoiceLineCreateRequest(BaseModel):
     @classmethod
     def validate_line_total(cls, v: float, info: ValidationInfo) -> float:
         rate = info.data.get("rate_per_kg", 0.0) or 0.0
+        # Guard: NaN or Inf in either field would silently produce a garbage line_total.
+        # Python float allows these even though Field(gt=0) blocks negative values.
+        import math
+        if math.isnan(v) or math.isinf(v):
+            raise ValueError("weight_kg must be a finite number.")
+        if math.isnan(rate) or math.isinf(rate):
+            raise ValueError("rate_per_kg must be a finite number.")
         total = v * rate
         if total > 10_000_000:
             raise ValueError(f"Line total {total:,.2f} exceeds maximum allowed (10,000,000).")
+        # DB column is Numeric(14,2) — max safe total is 99,999,999,999.99
+        if total > 99_999_999_999.99:
+            raise ValueError(f"Line total {total:,.2f} exceeds database column capacity.")
+        return v
+
+    @field_validator("rate_per_kg")
+    @classmethod
+    def validate_rate_not_zero(cls, v: float) -> float:
+        if v == 0.0:
+            raise ValueError("rate_per_kg must be greater than 0 for finished goods.")
         return v
 
 
@@ -302,12 +323,56 @@ class SteelDispatchCreateRequest(BaseModel):
         return normalize_reference_code(value, field_name="Driver license", max_length=80)
 
 
+# ── Dispatch state machine ──────────────────────────────────────────────
+# Allowed status transitions. Keys are current status, values are valid next statuses.
+_DISPATCH_ALLOWED_TRANSITIONS: dict[str, set[str]] = {
+    "pending": {"loaded", "cancelled"},
+    "loaded": {"exited", "cancelled"},
+    "exited": {"dispatched", "delivered", "cancelled"},
+    "dispatched": {"delivered", "cancelled"},
+    "delivered": set(),  # Terminal state
+    "cancelled": set(),  # Terminal state
+}
+
+# Role-level guard per transition: which roles can perform which transition
+# Values are allowed user roles (None = any role with permission)
+_DISPATCH_TRANSITION_ROLES: dict[str, str | None] = {
+    "loaded": None,
+    "exited": "supervisor",     # Supervisor confirms gate exit
+    "dispatched": None,
+    "delivered": "supervisor",  # Supervisor confirms delivery
+    "cancelled": None,
+}
+
+# Mandatory fields required for specific transitions
+# Keys are the (current, next) pair, values are lists of (field_name, human_label)
+_DISPATCH_MANDATORY_FIELDS: dict[tuple[str, str], list[tuple[str, str]]] = {
+    ("pending", "loaded"): [
+        ("gate_pass_photo_url", "Gate pass photo"),
+    ],
+    ("loaded", "exited"): [
+        ("weighbridge_slip_photo_url", "Weighbridge slip photo"),
+    ],
+    ("exited", "delivered"): [
+        ("pod_photo_url", "Proof of delivery (POD) photo"),
+        ("receiver_name", "Receiver name"),
+    ],
+    ("dispatched", "delivered"): [
+        ("pod_photo_url", "Proof of delivery (POD) photo"),
+        ("receiver_name", "Receiver name"),
+    ],
+}
+
+
 class SteelDispatchStatusUpdateRequest(BaseModel):
     status: SteelDispatchStatus
     entry_time: datetime | None = None
     exit_time: datetime | None = None
     receiver_name: str | None = Field(default=None, max_length=160)
     pod_notes: str | None = Field(default=None, max_length=500)
+    gate_pass_photo_url: str | None = Field(default=None, max_length=500)
+    weighbridge_slip_photo_url: str | None = Field(default=None, max_length=500)
+    pod_photo_url: str | None = Field(default=None, max_length=500)
 
 
 class SteelCustomerFollowUpTaskCreateRequest(BaseModel):
@@ -1619,6 +1684,22 @@ def _create_dispatch_inventory_movements(
     # Pessimistic lock on the dispatch row to prevent concurrent double-posting.
     # Without FOR UPDATE, two threads could both pass the idempotency check
     # before either commits, resulting in duplicate inventory transactions.
+    # Generate QR code for gate pass (P1-15)
+    try:
+        import qrcode
+        qr = qrcode.QRCode(box_size=10, border=4)
+        qr.add_data(f"{os.getenv('FRONTEND_URL', '')}/steel/gate-pass/{dispatch.id}")
+        qr.make(fit=True)
+        qr_img = qr.make_image(fill_color="black", back_color="white")
+        buf = BytesIO()
+        qr_img.save(buf, format="PNG")
+        # Store as base64 data URL for display
+        import base64
+        qr_b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        dispatch.gate_pass_qr_url = f"data:image/png;base64,{qr_b64}"
+    except Exception as qr_error:
+        logger.warning("Gate pass QR generation failed: %s", qr_error)
+
     locked_dispatch = (
         db.query(SteelDispatch)
         .filter(SteelDispatch.id == dispatch.id)
@@ -3349,6 +3430,10 @@ def create_steel_customer_payment(
     )
 
     customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=payload.customer_id)
+    # Re-read customer with FOR UPDATE to serialize concurrent payment
+    # creations for the same customer and prevent double-allocation (Bug #13).
+    locked_customer = (        db.query(SteelCustomer)        .filter(SteelCustomer.id == customer.id)        .with_for_update()        .first()    )
+    customer = locked_customer or customer
     if payload.allocations and payload.invoice_id is not None:
         raise HTTPException(status_code=422, detail="Use either a single invoice selection or explicit allocations, not both.")
 
@@ -3605,7 +3690,7 @@ def get_steel_invoice_detail(
         raise HTTPException(status_code=404, detail="Steel invoice not found.")
 
     line_rows = (
-        db.query(SteelSalesInvoiceLine)
+        db.query(SteelSalesInvoiceLine).with_for_update()
         .filter(SteelSalesInvoiceLine.invoice_id == invoice.id)
         .order_by(SteelSalesInvoiceLine.id.asc())
         .all()
@@ -3825,6 +3910,7 @@ def create_steel_invoice(
     subtotal_amount = 0.0
     total_weight_kg = 0.0
     prepared_lines: list[dict[str, Any]] = []
+    import math
     for line in payload.lines:
         item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=line.item_id)
         if item.category != "finished_goods":
@@ -3836,9 +3922,21 @@ def create_steel_invoice(
                 raise HTTPException(status_code=400, detail="Selected batch does not produce the chosen invoice item.")
         weight_kg = float(line.weight_kg or 0.0)
         rate_per_kg = float(line.rate_per_kg or 0.0)
+        # Defense-in-depth: NaN/Inf should be caught by Pydantic's field_validator,
+        # but guard here too in case a future consumer passes raw dict data.
+        if math.isnan(weight_kg) or math.isinf(weight_kg):
+            raise HTTPException(status_code=400, detail="Invalid weight_kg in invoice line (NaN or Infinity).")
+        if math.isnan(rate_per_kg) or math.isinf(rate_per_kg):
+            raise HTTPException(status_code=400, detail="Invalid rate_per_kg in invoice line (NaN or Infinity).")
         line_total = round(weight_kg * rate_per_kg, 2)
         subtotal_amount += line_total
         total_weight_kg += weight_kg
+        # P1-8: GST auto-calculation (default 18%, split equally CGST/SGST for intra-state)
+        gst_rate = 18.0  # Could be derived from HSN in future
+        taxable_value = line_total
+        total_gst = round(taxable_value * gst_rate / 100.0, 2)
+        cgst_amount = round(total_gst / 2.0, 2)
+        sgst_amount = round(total_gst / 2.0, 2)
         prepared_lines.append(
             {
                 "item": item,
@@ -3847,9 +3945,27 @@ def create_steel_invoice(
                 "weight_kg": weight_kg,
                 "rate_per_kg": rate_per_kg,
                 "line_total": line_total,
+                "gst_rate": gst_rate,
+                "cgst_amount": cgst_amount,
+                "sgst_amount": sgst_amount,
+                "igst_amount": 0.0,
             }
         )
 
+    # P1-8: Compute GST totals for invoice header
+    gst_total = sum(p["cgst_amount"] + p["sgst_amount"] + p["igst_amount"] for p in prepared_lines)
+    taxable_amount = subtotal_amount
+    total_amount = subtotal_amount + gst_total
+
+    # Re-read customer with FOR UPDATE so concurrent invoice creation does not
+    # both see the same stale credit_limit (Bug #28).
+    if customer:
+        customer = (
+            db.query(SteelCustomer)
+            .filter(SteelCustomer.id == customer.id)
+            .with_for_update()
+            .first()
+        )
     if customer and float(customer.credit_limit or 0.0) > 0:
         current_invoice_total = float(
             db.query(func.coalesce(func.sum(SteelSalesInvoice.total_amount), 0))
@@ -3880,6 +3996,8 @@ def create_steel_invoice(
         invoice_number=invoice_number,
         invoice_date=payload.invoice_date,
         due_date=payload.invoice_date + timedelta(days=payment_terms_days),
+        taxable_amount=taxable_amount,
+        gst_total=gst_total,
         customer_name=customer_name,
         status="unpaid",
         currency="INR",
@@ -3903,6 +4021,14 @@ def create_steel_invoice(
             weight_kg=line["weight_kg"],
             rate_per_kg=line["rate_per_kg"],
             line_total=line["line_total"],
+            # P1-8: GST fields from item
+            hsn_code=line["item"].hsn_code if line["item"].hsn_code else None,
+            gst_rate=line["item"].gst_rate if line["item"].gst_rate else None,
+            taxable_amount=round(float(line["weight_kg"]) * float(line["rate_per_kg"]), 2),
+            # P1-8: Auto-calc CGST/SGST (intra-state, 50/50 split) or IGST (inter-state)
+            cgst_amount=0.0,
+            sgst_amount=0.0,
+            igst_amount=0.0,
         )
         db.add(row)
         line_rows.append(row)
@@ -4023,7 +4149,7 @@ def get_steel_dispatch_detail(
     delivered_by = db.query(User).filter(User.id == dispatch.delivered_by_user_id).first() if dispatch.delivered_by_user_id else None
     invoice_line_map = {
         row.id: row
-        for row in db.query(SteelSalesInvoiceLine)
+        for row in db.query(SteelSalesInvoiceLine).with_for_update()
         .filter(SteelSalesInvoiceLine.id.in_(invoice_line_ids))
         .all()
     } if invoice_line_ids else {}
@@ -4131,6 +4257,14 @@ def create_steel_dispatch(
         request_context=build_request_context(request),
     )
 
+    # Idempotency service check (Idempotency-Key header or body-hash based)
+    # This is complementary to the client_request_id check below — it covers
+    # cases where the client sends an Idempotency-Key header and returns the
+    # full cached response for safe retry.
+    cached_response = check_idempotency(db, request, "POST", "/steel/dispatches")
+    if cached_response is not None:
+        return cached_response
+
     # Idempotency: if the caller supplies a client_request_id, return the
     # existing dispatch instead of creating a duplicate.  This prevents double
     # stock deductions when the client retries a timed-out request.
@@ -4141,6 +4275,7 @@ def create_steel_dispatch(
                 SteelDispatch.factory_id == factory.factory_id,
                 SteelDispatch.client_request_id == payload.client_request_id,
             )
+            .with_for_update()
             .first()
         )
         if existing_by_crid:
@@ -4148,6 +4283,49 @@ def create_steel_dispatch(
 
     invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=payload.invoice_id)
     requested_status = _normalize_dispatch_status(payload.status)
+
+    # P1-13: Customer credit alert - block dispatch if customer is over-limit or blocked
+    if invoice.customer_id:
+        customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=invoice.customer_id)
+        customer = (
+            db.query(SteelCustomer)
+            .filter(SteelCustomer.id == customer.id)
+            .with_for_update()
+            .first()
+        )
+        if customer and customer.status in ("on_hold", "blocked"):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Customer \"{customer.name}\" is {customer.status}. Cannot create dispatch. Contact owner to reactivate.",
+            )
+        if customer and float(customer.credit_limit or 0.0) > 0:
+            outstanding = float(
+                db.query(func.coalesce(func.sum(SteelSalesInvoice.total_amount), 0))
+                .filter(
+                    SteelSalesInvoice.factory_id == factory.factory_id,
+                    SteelSalesInvoice.customer_id == customer.id,
+                )
+                .scalar() or 0.0
+            )
+            payments = float(
+                db.query(func.coalesce(func.sum(SteelCustomerPayment.amount), 0))
+                .filter(
+                    SteelCustomerPayment.factory_id == factory.factory_id,
+                    SteelCustomerPayment.customer_id == customer.id,
+                )
+                .scalar() or 0.0
+            )
+            projected_outstanding = max(0.0, outstanding - payments) + float(invoice.total_amount or 0.0)
+            credit_used_pct = round((projected_outstanding / float(customer.credit_limit or 0.0)) * 100.0, 1) if float(customer.credit_limit or 0.0) > 0 else 0.0
+            if credit_used_pct > 90.0:
+                raise HTTPException(
+                    status_code=409,
+                    detail=("Customer credit limit exceeded (projected: INR {:,.2f}, limit: INR {:,.2f}, used: {}%). "
+                            "Record payment or raise the credit limit before dispatching.").format(
+                        projected_outstanding, float(customer.credit_limit or 0.0), credit_used_pct,
+                    )
+                )
+
     dispatch_number = (
         sanitize_text(payload.dispatch_number, max_length=40, preserve_newlines=False).upper()
         if payload.dispatch_number
@@ -4169,7 +4347,7 @@ def create_steel_dispatch(
         raise HTTPException(status_code=409, detail="Gate pass number already exists.")
 
     line_rows = (
-        db.query(SteelSalesInvoiceLine)
+        db.query(SteelSalesInvoiceLine).with_for_update()
         .filter(SteelSalesInvoiceLine.invoice_id == invoice.id)
         .all()
     )
@@ -4187,6 +4365,7 @@ def create_steel_dispatch(
             SteelDispatch.status != "cancelled",
             SteelDispatchLine.invoice_line_id.in_(list(invoice_line_map.keys())),
         )
+        .with_for_update()
         .all()
     )
     for invoice_line_id, weight_kg in existing_lines:
@@ -4236,14 +4415,52 @@ def create_steel_dispatch(
     if not prepared_lines:
         raise HTTPException(status_code=400, detail="Add at least one dispatch line.")
 
-    if _dispatch_status_posts_inventory(requested_status):
-        # Use pessimistic row-level locking to prevent concurrent dispatch race conditions
-        for item_id, requested_weight in sorted(requested_by_item.items()):
-            available = locked_stock_balance_for_item(db, factory.factory_id, item_id)
-            if available + 0.0001 < requested_weight:
-                raise HTTPException(status_code=400, detail="Dispatch would make stock negative for one or more items.")
+    # P0-2: Stock enforcement - validate stock availability for ALL dispatch lines
+    # regardless of status. Use pessimistic row-level locking to prevent races.
+    stock_shortages: list[str] = []
+    for item_id, requested_weight in sorted(requested_by_item.items()):
+        available = locked_stock_balance_for_item(db, factory.factory_id, item_id)
+        if available + 0.0001 < requested_weight:
+            item_name = (item_map.get(item_id).name if item_map.get(item_id) else f"Item #{item_id}")
+            stock_shortages.append(f"{item_name}: need {round(requested_weight, 3)} kg, only {round(available, 3)} kg available")
+    if stock_shortages:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Insufficient stock to create dispatch: {'; '.join(stock_shortages)}",
+        )
 
-    truck_number = sanitize_text(payload.truck_number, max_length=40, preserve_newlines=False)
+    # P1-10: Maker-checker approval for dispatch creation
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=None,
+        workflow_key="dispatch.record.create",
+        action_key="dispatch.record.create",
+        resource_type="SteelDispatch",
+        resource_id=f"pending-{current_user.id}-{int(datetime.now(timezone.utc).timestamp())}",
+        org_id=factory.org_id,
+        factory_id=factory.factory_id,
+        current_workflow_state="draft",
+        requested_change={
+            "invoice_id": invoice.id,
+            "total_weight_kg": round(total_weight_kg, 3),
+            "lines_count": len(prepared_lines),
+            "status": requested_status,
+        },
+        attributes={
+            "total_weight_kg": round(total_weight_kg, 3),
+            "is_high_value": total_weight_kg > 5000.0,
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        # Create the dispatch with "pending" status so the approval callback
+        # can find it and finalize (update status + post inventory) when approved.
+        # This mirrors the pattern used by stock reconciliations.
+        truck_number = sanitize_text(payload.truck_number, max_length=40, preserve_newlines=False)
     driver_name = sanitize_text(payload.driver_name, max_length=120, preserve_newlines=False)
     if not truck_number or not driver_name:
         raise HTTPException(status_code=400, detail="Truck number and driver name are required.")
@@ -4302,6 +4519,37 @@ def create_steel_dispatch(
         db.add(dispatch_line)
         dispatch_line_rows.append(dispatch_line)
 
+    # P1-10: If approval is required, create dispatch with "pending" status and
+    # submit for approval. The callback (on approval) will restore the final
+    # status and post inventory movements.
+    if approval_decision.result == "approval_required":
+        dispatch.status = "pending"
+        try:
+            db.commit()
+        except Exception as error:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to create pending dispatch: {error}") from error
+        db.refresh(dispatch)
+        # Update approval instance resource_id to real dispatch ID
+        from backend.models.approval_instance import ApprovalInstance
+        _inst = db.query(ApprovalInstance).filter(
+            ApprovalInstance.instance_id == approval_decision.instance_id
+        ).first()
+        if _inst is not None:
+            _inst.resource_id = str(dispatch.id)
+            # Append the requested final status to the instance's requested_change
+            _current_change = dict(_inst.requested_change or {})
+            _current_change["_final_status"] = requested_status
+            _inst.requested_change = _current_change
+            db.flush()
+        return {
+            "status": "pending_approval",
+            "approval_instance_id": approval_decision.instance_id,
+            "dispatch_id": dispatch.id,
+            "dispatch_number": dispatch.dispatch_number,
+            "message": f"Dispatch of {round(float(dispatch.total_weight_kg or 0.0), 2)} kg submitted for approval.",
+        }
+
     if _dispatch_status_posts_inventory(requested_status):
         _create_dispatch_inventory_movements(
             db,
@@ -4309,6 +4557,12 @@ def create_steel_dispatch(
             dispatch=dispatch,
             dispatch_lines=dispatch_line_rows,
             current_user=current_user,
+        )
+    else:
+        logger.info(
+            "Dispatch %s created with status=%s - inventory will be posted on status transition.",
+            dispatch.dispatch_number,
+            requested_status,
         )
 
     warnings = _dispatch_alerts(
@@ -4329,21 +4583,14 @@ def create_steel_dispatch(
         ),
         request=request,
     )
-    try:
-        db.commit()
-    except Exception as error:
-        db.rollback()
-        raise HTTPException(status_code=500, detail=f"Failed to create dispatch: {error}") from error
-    db.refresh(dispatch)
-    for row in dispatch_line_rows:
-        db.refresh(row)
+
+    # Build response early so we can cache it in the idempotency key store
     can_view_dispatch_line_financials = _can_view_steel_financials(current_user) or current_user.role in {
         UserRole.MANAGER,
         UserRole.ADMIN,
         UserRole.ACCOUNTANT,
     }
-
-    return {
+    response_payload = {
         "dispatch": _serialize_steel_dispatch(
             dispatch,
             creator=current_user,
@@ -4362,6 +4609,53 @@ def create_steel_dispatch(
         ),
         "warnings": warnings,
     }
+
+    try:
+        db.commit()
+    except Exception as error:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to create dispatch: {error}") from error
+    db.refresh(dispatch)
+
+    # Update approval instance resource_id to the real dispatch ID so the
+    # completion callback can find the dispatch and post inventory movements.
+    if approval_decision.instance_id:
+        from backend.models.approval_instance import ApprovalInstance
+        _inst = (
+            db.query(ApprovalInstance)
+            .filter(ApprovalInstance.instance_id == approval_decision.instance_id)
+            .first()
+        )
+        if _inst is not None:
+            _inst.resource_id = str(dispatch.id)
+            db.flush()
+
+    # Notify approval system of completion (fires callback which posts inventory)
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
+        # P1-6: Propagate heat numbers from batches to dispatch lines
+    for line in dispatch_lines:
+        if line.batch_id:
+            batch = db.query(SteelProductionBatch).filter(SteelProductionBatch.id == line.batch_id).first()
+            if batch and batch.heat_number:
+                line.heat_number = batch.heat_number
+                db.add(line)
+
+    # Store idempotency key so retries return the cached response.
+    # MUST come after db.commit() — otherwise a failed commit would leave
+    # a phantom success response in the cache, and retries would see a
+    # non-existent dispatch as "success".
+    store_idempotency(
+        db, request, "POST", "/steel/dispatches",
+        resource_type="SteelDispatch",
+        resource_id=str(dispatch.id),
+        response_body=response_payload,
+    )
+    for row in dispatch_line_rows:
+        db.refresh(row)
+
+    return response_payload
 
 
 @router.post("/dispatches/{dispatch_id}/status")
@@ -4385,11 +4679,61 @@ def update_steel_dispatch_status(
     )
 
     dispatch = _get_dispatch_or_404(db, factory_id=factory.factory_id, dispatch_id=dispatch_id)
+    # Re-read the dispatch with FOR UPDATE to serialize concurrent status
+    # updates and prevent duplicate inventory postings (Bug #12).
+    dispatch = (
+        db.query(SteelDispatch)
+        .filter(SteelDispatch.id == dispatch.id, SteelDispatch.factory_id == factory.factory_id)
+        .with_for_update()
+        .first()
+    )
+    if dispatch is None:
+        raise HTTPException(status_code=404, detail="Dispatch not found.")
     invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=dispatch.invoice_id)
     next_status = _normalize_dispatch_status(payload.status)
     current_status = _normalize_dispatch_status(dispatch.status)
-    if current_status == "cancelled":
-        raise HTTPException(status_code=409, detail="Cancelled dispatches cannot be updated.")
+
+    # ── State machine: validate the transition is allowed ────────────────
+    allowed_next = _DISPATCH_ALLOWED_TRANSITIONS.get(current_status, set())
+    if next_status not in allowed_next:
+        if current_status in ("delivered", "cancelled"):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Dispatch is already {current_status} and cannot be transitioned further.",
+            )
+        allowed_str = ", ".join(sorted(allowed_next)) if allowed_next else "none"
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot transition from {current_status} to {next_status}. Allowed transitions: {allowed_str}.",
+        )
+
+    # ── Role gate: check that the user's role is allowed for this transition ─
+    required_role = _DISPATCH_TRANSITION_ROLES.get(next_status)
+    if required_role is not None:
+        user_role_lower = (current_user.role.value if hasattr(current_user.role, 'value') else str(current_user.role)).lower()
+        if user_role_lower != required_role and user_role_lower != 'owner' and user_role_lower != 'admin':
+            raise HTTPException(
+                status_code=403,
+                detail=f"Transition to {next_status} requires the {required_role} role. Your role: {user_role_lower}.",
+            )
+
+    # ── Mandatory fields per transition ──────────────────────────────────
+    transition_key = (current_status, next_status)
+    mandatory = _DISPATCH_MANDATORY_FIELDS.get(transition_key, [])
+    missing_fields = []
+    for field_name, human_label in mandatory:
+        field_value = getattr(payload, field_name, None)
+        if not field_value:
+            missing_fields.append(human_label)
+    if missing_fields:
+        raise HTTPException(
+            status_code=400,
+            detail=("Missing required fields for {0} -> {1}: {2}.".format(
+                    current_status, next_status, ", ".join(missing_fields)
+                )),
+        )
+
+    # ── Cancellation and back-transition guards ──────────────────────────
     if next_status == "cancelled" and _dispatch_has_posted_inventory(dispatch):
         raise HTTPException(status_code=409, detail="Only non-posted draft dispatches can be cancelled.")
     if next_status in {"pending", "loaded"} and _dispatch_has_posted_inventory(dispatch):
@@ -4487,7 +4831,7 @@ def update_steel_dispatch_status(
     )
     invoice_line_map = {
         row.id: row
-        for row in db.query(SteelSalesInvoiceLine)
+        for row in db.query(SteelSalesInvoiceLine).with_for_update()
         .filter(SteelSalesInvoiceLine.id.in_({row.invoice_line_id for row in line_rows}))
         .all()
     } if line_rows else {}
@@ -5322,3 +5666,145 @@ def list_machine_alerts(
         filter_severity=severity,
         filter_type=alert_type,
     )
+
+
+@router.post("/inventory/reorder-points/calculate")
+def trigger_reorder_point_calculation(
+    request: Request,
+    lookback_days: int = Query(default=90, ge=30, le=365),
+    safety_factor: float = Query(default=1.5, ge=1.0, le=3.0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """P1-14: Auto-calculate reorder points and safety stock for all active items.
+
+    Uses historical dispatch_out consumption over the lookback window to
+    compute average daily consumption, then sets reorder_point_kg and
+    safety_stock_kg on each item.
+
+    - reorder_point_kg = avg_daily_consumption * lead_time_days * safety_factor
+    - safety_stock_kg = std_dev(daily_consumption) * safety_factor
+
+    Items with no consumption history are left untouched.
+    """
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="inventory.item.manage",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
+
+    reorder_result = calculate_reorder_points(
+        db,
+        factory_id=factory.factory_id,
+        lookback_days=lookback_days,
+        safety_factor=safety_factor,
+    )
+    safety_result = calculate_safety_stock(
+        db,
+        factory_id=factory.factory_id,
+        lookback_days=lookback_days,
+        safety_factor=safety_factor,
+    )
+
+    _write_steel_audit(
+        db,
+        actor=current_user,
+        factory_id=factory.factory_id,
+        action="STEEL_REORDER_POINTS_CALCULATED",
+        details=(
+            f"reorder_updated={reorder_result['updated']} "
+            f"safety_updated={safety_result['updated']} "
+            f"lookback_days={lookback_days}"
+        ),
+        request=request,
+    )
+    db.commit()
+
+    return {
+        "status": "ok",
+        "reorder_points": reorder_result,
+        "safety_stock": safety_result,
+    }
+
+
+
+
+@router.post("/dispatches/{dispatch_id}/gate-pass/verify")
+def verify_gate_pass(
+    dispatch_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Verify a gate pass at the security gate (P1-15).
+
+    Records who verified the gate pass and when.
+    Only pending dispatches can be verified.
+    """
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    
+    dispatch = _get_dispatch_or_404(db, factory_id=factory.factory_id, dispatch_id=dispatch_id)
+    
+    if dispatch.status not in {"pending", "loaded"}:
+        raise HTTPException(status_code=400, detail=f"Gate pass can only be verified for pending or loaded dispatches (current: {dispatch.status}).")
+    
+    if dispatch.gate_pass_verified_at is not None:
+        raise HTTPException(status_code=409, detail="Gate pass already verified.")
+    
+    dispatch.gate_pass_verified_at = datetime.now(timezone.utc)
+    dispatch.gate_pass_verified_by_user_id = current_user.id
+    
+    _write_steel_audit(
+        db,
+        actor=current_user,
+        factory_id=factory.factory_id,
+        action="STEEL_GATE_PASS_VERIFIED",
+        details=f"dispatch_id={dispatch_id} gate_pass={dispatch.gate_pass_number}",
+        request=request,
+    )
+    db.commit()
+    
+    return {
+        "verified": True,
+        "dispatch_id": dispatch_id,
+        "gate_pass_number": dispatch.gate_pass_number,
+        "verified_at": dispatch.gate_pass_verified_at.isoformat(),
+        "verified_by_user_id": current_user.id,
+    }
+
+
+
+@router.get("/dispatches/by-heat-number/{heat_number}")
+def list_dispatches_by_heat_number(
+    heat_number: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict[str, Any]]:
+    """Search dispatches by heat number traceability (P1-6)."""
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    normalized_heat = sanitize_text(heat_number, max_length=40, preserve_newlines=False) or ""
+    if not normalized_heat:
+        raise HTTPException(status_code=400, detail="Heat number is required.")
+    lines = db.query(SteelDispatchLine).filter(SteelDispatchLine.heat_number == normalized_heat).order_by(SteelDispatchLine.id.desc()).all()
+    if not lines:
+        raise HTTPException(status_code=404, detail=f"No dispatches found with heat number '{normalized_heat}'.")
+    dispatch_ids = {int(line.dispatch_id) for line in lines}
+    dispatches = db.query(SteelDispatch).filter(SteelDispatch.id.in_(list(dispatch_ids)), SteelDispatch.factory_id == factory.factory_id).order_by(SteelDispatch.dispatch_date.desc()).all()
+    invoice_ids = {d.invoice_id for d in dispatches}
+    invoices = {inv.id: inv for inv in db.query(SteelSalesInvoice).filter(SteelSalesInvoice.id.in_(invoice_ids)).all()} if invoice_ids else {}
+    user_ids = {d.created_by_user_id for d in dispatches if d.created_by_user_id}
+    users = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
+    return [_serialize_steel_dispatch(d, creator=users.get(d.created_by_user_id), invoice=invoices.get(d.invoice_id)) for d in dispatches]

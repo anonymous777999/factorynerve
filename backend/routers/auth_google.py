@@ -22,11 +22,30 @@ from backend.routers.auth import _log_auth_event, _resolve_active_factory_id
 from backend.auth_security.sessions import create_session
 from backend.auth_security.passwords import hash_password
 from backend.services.auth_service import get_or_create_google_user
-from backend.utils import get_config
+from backend.utils import get_config, load_jwt_rsa_private_key, get_jwt_rsa_public_key
 
 
 router = APIRouter(tags=["Authentication"])
 config = get_config()
+
+
+def _jwt_sign(payload: dict) -> str:
+    """Sign a JWT payload preferring RS256, falling back to HS256."""
+    rsa_key = load_jwt_rsa_private_key(config.jwt_rsa_private_key)
+    if rsa_key is not None:
+        return jwt.encode(payload, rsa_key, algorithm="RS256")
+    return jwt.encode(payload, config.jwt_secret_key, algorithm="HS256")
+
+
+def _jwt_verify(token: str) -> dict:
+    """Verify a JWT trying RS256 first, then HS256 fallback."""
+    rsa_public = get_jwt_rsa_public_key()
+    if rsa_public is not None:
+        try:
+            return jwt.decode(token, rsa_public, algorithms=["RS256"])
+        except Exception:
+            pass  # Fall through to HS256
+    return jwt.decode(token, config.jwt_secret_key, algorithms=["HS256"])
 
 
 def _google_config() -> tuple[str, str, str]:
@@ -91,12 +110,12 @@ def _encode_state(remember: bool, next_path: str) -> str:
         "next": _sanitize_next_path(next_path),
         "exp": int((datetime.now(timezone.utc) + timedelta(minutes=10)).timestamp()),
     }
-    return jwt.encode(payload, config.jwt_secret_key, algorithm="HS256")
+    return _jwt_sign(payload)
 
 
 def _decode_state(state: str) -> dict:
     try:
-        return jwt.decode(state, config.jwt_secret_key, algorithms=["HS256"])
+        return _jwt_verify(state)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid OAuth state.") from exc
 

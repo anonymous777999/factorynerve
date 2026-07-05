@@ -903,3 +903,144 @@ def recent_transactions(db: Session, factory_id: str, *, limit: int = 20) -> lis
 
 def stale_reconciliation_cutoff(days: int = 14) -> datetime:
     return datetime.now(timezone.utc) - timedelta(days=days)
+
+
+# P1-14: Reorder point auto-calculation ---------------------------------------
+
+
+def calculate_reorder_points(
+    db: Session,
+    *,
+    factory_id: str,
+    lookback_days: int = 90,
+    safety_factor: float = 1.5,
+) -> dict[str, object]:
+    """Auto-calculate reorder points for all active steel inventory items.
+
+    Uses historical ``dispatch_out`` consumption over the lookback window to
+    compute average daily consumption, then sets
+    ``reorder_point_kg = avg_daily_consumption * lead_time_days * safety_factor``.
+
+    When ``lead_time_days`` is not set on the item, defaults to 7 days.
+    Items with zero consumption history are left untouched so manual values
+    are not overwritten.
+
+    Returns a summary of how many items were updated.
+    """
+    items = (
+        db.query(SteelInventoryItem)
+        .filter(
+            SteelInventoryItem.factory_id == factory_id,
+            SteelInventoryItem.is_active.is_(True),
+        )
+        .all()
+    )
+    if not items:
+        return {"updated": 0, "total": 0}
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+    item_ids = [item.id for item in items]
+
+    # Aggregate dispatch_out consumption per item over the lookback window
+    rows = (
+        db.query(
+            SteelInventoryTransaction.item_id,
+            func.sum(SteelInventoryTransaction.quantity_kg).label("total_consumed"),
+            func.count(SteelInventoryTransaction.id).label("txn_count"),
+        )
+        .filter(
+            SteelInventoryTransaction.factory_id == factory_id,
+            SteelInventoryTransaction.item_id.in_(item_ids),
+            SteelInventoryTransaction.transaction_type.in_(["dispatch_out", "production_issue"]),
+            SteelInventoryTransaction.created_at >= cutoff,
+        )
+        .group_by(SteelInventoryTransaction.item_id)
+        .all()
+    )
+
+    consumption_map: dict[int, float] = {}
+    for row in rows:
+        consumption_map[int(row.item_id)] = abs(float(row.total_consumed or 0.0))
+
+    updated_count = 0
+    for item in items:
+        total_consumed = consumption_map.get(int(item.id), 0.0)
+        if total_consumed <= 0:
+            continue  # No consumption history — skip
+
+        avg_daily = total_consumed / max(lookback_days, 1)
+        lead_time = int(item.lead_time_days or 7)
+        reorder_point = round(avg_daily * lead_time * safety_factor, 3)
+
+        if reorder_point != (item.reorder_point_kg or 0.0):
+            item.reorder_point_kg = reorder_point
+            updated_count += 1
+
+    return {"updated": updated_count, "total": len(items)}
+
+
+def calculate_safety_stock(
+    db: Session,
+    *,
+    factory_id: str,
+    lookback_days: int = 90,
+    safety_factor: float = 1.5,
+) -> dict[str, object]:
+    """Auto-calculate safety stock levels based on demand variability.
+
+    Uses the standard deviation of daily consumption over the lookback window
+    multiplied by a safety factor.  Requires at least 5 data points.
+    Items with zero history are skipped.
+    """
+    items = (
+        db.query(SteelInventoryItem)
+        .filter(
+            SteelInventoryItem.factory_id == factory_id,
+            SteelInventoryItem.is_active.is_(True),
+        )
+        .all()
+    )
+    if not items:
+        return {"updated": 0, "total": 0}
+
+    updated_count = 0
+    cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+    item_ids_list = [item.id for item in items]
+
+    # Batch-query all dispatch_out transactions for all items
+    txn_rows = (
+        db.query(
+            SteelInventoryTransaction.item_id,
+            SteelInventoryTransaction.quantity_kg,
+        )
+        .filter(
+            SteelInventoryTransaction.factory_id == factory_id,
+            SteelInventoryTransaction.item_id.in_(item_ids_list),
+            SteelInventoryTransaction.transaction_type == "dispatch_out",
+            SteelInventoryTransaction.created_at >= cutoff,
+        )
+        .all()
+    )
+
+    # Group transactions by item_id
+    from collections import defaultdict
+    txn_by_item: dict[int, list[float]] = defaultdict(list)
+    for row in txn_rows:
+        txn_by_item[int(row.item_id)].append(abs(float(row.quantity_kg or 0.0)))
+
+    updated_count = 0
+    for item in items:
+        values = txn_by_item.get(int(item.id), [])
+        if len(values) < 5:
+            continue
+
+        mean = sum(values) / len(values)
+        variance = sum((v - mean) ** 2 for v in values) / len(values)
+        std_dev = variance ** 0.5
+
+        safety_stock = round(std_dev * safety_factor, 3)
+        if safety_stock != (item.safety_stock_kg or 0.0):
+            item.safety_stock_kg = safety_stock
+            updated_count += 1
+
+    return {"updated": updated_count, "total": len(items)}

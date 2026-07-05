@@ -17,6 +17,8 @@ import secrets
 import string
 
 from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from dotenv import load_dotenv
 
 
@@ -43,6 +45,7 @@ class AppConfig:
     openai_api_key: str
     ai_provider: str
     jwt_secret_key: str
+    jwt_rsa_private_key: str
     jwt_expire_hours: int
     app_name: str
     app_env: str
@@ -104,6 +107,44 @@ def _validate_required_values(raw_values: dict[str, str | None]) -> None:
         raise ValueError("Invalid DATA_ENCRYPTION_KEY. Use a valid Fernet key.") from error
 
 
+# Cached RSA private key for JWT signing (RS256)
+_JWT_RSA_PRIVATE_KEY: rsa.RSAPrivateKey | None = None
+
+
+def load_jwt_rsa_private_key(pem: str) -> rsa.RSAPrivateKey | None:
+    """Load and cache an RSA private key from a PEM string for JWT RS256 signing.
+
+    On first call, deserializes the PEM and caches the key object.
+    If JWT_RSA_PRIVATE_KEY is empty (development), returns None so callers
+    can fall back to HS256 for backward compatibility.
+    """
+    global _JWT_RSA_PRIVATE_KEY
+    if _JWT_RSA_PRIVATE_KEY is not None:
+        return _JWT_RSA_PRIVATE_KEY
+    pem_stripped = pem.strip()
+    if not pem_stripped:
+        return None  # No RSA key configured — fall back to HS256
+    try:
+        key = serialization.load_pem_private_key(
+            pem_stripped.encode("utf-8"),
+            password=None,
+        )
+        if not isinstance(key, rsa.RSAPrivateKey):
+            raise ValueError("JWT_RSA_PRIVATE_KEY must be an RSA private key.")
+        _JWT_RSA_PRIVATE_KEY = key
+        return key
+    except Exception as error:
+        raise ValueError(f"Invalid JWT_RSA_PRIVATE_KEY: {error}") from error
+
+
+def get_jwt_rsa_public_key() -> rsa.RSAPublicKey | None:
+    """Derive and return the RSA public key from the configured private key."""
+    private_key = load_jwt_rsa_private_key(get_config().jwt_rsa_private_key)
+    if private_key is None:
+        return None
+    return private_key.public_key()
+
+
 def _normalize_database_url(database_url: str) -> str:
     if database_url.startswith("sqlite:///"):
         path = database_url.replace("sqlite:///", "", 1)
@@ -131,6 +172,7 @@ def get_config() -> AppConfig:
         "LOG_FORMAT": os.getenv("LOG_FORMAT", "text"),
         "FASTAPI_PORT": os.getenv("FASTAPI_PORT"),
         "STREAMLIT_PORT": os.getenv("STREAMLIT_PORT"),
+        "JWT_RSA_PRIVATE_KEY": os.getenv("JWT_RSA_PRIVATE_KEY", ""),
         "DATA_ENCRYPTION_KEY": os.getenv("DATA_ENCRYPTION_KEY"),
         "DATABASE_URL": os.getenv(
             "DATABASE_URL", f"sqlite:///{(PROJECT_ROOT / 'dpr_ai.db').as_posix()}"
@@ -147,6 +189,7 @@ def get_config() -> AppConfig:
         jwt_expire_hours=_to_int(raw["JWT_EXPIRE_HOURS"], 8),
         app_name=str(raw["APP_NAME"]),
         app_env=str(raw.get("APP_ENV") or "development").strip().lower(),
+        jwt_rsa_private_key=str(raw.get("JWT_RSA_PRIVATE_KEY") or ""),
         debug=_to_bool(raw["DEBUG"], False),
         log_level=str(raw.get("LOG_LEVEL") or "INFO").upper(),
         log_format=str(raw.get("LOG_FORMAT") or "text").strip().lower(),

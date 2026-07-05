@@ -6,6 +6,7 @@ import { BetaRolloutBanner } from "@/components/shared/beta-rollout-banner";
 import { FeedbackSyncAgent } from "@/components/shared/feedback-sync-agent";
 import { FrontendErrorMonitor } from "@/components/shared/frontend-error-monitor";
 import { OfflineSyncAgent } from "@/components/shared/offline-sync-agent";
+import { PendingSyncBadge } from "@/components/shared/pending-sync-badge";
 import { ServiceWorker } from "@/components/shared/service-worker";
 import { ToastCenter } from "@/components/shared/toast-center";
 
@@ -59,6 +60,7 @@ export default function RootLayout({
           <ToastCenter />
           <FrontendErrorMonitor />
           <OfflineSyncAgent />
+          <PendingSyncBadge />
           <FeedbackSyncAgent />
           <ServiceWorker buildVersion={serviceWorkerBuildVersion} />
         </AppProviders>

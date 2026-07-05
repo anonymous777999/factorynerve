@@ -13,7 +13,10 @@ from backend.database import get_db
 from backend.security import get_current_user
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.utils import HIGH_CONFIDENCE_THRESHOLD, LOW_CONFIDENCE_THRESHOLD, normalize_confidence, sanitize_text
+import base64
+
 from backend.ocr_utils import analyze_image_quality, warp_perspective
+from backend.services.ocr_image_preprocessing import preprocess_image_metadata, preprocess_image
 from backend.dependencies.quota import refund_ocr_quota, require_ocr_quota
 from backend.dependencies.subscription import require_active_subscription
 from backend.ledger_scan import (
@@ -55,6 +58,8 @@ from backend.routers.ocr._common import (
     _read_validated_image_upload,
     _read_image_upload_for_mock,
     _safe_file_name,
+    _compute_image_hash,
+    _OCR_SERVER_SIDE_CACHE_HASH,
     _normalize_document_hash,
     _normalize_doc_type_hint,
     _template_query,
@@ -107,13 +112,25 @@ async def ocr_logbook(
         if not template:
             raise HTTPException(status_code=404, detail="Template not found.")
 
+    # ── Server-side cache hash (fixes P0-8: cache poisoning) ──────────────
+    # Use SHA-256 of the actual image bytes for cache lookup, NOT the
+    # client-supplied document_hash which can be manipulated.
+    server_hash = _compute_image_hash(image_bytes)
+    cache_hash = server_hash if _OCR_SERVER_SIDE_CACHE_HASH else _normalize_document_hash(document_hash)
+    client_hash = _normalize_document_hash(document_hash)
+    logger.info(
+        "[OCR-CACHE-DEBUG] server_hash=%s client_hash=%s active_hash=%s",
+        server_hash[:16],
+        (client_hash or "none")[:16],
+        cache_hash[:16],
+    )
+
     reusable = None
     if not force_refresh:
-        normalized_hash = _normalize_document_hash(document_hash)
         org_id_for_lookup = resolve_org_id(current_user)
         logger.info(
             "[OCR-CACHE-DEBUG] Lookup | hash=%s | org=%s | template=%s | doc_type=%s",
-            normalized_hash,
+            cache_hash,
             org_id_for_lookup,
             template.id if template else template_id,
             requested_doc_type,
@@ -121,7 +138,7 @@ async def ocr_logbook(
         reusable = find_reusable_verification(
             db,
             org_id=org_id_for_lookup,
-            document_hash=normalized_hash,
+            document_hash=cache_hash,
             template_id=template.id if template else template_id,
             doc_type_hint=requested_doc_type,
             requested_model=requested_model,
@@ -368,6 +385,133 @@ async def warp_document(
     if applied is not None:
         headers["X-Warp-Corners"] = json.dumps(applied)
     return Response(content=warped_bytes, media_type="image/png", headers=headers)
+
+
+@router.post("/preprocess", status_code=status.HTTP_200_OK)
+async def ocr_preprocess(
+    file: UploadFile = File(...),
+    apply_deskew: bool = Form(default=True),
+    apply_clahe: bool = Form(default=True),
+    apply_denoise: bool = Form(default=True),
+    apply_threshold: bool = Form(default=False),
+    apply_sharpen: bool = Form(default=True),
+    apply_resize: bool = Form(default=True),
+    return_image: bool = Form(default=False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Analyse and optionally preprocess an image for OCR.
+
+    Returns a comprehensive quality report including:
+    - Blur detection (Laplacian variance)
+    - Brightness/contrast analysis
+    - Skew angle estimation
+    - Recommended preprocessing stages
+
+    When ``return_image=true``, also returns the preprocessed image as a
+    base64-encoded PNG so the caller can preview the result before OCR.
+    """
+    _require_ocr_access(db, current_user)
+    image_bytes = await _read_validated_image_upload(file)
+
+    # Analyse image quality without modifying it
+    try:
+        quality_meta = preprocess_image_metadata(image_bytes)
+    except Exception as exc:
+        logger.warning("Image quality analysis failed: %s", exc)
+        quality_meta = {"available": False, "error": str(exc)}
+
+    # Run the preprocessing pipeline
+    preprocessed_image_bytes: bytes | None = None
+    try:
+        preprocessed_image_bytes = preprocess_image(
+            image_bytes,
+            apply_deskew=apply_deskew,
+            apply_clahe=apply_clahe,
+            apply_denoise=apply_denoise,
+            apply_threshold=apply_threshold,
+            apply_sharpen=apply_sharpen,
+            apply_resize=apply_resize,
+        )
+    except Exception as exc:
+        logger.warning("Image preprocessing failed: %s", exc)
+
+    # Also run legacy quality analysis for additional signals
+    legacy_quality = None
+    try:
+        legacy_quality = analyze_image_quality(image_bytes)
+    except Exception:
+        pass
+
+    # Build quality warnings
+    warnings: list[str] = []
+    if quality_meta.get("available"):
+        laplacian_var = quality_meta.get("laplacian_variance", 999)
+        if laplacian_var < 75:
+            warnings.append("blur_detected")
+        if not quality_meta.get("contrast_ok", True):
+            warnings.append("low_contrast")
+        skew = quality_meta.get("skew_angle_degrees", 0)
+        if abs(skew) > 1.0:
+            warnings.append("skew_detected")
+        if quality_meta.get("width_px", 9999) < 1200:
+            warnings.append("low_resolution")
+
+    if legacy_quality:
+        if legacy_quality.brightness_mean < 80:
+            warnings.append("low_light")
+        if legacy_quality.glare_ratio > 0.06:
+            warnings.append("glare")
+
+    warnings = list(dict.fromkeys(warnings))  # Deduplicate
+
+    result: dict[str, object] = {
+        "quality_analysis": quality_meta,
+        "warnings": warnings,
+        "warning_count": len(warnings),
+        "severity": "high" if len(warnings) >= 2 else "medium" if len(warnings) >= 1 else "low",
+        "recommended_actions": [],
+        "stages_applied": [],
+    }
+
+    # Add recommended actions based on warnings
+    recommendations: list[str] = []
+    for w in warnings:
+        if w == "blur_detected":
+            recommendations.append("Retake photo with steady hands or use a flatbed scanner.")
+        elif w == "low_contrast":
+            recommendations.append("Enable CLAHE contrast enhancement (apply_clahe=true).")
+        elif w == "skew_detected":
+            recommendations.append("Enable deskew correction (apply_deskew=true).")
+        elif w == "low_resolution":
+            recommendations.append("Move camera closer or use a higher-resolution camera.")
+        elif w == "low_light":
+            recommendations.append("Increase lighting or enable contrast enhancement.")
+        elif w == "glare":
+            recommendations.append("Avoid flash; reposition to reduce reflections.")
+    result["recommended_actions"] = recommendations
+
+    # If preprocessing ran, include applied stages in response
+    if quality_meta.get("available"):
+        needs = []
+        if quality_meta.get("needs_deskew"):
+            needs.append("deskew")
+        if quality_meta.get("needs_clahe"):
+            needs.append("clahe")
+        if quality_meta.get("needs_denoise"):
+            needs.append("denoise")
+        if quality_meta.get("needs_resize"):
+            needs.append("resize")
+        result["needs_preprocessing"] = needs
+
+    # Return preprocessed image if requested
+    if return_image and preprocessed_image_bytes and len(preprocessed_image_bytes) > 0:
+        result["preprocessed_image"] = base64.b64encode(preprocessed_image_bytes).decode("utf-8")
+        result["preprocessed_image_mime"] = "image/png"
+        result["preprocessed_size_bytes"] = len(preprocessed_image_bytes)
+        result["preprocessing_applied"] = preprocessed_image_bytes != image_bytes
+
+    return result
 
 
 @router.post(
