@@ -2,6 +2,10 @@
 
 Supports the IP-2 bypass notification feature and general system-wide
 notifications with read tracking.
+
+Revision ID: 20260704_01
+Revises: 20260703_01
+Create Date: 2026-07-04
 """
 
 from __future__ import annotations
@@ -9,10 +13,10 @@ from __future__ import annotations
 from alembic import op
 import sqlalchemy as sa
 
-revision = "20260704_01_add_notifications_table"
-down_revision = "20260703_01"
-branch_labels = None
-depends_on = None
+revision: str = "20260704_01"
+down_revision: str | None = "20260703_01"
+branch_labels: str | None = None
+depends_on: str | None = None
 
 
 def upgrade() -> None:

@@ -1,11 +1,11 @@
 """merge_notifications_and_cross_validation_heads
 
 Merge the two migration branches:
-  - notifications branch  (20260704_01_add_notifications_table)
-  - cross-validation branch (20260704_02_add_ocr_cross_validation)
+  - notifications branch  (20260704_01)
+  - cross-validation branch (20260704_02)
 
 Revision ID: 20260704_03
-Revises: 20260704_01_add_notifications_table, 20260704_02_add_ocr_cross_validation
+Revises: 20260704_01, 20260704_02
 Create Date: 2026-07-04
 """
 
@@ -19,8 +19,8 @@ import sqlalchemy as sa
 
 revision: str = "20260704_03"
 down_revision: ClassVar[tuple[str, str]] = (
-    "20260704_01_add_notifications_table",
-    "20260704_02_add_ocr_cross_validation",
+    "20260704_01",
+    "20260704_02",
 )
 branch_labels: ClassVar[str | None] = None
 depends_on: ClassVar[str | None] = None
