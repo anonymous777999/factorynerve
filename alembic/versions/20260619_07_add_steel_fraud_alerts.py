@@ -49,7 +49,7 @@ def upgrade() -> None:
             sa.Column("resolved_at", sa.DateTime(timezone=True), nullable=True),
             sa.Column("resolution_note", sa.Text(), nullable=True),
             sa.Column("dismissed_reason", sa.String(500), nullable=True),
-            sa.Column("is_suppressed", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+            sa.Column("is_suppressed", sa.Boolean(), nullable=False, server_default=sa.text("false")),
             sa.Column("suppressed_until", sa.DateTime(timezone=True), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),

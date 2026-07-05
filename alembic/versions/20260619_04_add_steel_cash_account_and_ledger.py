@@ -38,7 +38,7 @@ def upgrade() -> None:
             sa.Column("opening_balance", sa.Numeric(14, 2), nullable=False, server_default="0"),
             sa.Column("current_balance", sa.Numeric(14, 2), nullable=False, server_default="0"),
             sa.Column("currency", sa.String(8), nullable=False, server_default="INR"),
-            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
             sa.Column("notes", sa.String(500), nullable=True),
             sa.Column("created_by_user_id", sa.Integer(), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),

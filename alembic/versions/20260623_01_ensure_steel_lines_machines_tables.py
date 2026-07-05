@@ -39,7 +39,7 @@ def upgrade() -> None:
             sa.Column("name", sa.String(100), nullable=False),
             sa.Column("code", sa.String(24), nullable=True),
             sa.Column("description", sa.String(300), nullable=True),
-            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
             sa.Column("created_by_user_id", sa.Integer(), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
@@ -72,7 +72,7 @@ def upgrade() -> None:
             # OEE tracking fields (added by migration 20260620_155021)
             sa.Column("planned_runtime_minutes", sa.Float(), nullable=True),
             sa.Column("operating_runtime_minutes", sa.Float(), nullable=True),
-            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
             sa.Column("created_by_user_id", sa.Integer(), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),

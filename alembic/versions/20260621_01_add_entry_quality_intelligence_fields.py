@@ -57,7 +57,7 @@ def upgrade() -> None:
             sa.Column("code", sa.String(60), nullable=False, unique=True),
             sa.Column("label", sa.String(120), nullable=False, server_default=""),
             sa.Column("description", sa.Text(), nullable=True),
-            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")),
+            sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")),
             sa.Column(
                 "created_at",
                 sa.DateTime(timezone=True),
@@ -73,7 +73,7 @@ def upgrade() -> None:
         if "label" not in defect_reason_columns:
             op.add_column("defect_reason", sa.Column("label", sa.String(120), nullable=False, server_default=""))
         if "is_active" not in defect_reason_columns:
-            op.add_column("defect_reason", sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("1")))
+            op.add_column("defect_reason", sa.Column("is_active", sa.Boolean(), nullable=False, server_default=sa.text("true")))
         if "created_at" not in defect_reason_columns:
             op.add_column(
                 "defect_reason",
@@ -149,7 +149,7 @@ def upgrade() -> None:
             else:
                 op.add_column(
                     "entries",
-                    sa.Column("rework_required", sa.Boolean(), nullable=False, server_default=sa.text("0")),
+                    sa.Column("rework_required", sa.Boolean(), nullable=False, server_default=sa.text("false")),
                 )
         if "scrap_qty_entry" not in entry_columns:
             op.add_column("entries", sa.Column("scrap_qty_entry", sa.Integer(), nullable=True))

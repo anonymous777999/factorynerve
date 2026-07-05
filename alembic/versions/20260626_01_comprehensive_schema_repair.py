@@ -29,8 +29,8 @@ depends_on: ClassVar[str | None] = None
 
 # ── Idempotent Helper Functions ─────────────────────────────────────────────
 
-_BOOLEAN_TRUE = sa.text("1")
-_BOOLEAN_FALSE = sa.text("0")
+_BOOLEAN_TRUE = sa.text("true")
+_BOOLEAN_FALSE = sa.text("false")
 _SQLITE = False
 
 
