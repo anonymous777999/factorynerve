@@ -1,3 +1,11 @@
+# ── Preview Environments ───────────────────────────────────
+# Render will auto-create preview deployments for PR branches.
+# These use a temporary PostgreSQL database and the same build
+# configuration from the services below.
+previews:
+  generation: 2
+
+
 databases:
   - name: factorynerve-db
     plan: free
