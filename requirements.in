@@ -1,44 +1,57 @@
-streamlit
-streamlit-cropper
-streamlit-autorefresh
-Sentry-SDK
 fastapi
 uvicorn
-anthropic
-groq
-google-generativeai
-openai
-twilio
-python-dotenv
 sqlalchemy
+psycopg2-binary
+alembic
+python-multipart
 python-jose
 bcrypt
-reportlab
-openpyxl
-pandas
-plotly
-python-multipart
+passlib[argon2]
+argon2-cffi
 cryptography
-pytest
 email-validator
-requests
-qrcode[pil]
+httpx
+python-dotenv
+pandas
+openpyxl
+reportlab
 pytesseract
 opencv-python-headless
 numpy
 Pillow
-alembic
-psycopg2-binary
-httpx
-redis
-fakeredis
+requests
+razorpay
+twilio
+anthropic
+groq
+google-generativeai
+openai
+plotly
 phonenumbers
-structlog
-google-auth
-passlib[argon2]
-argon2-cffi
 pyotp
 itsdangerous
+google-auth
+redis
+
+# Observability / Logging
+sentry-sdk
+structlog
+prometheus-client
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-semantic-conventions
+opentelemetry-instrumentation
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-requests
+tenacity
+rq
 
 # Optional: QR code generation in PDF exports
 qrcode[pil]>=7.4
+
+# Dev / Testing (not in production requirements.txt)
+# streamlit
+# streamlit-cropper
+# streamlit-autorefresh
+# pytest
+# fakeredis
