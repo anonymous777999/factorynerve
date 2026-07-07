@@ -1,23 +1,19 @@
-"""Set up monthly range partitioning on audit_logs for PostgreSQL.
+"""Recover audit_logs partitioning after failed migration 20260707_02.
 
-Phase 2 of D-14 (Audit Log Partitioning & Retention):
+Migration 20260707_02 failed on production because it referenced the
+PK constraint as ``audit_logs_pkey`` (PostgreSQL default) while the
+project's naming convention uses ``pk_audit_logs``.
 
-1. Checks if running on PostgreSQL (skip on SQLite/other).
-2. Converts audit_logs to a partitioned table by timestamp
-   (monthly range partitions).
-3. Creates monthly partitions for current month + next 6 months.
-4. Creates the audit_partition_manager() helper function for
-   automatic future partition creation.
-5. Adds a trigger to auto-create partitions when needed.
+The migration was stamped as applied but only partially ran (Step 1
+dropped some indexes, Step 2 failed). This recovery migration:
 
-The audit_logs table is a Tier-1 RLS table — partitioning works
-transparently with RLS policies.
+1. Checks if ``audit_logs`` already has a composite PK ``(id, timestamp)``
+   — if so, partitioning is already complete, skip.
+2. Otherwise, drops the old PK, creates the composite PK, and
+   converts ``audit_logs`` to a monthly-range partitioned table.
 
-REVERSIBLE: downgrade() detaches all partitions and converts
-back to a regular table (data preserved).
-
-Revision ID: 20260707_02
-Revises: 20260707_01
+Revision ID: 20260707_03
+Revises: 20260707_02
 Create Date: 2026-07-07
 """
 
@@ -29,8 +25,8 @@ from typing import ClassVar
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "20260707_02"
-down_revision: ClassVar[str] = "20260707_01"
+revision: str = "20260707_03"
+down_revision: ClassVar[str] = "20260707_02"
 branch_labels: ClassVar[str | None] = None
 depends_on: ClassVar[str | None] = None
 
@@ -44,7 +40,6 @@ def _partition_name(year: int, month: int) -> str:
 
 
 def _partition_boundary(year: int, month: int) -> str:
-    """Return the upper bound (exclusive) for a monthly partition."""
     if month == 12:
         return f"{year + 1}-01-01"
     return f"{year}-{month + 1:02d}-01"
@@ -60,19 +55,42 @@ def _create_monthly_partition_sql(year: int, month: int) -> str:
     """
 
 
+def _pk_columns(bind: sa.engine.Connection, table: str) -> set[str]:
+    """Return the set of column names in the primary key for *table*."""
+    inspector = sa.inspect(bind)
+    pk = inspector.get_pk_constraint(table)
+    return set(pk.get("constrained_columns", []))
+
+
 def upgrade() -> None:
     bind = op.get_bind()
     if not _dialect_is_postgresql(bind):
-        print("  ⚠ Skipping audit_logs partitioning on non-PostgreSQL dialect.")
+        print("  ⚠ Skipping audit_logs partitioning recovery — not PostgreSQL.")
         return
 
-    print("  ✓ PostgreSQL detected — setting up audit_logs partitioning.")
+    # ── Check if already partitioned ──────────────────────────────────
+    existing_pk = _pk_columns(bind, "audit_logs")
+    if "timestamp" in existing_pk and "id" in existing_pk:
+        print(
+            "  ✓ audit_logs PK is already (id, timestamp) — "
+            "partitioning appears complete. Skipping."
+        )
+        return
+
+    print(
+        "  ⚠ audit_logs PK is %s — recovery needed."
+        % (str(existing_pk) if existing_pk else "missing")
+    )
+    print("  ✓ PostgreSQL detected — recovering audit_logs partitioning.")
 
     now = datetime.now(timezone.utc)
 
-    # ── Step 1: Drop existing indexes on audit_logs ────────────────────
-    # We need to recreate them on the partitioned table. The existing
-    # indexes will become invalid after partitioning.
+    # ── Step 1: Drop the old PK ──────────────────────────────────────
+    # The project naming convention uses pk_{table_name} for PK constraints.
+    op.execute("ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS pk_audit_logs;")
+    op.execute("ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_pkey;")
+
+    # ── Step 2: Drop existing indexes (recreated later) ──────────────
     indexes_to_drop = [
         "ix_audit_logs_user_id",
         "ix_audit_logs_org_id",
@@ -83,35 +101,17 @@ def upgrade() -> None:
     for idx in indexes_to_drop:
         op.execute(f"DROP INDEX IF EXISTS {idx};")
 
-    # ── Step 2: Recreate PK to include timestamp (required for partitioning) ─
-    # NOTE: The project naming convention names PK constraints as pk_{table_name}.
-    # Use IF EXISTS with both possible names for resilience.
-    op.execute("ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS pk_audit_logs;")
-    op.execute("ALTER TABLE audit_logs DROP CONSTRAINT IF EXISTS audit_logs_pkey;")
+    # ── Step 3: Add composite PK ──────────────────────────────────────
     op.execute(
         "ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_pkey "
         "PRIMARY KEY (id, timestamp);"
     )
     print("  ✓ Updated primary key to (id, timestamp).")
 
-    # ── Step 3: Convert to partitioned table ──────────────────────────
-    # PostgreSQL 12+ supports converting to partitioned table via
-    # CREATE TABLE ... PARTITION BY RANGE and attaching existing data.
-    # We use a migration-safe approach: alter the table structure.
+    # ── Step 4: Convert to partitioned table ─────────────────────────
+    op.execute("ALTER TABLE audit_logs SET WITHOUT CLUSTER;")
+    op.execute("ALTER TABLE audit_logs SET (fillfactor = 100);")
 
-    # Detach the table from its current structure and re-create as partitioned
-    op.execute(
-        "ALTER TABLE audit_logs SET WITHOUT CLUSTER;"
-    )
-
-    # Convert to partitioned table
-    op.execute(
-        "ALTER TABLE audit_logs SET ("
-        "  fillfactor = 100"
-        ");"
-    )
-
-    # Add partitioning using PG's built-in mechanism
     op.execute(
         "CREATE TABLE audit_logs_new ("
         "  LIKE audit_logs INCLUDING DEFAULTS INCLUDING CONSTRAINTS,"
@@ -119,37 +119,29 @@ def upgrade() -> None:
         ") PARTITION BY RANGE (timestamp);"
     )
 
-    # Create a default partition for rows that don't match any partition
-    # (catches old data before the migration)
     op.execute("""
         CREATE TABLE audit_logs_default PARTITION OF audit_logs_new DEFAULT;
     """)
 
-    # Copy existing data (batch-insert safe since audit_logs is append-only)
     op.execute("""
         INSERT INTO audit_logs_new
         SELECT * FROM audit_logs;
     """)
 
-    # Swap tables
     op.execute("DROP TABLE audit_logs CASCADE;")
     op.execute("ALTER TABLE audit_logs_new RENAME TO audit_logs;")
 
-    # Recreate RLS policies that were destroyed by DROP TABLE CASCADE
-    # (policies created by 20260707_01_enable_row_level_security)
+    # ── Step 5: Recreate RLS policies ─────────────────────────────────
     op.execute("ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY")
     op.execute("ALTER TABLE audit_logs FORCE ROW LEVEL SECURITY")
-    op.execute(
-        """
+    op.execute("""
         CREATE POLICY rls_org_isolation ON audit_logs
         FOR ALL USING (
             _rls_tenant_id() IS NULL
             OR org_id = _rls_tenant_id()
         );
-        """
-    )
-    op.execute(
-        """
+    """)
+    op.execute("""
         CREATE POLICY rls_factory_isolation ON audit_logs
         FOR ALL USING (
             _rls_tenant_id() IS NULL
@@ -158,16 +150,13 @@ def upgrade() -> None:
                 AND factory_id = current_setting('app.current_factory_id')::text
             )
         );
-        """
-    )
-    print("  ✓ Recreated RLS policies on audit_logs (org + factory isolation).")
-    print("  ✓ Converted audit_logs to partitioned table by RANGE (timestamp).")
+    """)
+    print("  ✓ Recreated RLS policies on audit_logs.")
 
-    # ── Step 4: Create monthly partitions for current + next 6 months ──
+    # ── Step 6: Create monthly partitions ────────────────────────────
     current_year = now.year
     current_month = now.month
-
-    for offset in range(7):  # current month + 6 months
+    for offset in range(7):
         m = current_month + offset
         y = current_year + (m - 1) // 12
         m = ((m - 1) % 12) + 1
@@ -175,7 +164,7 @@ def upgrade() -> None:
 
     print("  ✓ Created monthly partitions for current + 6 months.")
 
-    # ── Step 5: Create helper function for auto-creating partitions ────
+    # ── Step 7: Create partition manager function ────────────────────
     op.execute("""
         CREATE OR REPLACE FUNCTION audit_partition_manager(target_date date DEFAULT CURRENT_DATE)
         RETURNS void
@@ -189,14 +178,11 @@ def upgrade() -> None:
         BEGIN
             year := EXTRACT(YEAR FROM target_date);
             month := EXTRACT(MONTH FROM target_date);
-
-            -- Create partition for the target month
             part_name := 'audit_logs_' || year || '_' || LPAD(month::text, 2, '0');
             bound := CASE
                 WHEN month = 12 THEN (year + 1) || '-01-01'
                 ELSE year || '-' || LPAD((month + 1)::text, 2, '0') || '-01'
             END;
-
             EXECUTE format(
                 'CREATE TABLE IF NOT EXISTS %I PARTITION OF audit_logs '
                 'FOR VALUES FROM (%L) TO (%L)',
@@ -207,30 +193,29 @@ def upgrade() -> None:
         END;
         $$;
     """)
-
     print("  ✓ Created audit_partition_manager() helper function.")
 
-    # ── Step 6: Recreate indexes on the partitioned table ──────────────
+    # ── Step 8: Recreate indexes ─────────────────────────────────────
     op.create_index("ix_audit_logs_user_id", "audit_logs", ["user_id"])
     op.create_index("ix_audit_logs_org_id", "audit_logs", ["org_id"])
     op.create_index("ix_audit_logs_factory_id", "audit_logs", ["factory_id"])
     op.create_index("ix_audit_logs_timestamp", "audit_logs", ["timestamp"])
-    op.create_index("ix_audit_logs_factory_action", "audit_logs", ["factory_id", "action"])
+    op.create_index(
+        "ix_audit_logs_factory_action", "audit_logs", ["factory_id", "action"]
+    )
 
     print("  ✓ Recreated indexes on partitioned audit_logs.")
-    print("  ✓ Partitioning setup complete.")
+    print("  ✓ Partitioning recovery complete.")
 
 
 def downgrade() -> None:
     bind = op.get_bind()
     if not _dialect_is_postgresql(bind):
-        print("  ⚠ Skipping audit_logs partitioning downgrade on non-PostgreSQL.")
+        print("  ⚠ Skipping audit_logs partitioning downgrade — not PostgreSQL.")
         return
 
-    print("  ✓ PostgreSQL detected — reverting audit_logs partitioning.")
+    print("  ✓ Reverting audit_logs partitioning.")
 
-    # Detach all partitions and merge back into a regular table
-    # First, get all partition names
     op.execute("""
         DO $$
         DECLARE
@@ -247,27 +232,19 @@ def downgrade() -> None:
         $$;
     """)
 
-    # Create a new regular table
     op.execute("""
         CREATE TABLE audit_logs_old (LIKE audit_logs INCLUDING ALL);
     """)
 
-    # Insert data from all partitions
     op.execute("""
         INSERT INTO audit_logs_old SELECT * FROM audit_logs;
     """)
 
-    # Drop partitioned table
     op.execute("DROP TABLE audit_logs CASCADE;")
-
-    # Rename old table back
     op.execute("ALTER TABLE audit_logs_old RENAME TO audit_logs;")
 
-    # Restore PK to (id) only
     op.execute("ALTER TABLE audit_logs DROP CONSTRAINT audit_logs_pkey;")
     op.execute("ALTER TABLE audit_logs ADD CONSTRAINT audit_logs_pkey PRIMARY KEY (id);")
 
-    # Drop the helper function
     op.execute("DROP FUNCTION IF EXISTS audit_partition_manager();")
-
     print("  ✓ Partitioning reverted. audit_logs is a regular table again.")
