@@ -12,6 +12,8 @@ cryptography
 email-validator
 httpx
 python-dotenv
+pydantic
+pydantic-settings
 pandas
 openpyxl
 reportlab
