@@ -23,6 +23,7 @@ import {
   previewOcrLogbook,
   stringifyOcrCell,
   getOcrConfidenceTier,
+  type OcrPreviewResult,
   type OcrTemplate,
   type OcrVerificationRecord,
   type OcrVerificationSavePayload,
@@ -60,6 +61,8 @@ import {
   type ReviewIssue,
   type ReviewIssueTone,
 } from "@/lib/ocr-review";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FileText, AlertTriangle, Pencil } from "lucide-react";
 import { DocumentTypeAdapter } from "@/components/workflow/layouts";
 
 const PREVIEW_LANGUAGES = ["eng", "auto", "eng+hin+mar"] as const;
@@ -1195,6 +1198,7 @@ if (loading) {
 
                         {/* ── Image viewer ── */}
                         {imageUrl ? (
+                          <div className={cn(mobileTab !== "document" && "hidden xl:block")}>
                           <Card className="overflow-hidden border-[var(--border-strong)]">
                             <CardHeader className="flex flex-row items-center justify-between gap-4">
                               <SectionHeading
@@ -1249,12 +1253,33 @@ if (loading) {
                               </div>
                             </CardContent>
                           </Card>
+                          </div>
                         ) : null}
+
+                        {/* ── Mobile tab bar ── */}
+                        <div className="xl:hidden">
+                          <Tabs value={mobileTab} onValueChange={(v) => setMobileTab(v as MobileReviewTab)}>
+                            <TabsList className="w-full">
+                              <TabsTrigger value="document" className="flex-1 gap-1.5">
+                                <FileText className="h-4 w-4" />
+                                Document
+                              </TabsTrigger>
+                              <TabsTrigger value="issues" className="flex-1 gap-1.5">
+                                <AlertTriangle className="h-4 w-4" />
+                                Issues
+                              </TabsTrigger>
+                              <TabsTrigger value="fix" className="flex-1 gap-1.5">
+                                <Pencil className="h-4 w-4" />
+                                Fix
+                              </TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                        </div>
 
                         {/* ── 2-column layout: issues + fix ── */}
                         <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
                           {/* Left: Issues panel */}
-                          <div className="min-w-0 space-y-4">
+                          <div className={cn("min-w-0 space-y-4", mobileTab !== "issues" && "hidden xl:block")}>
                             <Card className="border-[var(--border-strong)]">
                               <CardHeader>
                                 <SectionHeading
@@ -1655,7 +1680,7 @@ if (loading) {
                           </div>
 
                           {/* Right: Fix fields */}
-                          <div className="space-y-4">
+                          <div className={cn("space-y-4", mobileTab !== "fix" && "hidden xl:block")}>
                             <Card className="border-[var(--border-strong)]">
                               <CardHeader className="flex flex-col gap-3">
                                 <SectionHeading
@@ -1748,134 +1773,6 @@ if (loading) {
                                    }}
                                    className="border-[var(--border-strong)]"
                                  />
-                                        const confidence =
-                                          activeRecord?.cell_confidence?.[
-                                            issue.rowIndex
-                                          
-                                        
-                                          
-                                            issue.columnIndex
-                                          
-
-
-                                            issue.key,
-                                          );
-                                        return (
-                                          <div
-                                            key={issue.key}
-                                            className={cn(
-                                              "rounded-[1.35rem] border px-4 py-4",
-                                              activeIssue?.key === issue.key
-                                                ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(62,166,255,0.12),rgba(62,166,255,0.05))]"
-                                                : "border-[var(--border)] bg-[var(--card-strong)]",
-                                            )}
-                                          >
-                                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                              <div className="flex flex-wrap items-center gap-2">
-                                                <span
-                                                  className={cn(
-                                                    "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label",
-                                                    signalTone(issue.tone),
-                                                  )}
-                                                >
-                                                  {issue.tone}
-                                                </span>
-                                                <span className="text-xs text-[var(--muted)]">
-                                                  Row {issue.rowIndex + 1}
-                                                </span>
-                                                <span
-                                                  className={cn(
-                                                    "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label",
-                                                    confidenceBadgeClass(
-                                                      confidence,
-                                                    ),
-                                                  )}
-                                                >
-                                                  {confidenceLabel(confidence)}
-                                                </span>
-                                              </div>
-                                              <div className="flex gap-2">
-                                                {resolved ? (
-                                                  <div className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-2 text-[11px] font-semibold uppercase tracking-label text-emerald-100">
-                                                    Checked
-                                                  </div>
-                                                ) : (
-                                                  <Button
-                                                    variant="outline"
-                                                    className="px-3 py-2 text-xs"
-                                                    onClick={() =>
-                                                      setResolvedIssueKeys(
-                                                        (keys) =>
-                                                          keys.includes(
-                                                            issue.key,
-                                                          )
-                                                            ? keys
-                                                            : [
-                                                                ...keys,
-
-                                                              ],
-                                                      )
-                                                    }
-                                                    disabled={isBusy}
-                                                  >
-                                                    Mark checked
-                                                  </Button>
-                                                )}
-                                              </div>
-                                            </div>
-                                            <div className="mt-3">
-                                              <div className="relative">
-                                                <Input
-                                                  id={`ocr-cell-${issue.rowIndex}-${issue.columnIndex}`}
-                                                  value={value}
-                                                  title={confidenceLabel(
-                                                    confidence,
-                                                  )}
-                                                  onChange={(event) => {
-                                                    setDraftRows((current) =>
-                                                      current.map(
-                                                        (row, ri) =>
-                                                          ri ===
-
-                                                            ? row.map(
-                                                                (cell, ci) =>
-                                                                  ci ===
-
-                                                                    ? event
-                                                                        .target
-                                                                        .value
-                                                                    : cell,
-                                                              )
-                                                            : row,
-                                                      ),
-                                                    );
-                                                    setDirty(true);
-                                                  }}
-                                                  className={cn(
-                                                    cellInputClass(
-                                                      value,
-                                                      confidence,
-                                                    ),
-                                                    activeIssue?.key ===
-                                                      issue.key &&
-                                                      "border-cyan-400/60 ring-2 ring-cyan-400/30",
-                                                    "pr-20",
-                                                  )}
-                                                />
-                                                <ConfidenceBadge
-                                                  confidence={confidence}
-                                                />
-                                              </div>
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                  </div>
-                                ) : (
-                                  <div className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                                    No flagged fields need direct correction right now.
-                                  </div>
-                                )}
 
                                 {/* Full table */}
                                 {showAllRows ? (
@@ -1930,10 +1827,7 @@ if (loading) {
                                             </td>
                                             {headers.map(
                                               (header, columnIndex) => {
-
-
-                                                    rowIndex
-                                                  ]?.[columnIndex];
+                                                const confidence = activeRecord?.cell_confidence?.[rowIndex]?.[columnIndex];
                                                 const isActive =
                                                   activeIssue?.rowIndex ===
                                                     rowIndex &&

@@ -147,7 +147,7 @@ export function SectionedTableLayout({
                   <table className="min-w-full text-left text-sm">
                     <thead className="bg-[var(--card-strong)] border-b border-[var(--border)] text-[var(--muted)]">
                       <tr>
-                        <th className="px-3 py-2 font-medium w-10">#">#</th>
+                        <th className="px-3 py-2 font-medium w-10">#</th>
                         {headers.map((header, colIndex) => (
                           <th key={colIndex} className="px-3 py-2 font-medium">
                             <input

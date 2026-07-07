@@ -14,6 +14,8 @@ import {
   type OcrVerificationRecord,
 } from "@/lib/ocr";
 
+export { stringifyOcrCell };
+
 /* ── Types ─────────────────────────────────────────────── */
 
 export type ReviewIssueTone = "critical" | "warning" | "info";
