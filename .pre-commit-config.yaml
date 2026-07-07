@@ -1,0 +1,54 @@
+# pre-commit-config.yaml
+# Install: pip install pre-commit && pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: detect-private-key
+
+  # ── Python type checking ─────────────────────────────
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        name: mypy (backend)
+        files: ^backend/
+        args:
+          - --ignore-missing-imports
+          - --warn-unused-configs
+          - --disallow-any-unimported
+          - --no-implicit-optional
+          - --warn-redundant-casts
+          - --warn-unused-ignores
+        additional_dependencies:
+          - pydantic
+          - sqlalchemy>=2.0
+          - fastapi>=0.100
+          - types-PyYAML
+        # Exclude tests and migrations from mypy for now
+        exclude: ^(tests/|alembic/)
+
+  # ── Migration lint ──────────────────────────────────
+  - repo: local
+    hooks:
+      - id: lint-migrations
+        name: Lint Alembic migrations
+        entry: python scripts/lint_migrations.py
+        language: system
+        files: ^alembic/versions/
+        pass_filenames: false
+
+      - id: check-deps
+        name: Check requirements.txt vs imports
+        entry: python scripts/check_deps.py
+        language: system
+        files: ^(requirements\.txt|backend/|scripts/|alembic/)
+        pass_filenames: false

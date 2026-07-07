@@ -50,6 +50,8 @@ rq
 
 # Optional: QR code generation in PDF exports
 qrcode[pil]>=7.4
+pdf2image
+slowapi
 
 # Dev / Testing (not in production requirements.txt)
 # streamlit
