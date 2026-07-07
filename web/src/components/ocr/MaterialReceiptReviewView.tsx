@@ -82,11 +82,11 @@ export function MaterialReceiptReviewView({
   }, [layoutMode]);
 
   const handleChange = (fieldPath: string, value: any) => {
-    setEditedData(prev => setNestedValue(prev, fieldPath, value));
+    setEditedData((prev: Record<string, any>) => setNestedValue(prev, fieldPath, value));
   };
 
   const handleCellChange = (rowIndex: number, colIndex: number, value: string) => {
-    setEditedData(prev => ({
+    setEditedData((prev: Record<string, any>) => ({
       ...prev,
       rows: (prev.rows || []).map((row: any[], i: number) =>
         i === rowIndex ? row.map((cell: any, j: number) => j === colIndex ? value : cell) : row

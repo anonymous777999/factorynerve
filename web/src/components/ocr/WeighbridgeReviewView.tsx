@@ -29,7 +29,7 @@ export function WeighbridgeReviewView({
   const [editedData, setEditedData] = useState(data.extraction || {});
 
   const handleChange = (fieldPath: string, value: any) => {
-    setEditedData(prev => {
+    setEditedData((prev: Record<string, any>) => {
       const keys = fieldPath.split(".");
       if (keys.length === 1) {
         return { ...prev, [keys[0]]: value };
@@ -221,7 +221,6 @@ export function WeighbridgeReviewView({
         <Button 
           onClick={() => onSubmit(0)} // In real app, we'd pass the actual ID
           className="bg-primary text-primary-foreground"
-          isLoading={false}
         >
           Submit for Approval
         </Button>

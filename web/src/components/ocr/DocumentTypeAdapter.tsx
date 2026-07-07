@@ -28,7 +28,15 @@ import { KeyValueFormLayout } from "@/components/workflow/layouts/KeyValueFormLa
 import { MessageListLayout } from "@/components/workflow/layouts/MessageListLayout";
 import { determineLayout, type LayoutMode } from "@/lib/adaptive-layout";
 
-const COMPONENT_REGISTRY: Record<string, React.ComponentType<{data: OcrPreviewResult}>> = {
+type ViewComponentProps = {
+  data: OcrPreviewResult;
+  onSave: (payload: any) => void;
+  onSubmit: (id: number) => void;
+  onApprove: (id: number) => void;
+  onReject: (id: number, reason: string) => void;
+};
+
+const COMPONENT_REGISTRY: Record<string, React.ComponentType<ViewComponentProps>> = {
   gst_invoice: InvoiceReviewView,
   delivery_note: DeliveryNoteReviewView,
   weighbridge_slip: WeighbridgeReviewView,
@@ -84,7 +92,7 @@ export function DocumentTypeAdapter({
           <h2 className="text-lg font-semibold">{config?.display_name || "OCR Result"}</h2>
           <p className="text-sm text-[var(--muted)]">
             {config?.category ? `Category: ${config.category}` : ""}
-            {data.validation?.errors?.length && ` • ${data.validation.errors.length} validation errors`}
+            {data.validation?.errors?.length ? ` • ${data.validation.errors.length} validation errors` : ""}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-2">
@@ -97,10 +105,10 @@ export function DocumentTypeAdapter({
       </div>
       
       {/* Validation Errors Banner */}
-      {data.validation?.errors?.length > 0 && (
+      {data.validation != null && data.validation.errors.length > 0 && (
         <ErrorBanner 
           errors={data.validation.errors}
-          warnings={data.validation.warnings}
+          warnings={data.validation.warnings ?? []}
         />
       )}
       
@@ -114,7 +122,7 @@ export function DocumentTypeAdapter({
       />
       
       {/* Downstream Actions */}
-      {config?.downstream_actions?.length > 0 && (
+      {config?.downstream_actions != null && config.downstream_actions.length > 0 && (
         <DownstreamActionsPanel 
           actions={config.downstream_actions}
           data={data.extraction}

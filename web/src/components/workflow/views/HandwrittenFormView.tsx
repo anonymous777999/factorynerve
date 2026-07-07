@@ -32,7 +32,7 @@ function extractFormFields(data: OcrPreviewResult): FormField[] {
       headers.forEach((header, colIndex) => {
         const cell = row[colIndex];
         const value = stringifyOcrCell(cell);
-        const confidence = cell && typeof cell === "object" ? cell.confidence : undefined;
+        const confidence = cell && typeof cell === "object" ? (cell.confidence ?? undefined) : undefined;
         fields.push({ label: header, value, confidence, rowIndex, colIndex });
       });
     });
@@ -43,7 +43,7 @@ function extractFormFields(data: OcrPreviewResult): FormField[] {
       if (keyCell) {
         const key = stringifyOcrCell(keyCell);
         const value = stringifyOcrCell(valueCell || "");
-        const confidence = valueCell && typeof valueCell === "object" ? valueCell.confidence : undefined;
+        const confidence = valueCell && typeof valueCell === "object" ? (valueCell.confidence ?? undefined) : undefined;
         fields.push({ label: key, value, confidence, rowIndex, colIndex: 1 });
       }
     });
@@ -51,7 +51,7 @@ function extractFormFields(data: OcrPreviewResult): FormField[] {
     rows.forEach((row, rowIndex) => {
       row.forEach((cell, colIndex) => {
         const value = stringifyOcrCell(cell);
-        const confidence = cell && typeof cell === "object" ? cell.confidence : undefined;
+        const confidence = cell && typeof cell === "object" ? (cell.confidence ?? undefined) : undefined;
         fields.push({ label: `Field ${colIndex + 1}`, value, confidence, rowIndex, colIndex });
       });
     });

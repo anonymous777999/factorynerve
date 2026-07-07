@@ -68,7 +68,7 @@ function extractLedgerEntries(data: OcrPreviewResult): LedgerRow[] {
         
         // Get confidence from one of the cells (prefer amount columns)
         const confidenceCell = [debitCell, creditCell, balanceCell].find(c => c) || particularsCell;
-        const confidence = confidenceCell && typeof confidenceCell === "object" ? confidenceCell.confidence : undefined;
+        const confidence = confidenceCell && typeof confidenceCell === "object" ? (confidenceCell.confidence ?? undefined) : undefined;
 
         entries.push({
           date,
@@ -116,7 +116,7 @@ function extractLedgerEntries(data: OcrPreviewResult): LedgerRow[] {
         // In a real implementation, this would come from the data
         
         // Get confidence from amount cell
-        const confidence = amountCell && typeof amountCell === "object" ? amountCell.confidence : undefined;
+        const confidence = amountCell && typeof amountCell === "object" ? (amountCell.confidence ?? undefined) : undefined;
 
         entries.push({
           date,

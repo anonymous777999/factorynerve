@@ -38,7 +38,7 @@ function extractChatMessages(data: OcrPreviewResult): ChatMessage[] {
         const sender = senderCell ? stringifyOcrCell(senderCell) : "Unknown";
         const timestamp = timestampCell ? stringifyOcrCell(timestampCell) : "";
         const content = stringifyOcrCell(contentCell);
-        const confidence = contentCell && typeof contentCell === "object" ? contentCell.confidence : undefined;
+        const confidence = contentCell && typeof contentCell === "object" ? (contentCell.confidence ?? undefined) : undefined;
         messages.push({ sender, timestamp, content, confidence, rawRowIndex: rowIndex });
       }
     });
@@ -49,7 +49,7 @@ function extractChatMessages(data: OcrPreviewResult): ChatMessage[] {
       if (secondCell) {
         const first = firstCell ? stringifyOcrCell(firstCell) : "Unknown";
         const content = stringifyOcrCell(secondCell);
-        const confidence = secondCell && typeof secondCell === "object" ? secondCell.confidence : undefined;
+        const confidence = secondCell && typeof secondCell === "object" ? (secondCell.confidence ?? undefined) : undefined;
 
         const timestampMatch = first.match(/^(\d{1,2}[:/]\d{1,2}([:/]\d{1,2})?\s*(AM|PM)?|\d{4}-\d{2}-\d{2}[T\s]\d{2}:\d{2})/i);
         let sender = first;
@@ -66,7 +66,7 @@ function extractChatMessages(data: OcrPreviewResult): ChatMessage[] {
       const cell = row[0];
       if (cell) {
         const content = stringifyOcrCell(cell);
-        const confidence = cell && typeof cell === "object" ? cell.confidence : undefined;
+        const confidence = cell && typeof cell === "object" ? (cell.confidence ?? undefined) : undefined;
         messages.push({ sender: "Unknown", timestamp: "", content, confidence, rawRowIndex: rowIndex });
       }
     });

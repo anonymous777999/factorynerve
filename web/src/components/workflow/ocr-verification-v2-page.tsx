@@ -57,6 +57,7 @@ import {
   impactLabel,
   impactTone,
   signalTone,
+  statusBadgeClass,
   type MobileReviewTab,
   type ReviewIssue,
   type ReviewIssueTone,
@@ -1751,7 +1752,7 @@ if (loading) {
 
 {/* Editable issues in focus */}
                                  <DocumentTypeAdapter
-                                   data={activeRecord as OcrPreviewResult}
+                                   data={activeRecord as unknown as OcrPreviewResult}
                                    onCellChange={(rowIndex, colIndex, value) => {
                                      setDraftRows((current) => {
                                        const newRows = [...current];

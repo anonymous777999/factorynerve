@@ -22,7 +22,7 @@ export function ChatTranscriptReviewView({
   const [editedData, setEditedData] = useState(data.extraction || {});
 
   const handleCellChange = (rowIndex: number, colIndex: number, value: string) => {
-    setEditedData(prev => ({
+    setEditedData((prev: Record<string, any>) => ({
       ...prev,
       rows: (prev.rows || []).map((row: any[], i: number) =>
         i === rowIndex ? row.map((cell: any, j: number) => j === colIndex ? value : cell) : row

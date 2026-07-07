@@ -57,7 +57,7 @@ export function GenericTableReviewView({
   };
 
   const addRow = () => {
-    setEditedData(prev => {
+    setEditedData((prev: { headers: string[]; rows: any[] }) => {
       const newRows = [...prev.rows];
       newRows.push(new Array(prev.headers.length).fill(""));
       return { ...prev, rows: newRows };
@@ -65,7 +65,7 @@ export function GenericTableReviewView({
   };
 
   const deleteRow = (rowIndex: number) => {
-    setEditedData(prev => {
+    setEditedData((prev: { headers: string[]; rows: any[] }) => {
       const newRows = [...prev.rows];
       newRows.splice(rowIndex, 1);
       return { ...prev, rows: newRows };
@@ -73,7 +73,7 @@ export function GenericTableReviewView({
   };
 
   const addColumn = () => {
-    setEditedData(prev => {
+    setEditedData((prev: { headers: string[]; rows: any[] }) => {
       const newHeaders = [...prev.headers, "New Column"];
       const newRows = prev.rows.map(row => [...row, ""]);
       return { 
@@ -84,7 +84,7 @@ export function GenericTableReviewView({
   };
 
   const deleteColumn = (colIndex: number) => {
-    setEditedData(prev => {
+    setEditedData((prev: { headers: string[]; rows: any[] }) => {
       const newHeaders = [...prev.headers];
       newHeaders.splice(colIndex, 1);
       const newRows = prev.rows.map(row => {
@@ -108,14 +108,12 @@ export function GenericTableReviewView({
             <div className="flex items-center gap-2">
               <Button 
                 variant="outline"
-                size="sm"
                 onClick={addColumn}
               >
                 Add Column
               </Button>
               <Button 
                 variant="outline"
-                size="sm"
                 onClick={addRow}
               >
                 Add Row
@@ -137,9 +135,8 @@ export function GenericTableReviewView({
                       className="flex-1 min-w-[100px]"
                     />
                     <Button 
-                      variant="destructive"
-                      outline
-                      size="sm"
+                      variant="outline"
+                      className="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100"
                       onClick={() => deleteColumn(index)}
                       disabled={editedData.headers.length <= 1}
                     >
@@ -150,7 +147,6 @@ export function GenericTableReviewView({
                 {/* Add column button at the end */}
                 <Button 
                   variant="outline"
-                  size="sm"
                   onClick={addColumn}
                 >
                   +
@@ -178,7 +174,7 @@ export function GenericTableReviewView({
                     {row.map((cell, colIndex) => (
                       <TableCell key={colIndex} className="p-3">
                         <Input 
-                          value={cell || ""}
+                          value={typeof cell === "object" ? (cell.value || "") : String(cell || "")}
                           onChange={(e) => handleCellChange(rowIndex, colIndex, e.target.value)}
                           className="w-full"
                         />
@@ -187,7 +183,6 @@ export function GenericTableReviewView({
                     <TableCell className="p-3 space-x-2">
                       <Button 
                         variant="outline"
-                        size="sm"
                         onClick={() => {
                           // Add row above/below logic would go here
                         }}
@@ -195,9 +190,8 @@ export function GenericTableReviewView({
                         Add Row
                       </Button>
                       <Button 
-                        variant="destructive"
-                        outline
-                        size="sm"
+                        variant="outline"
+                        className="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100"
                         onClick={() => deleteRow(rowIndex)}
                       >
                         Delete
@@ -215,7 +209,6 @@ export function GenericTableReviewView({
                   <td className="p-3 text-center">
                     <Button 
                       variant="outline"
-                      size="sm"
                       onClick={addRow}
                     >
                       Add Row
@@ -238,11 +231,9 @@ export function GenericTableReviewView({
         </Button>
         <Button 
           onClick={() => onSubmit(0)} // In real app, we'd pass the actual ID
-          className="bg-primary text-primary-foreground"
-          isLoading={false}
-        >
-          Submit for Approval
-        </Button>
+          className="bg-primary text-primary-foreground"                        >
+                          Submit for Approval
+                        </Button>
       </div>
     </div>
   );

@@ -185,6 +185,14 @@ export type OcrPreviewResult = {
     heuristics_applied?: string[];
     grouping_strategy?: string;
   };
+  // Extraction data for structured document views
+  extraction?: Record<string, any>;
+  validation?: {
+    warnings: string[];
+    errors: string[];
+    status: "valid" | "warning" | "error";
+  };
+
   // NEW: Document classification metadata
   doc_type_hint?: string | null;
   classification?: {

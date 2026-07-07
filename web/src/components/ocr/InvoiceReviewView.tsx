@@ -39,7 +39,7 @@ export function InvoiceReviewView({
   const validationErrors = []; // Placeholder
 
   const handleChange = (fieldPath: string, value: any) => {
-    setEditedData(prev => {
+    setEditedData((prev: Record<string, any>) => {
       const keys = fieldPath.split(".");
       if (keys.length === 1) {
         return { ...prev, [keys[0]]: value };
@@ -198,7 +198,6 @@ export function InvoiceReviewView({
                       <td className="px-4 py-3 space-x-2">
                         <Button 
                           variant="outline"
-                          size="sm"
                           onClick={() => {
                             // Add row logic would go here
                           }}
@@ -206,9 +205,8 @@ export function InvoiceReviewView({
                           Add Above
                         </Button>
                         <Button 
-                          variant="destructive"
-                          outline
-                          size="sm"
+                          variant="outline"
+                          className="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100"
                           onClick={() => {
                             // Remove row logic would go here
                           }}
@@ -220,7 +218,7 @@ export function InvoiceReviewView({
                   ))}
                   {/* Add new row button */}
                   <tr>
-                    <td colSpan="8" className="px-4 py-3 text-center">
+                    <td colSpan={8} className="px-4 py-3 text-center">
                       <Button 
                         variant="outline"
                         onClick={() => {
@@ -340,11 +338,9 @@ export function InvoiceReviewView({
         </Button>
         <Button 
           onClick={() => onSubmit(0)} // In real app, we'd pass the actual ID
-          className="bg-primary text-primary-foreground"
-          isLoading={false}
-        >
-          Submit for Approval
-        </Button>
+          className="bg-primary text-primary-foreground"                        >
+                          Submit for Approval
+                        </Button>
       </div>
     </div>
   );

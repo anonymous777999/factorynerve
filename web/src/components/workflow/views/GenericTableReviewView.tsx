@@ -99,9 +99,9 @@ export function GenericTableReviewView({
                       {localHeaders.map((_header, colIndex) => {
                         const value = row[colIndex] || "";
                         let confidence: number | undefined;
-                        if (rows[rowIndex] && rows[rowIndex][colIndex] &&
-                            typeof rows[rowIndex][colIndex] === "object") {
-                          confidence = (rows[rowIndex][colIndex] as OcrCell).confidence;
+                        const rawCell = rows[rowIndex]?.[colIndex];
+                        if (rawCell && typeof rawCell === "object" && "confidence" in rawCell) {
+                          confidence = (rawCell as { confidence?: number | null }).confidence ?? undefined;
                         }
 
                         return (
