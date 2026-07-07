@@ -29,6 +29,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import text
+
 from backend.database import SessionLocal
 
 logger = logging.getLogger(__name__)
@@ -78,16 +80,16 @@ def _get_audit_partitions() -> list[dict[str, Any]]:
     try:
         with SessionLocal() as db:
             rows = db.execute(
-                """
-                SELECT
-                    inhrelid::regclass::text AS partition_name,
-                    pg_get_expr(relpartbound, inhrelid) AS partition_bound
-                FROM pg_catalog.pg_inherits
-                JOIN pg_catalog.pg_class ON pg_class.oid = inhrelid
-                WHERE inhparent = 'audit_logs'::regclass
-                  AND relkind = 'p'  -- partitioned table partitions
-                ORDER BY partition_name
-                """
+                text("""
+                    SELECT
+                        inhrelid::regclass::text AS partition_name,
+                        pg_get_expr(relpartbound, inhrelid) AS partition_bound
+                    FROM pg_catalog.pg_inherits
+                    JOIN pg_catalog.pg_class ON pg_class.oid = inhrelid
+                    WHERE inhparent = 'audit_logs'::regclass
+                      AND relkind = 'p'  -- partitioned table partitions
+                    ORDER BY partition_name
+                """)
             ).fetchall()
             for row in rows:
                 partitions.append({
@@ -104,7 +106,7 @@ def _create_audit_partition(target_date: datetime) -> bool:
     try:
         with SessionLocal() as db:
             db.execute(
-                "SELECT audit_partition_manager(:target_date)",
+                text("SELECT audit_partition_manager(:target_date)"),
                 {"target_date": target_date.date()},
             )
             db.commit()
@@ -146,7 +148,7 @@ def _export_partition_to_csv(partition_name: str) -> Path | None:
     try:
         with SessionLocal() as db:
             rows = db.execute(
-                f"SELECT * FROM {partition_name} ORDER BY id"
+                text(f"SELECT * FROM {partition_name} ORDER BY id")
             ).fetchall()
 
             if not rows:
@@ -175,8 +177,8 @@ def _detach_and_drop_partition(partition_name: str) -> bool:
     """
     try:
         with SessionLocal() as db:
-            db.execute(f"ALTER TABLE audit_logs DETACH PARTITION {partition_name};")
-            db.execute(f"DROP TABLE IF EXISTS {partition_name};")
+            db.execute(text(f"ALTER TABLE audit_logs DETACH PARTITION {partition_name};"))
+            db.execute(text(f"DROP TABLE IF EXISTS {partition_name};"))
             db.commit()
             logger.info("Detached and dropped partition %s.", partition_name)
             return True
