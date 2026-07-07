@@ -115,24 +115,6 @@ jobs:
           kill $SERVER_PID 2>/dev/null || true
           wait $SERVER_PID 2>/dev/null || true
 
-  # ── Deploy preview to Render (PR only) ──────────────────
-  deploy-preview:
-    if: github.event_name == 'pull_request'
-    needs: [backend-checks, frontend-quality]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Trigger Render preview deploy
-        run: |
-          echo "Deploying PR #${{ github.event.number }} to Render preview..."
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-
-      - name: Wait for preview deploy to complete
-        run: |
-          echo "Preview deploy triggered. Check the Render dashboard for status."
-          echo "https://dashboard.render.com/web/$(echo '${{ secrets.RENDER_DEPLOY_HOOK_URL }}' | grep -oP 'srv-[a-z0-9]+')"
-
   # ── Frontend quality ─────────────────────────────────
   frontend-quality:
     runs-on: ubuntu-latest
