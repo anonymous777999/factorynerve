@@ -115,6 +115,27 @@ jobs:
           kill $SERVER_PID 2>/dev/null || true
           wait $SERVER_PID 2>/dev/null || true
 
+  # ── Deploy to Render production (main branch only) ──────
+  deploy-production:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend-checks, frontend-quality]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        run: |
+          echo "All checks passed. Triggering production deploy..."
+          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+
+      - name: Print deploy status link
+        run: |
+          echo "Deploy triggered! Monitor at:"
+          echo "https://dashboard.render.com/web/srv-dashboard"
+          echo ""
+          echo "Note: Requires RENDER_DEPLOY_HOOK_URL secret to be set in GitHub."
+          echo "See: https://github.com/${{ github.repository }}/settings/secrets/actions"
+
   # ── Frontend quality ─────────────────────────────────
   frontend-quality:
     runs-on: ubuntu-latest
