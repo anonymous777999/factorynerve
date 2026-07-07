@@ -124,17 +124,13 @@ jobs:
       - name: Trigger Render Deploy Hook
         run: |
           echo "All checks passed. Triggering production deploy..."
-          curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
-        env:
-          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
-
-      - name: Print deploy status link
-        run: |
-          echo "Deploy triggered! Monitor at:"
-          echo "https://dashboard.render.com/web/srv-dashboard"
-          echo ""
-          echo "Note: Requires RENDER_DEPLOY_HOOK_URL secret to be set in GitHub."
-          echo "See: https://github.com/${{ github.repository }}/settings/secrets/actions"
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}")
+          echo "Deploy hook responded with HTTP $HTTP_CODE"
+          if [ "$HTTP_CODE" -ne 200 ] && [ "$HTTP_CODE" -ne 202 ]; then
+            echo "  [FAIL] Deploy hook failed — check RENDER_DEPLOY_HOOK_URL secret"
+            exit 1
+          fi
+          echo "  [PASS] Deploy triggered successfully"
 
   # ── Frontend quality ─────────────────────────────────
   frontend-quality:
