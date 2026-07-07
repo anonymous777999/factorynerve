@@ -423,6 +423,44 @@ def _org_name_from_email(email: str) -> str:
     return "DPR.ai Org"
 
 
+def _ensure_auth_user(db: Session, user: User, now: datetime) -> None:
+    """Ensure an AuthUser record exists that matches the FK expected by AuthSession.
+
+    The production database was created via ``init_db() + stamp head``, which
+    bypassed migration ``20260705_05`` — the Auth Consolidation migration that
+    was supposed to backfill ``auth_users`` rows for every user.  As a result
+    the ``auth_users`` table exists but is empty, and ``create_session()``
+    fails with a FK violation because ``auth_sessions.auth_user_id`` references
+    ``auth_users.id``.
+
+    This helper ensures every Google-authenticated user has a matching
+    AuthUser record so the FK constraint is satisfied.
+    """
+    from backend.models.auth_user import AuthUser
+
+    existing = db.query(AuthUser).filter(AuthUser.email == user.email).first()
+    if existing:
+        # Update timestamps in case the record is stale
+        existing.updated_at = now
+        existing.is_active = True
+        db.add(existing)
+        db.flush()
+        return
+
+    auth_user = AuthUser(
+        id=str(user.id),
+        email=user.email,
+        password_hash=hash_password(secrets.token_urlsafe(32)),
+        is_active=True,
+        is_email_verified=True,
+        password_changed_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    db.add(auth_user)
+    db.flush()
+
+
 def get_or_create_google_user(
     db: Session,
     *,
@@ -432,19 +470,6 @@ def get_or_create_google_user(
     picture: str | None,
 ) -> tuple[User, str, str]:
     now = datetime.now(timezone.utc)
-    random_hash = hash_password(secrets.token_urlsafe(32))
-
-    def _ensure_user_auth_fields(auth_email: str) -> None:
-        """Ensure the User record has auth fields populated for v2 login."""
-        user_record = db.query(User).filter(User.email == auth_email).first()
-        if user_record:
-            if not user_record.password_changed_at:
-                user_record.password_changed_at = now
-            if not user_record.is_email_verified:
-                user_record.is_email_verified = True
-            if not user_record.updated_at:
-                user_record.updated_at = now
-            db.add(user_record)
 
     user = db.query(User).filter(User.google_id == google_id).first()
     if user:
@@ -459,6 +484,7 @@ def get_or_create_google_user(
         user.updated_at = now
         db.add(user)
         db.flush()
+        _ensure_auth_user(db, user, now)
         return user, user.org_id, _resolve_factory_id(db, user)
 
     user = db.query(User).filter(User.email == email).first()
@@ -475,6 +501,7 @@ def get_or_create_google_user(
             user.profile_picture = picture
         db.add(user)
         db.flush()
+        _ensure_auth_user(db, user, now)
         return user, user.org_id, _resolve_factory_id(db, user)
 
     org_name = _org_name_from_email(email)
@@ -513,6 +540,7 @@ def get_or_create_google_user(
         )
     )
     db.flush()
+    _ensure_auth_user(db, user, now)
     return user, org_id, factory_id
 
 
