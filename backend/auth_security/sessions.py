@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 from datetime import datetime, timezone, timedelta
 
 from fastapi import HTTPException, Request, Response, status
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from backend.models.auth_session import AuthSession
 from backend.models.user import User
+from backend.auth_security.passwords import hash_password
 from backend.auth_security.tokens import generate_token, hash_token
 from backend.utils import ensure_utc
 
@@ -66,9 +68,31 @@ def create_session(db: Session, *, user: User, request: Request, response: Respo
     token_hash = hash_token(raw_token)
     csrf_hash = hash_token(csrf_token)
     now = datetime.now(timezone.utc)
+
+    # Look up the actual AuthUser record by email to satisfy the FK constraint
+    # on auth_sessions.auth_user_id -> auth_users.id.  The production database
+    # was created via init_db() + stamp head which bypassed the Auth
+    # Consolidation migration (20260705_05) that normally populates auth_users.
+    from backend.models.auth_user import AuthUser
+    auth_user_record = db.query(AuthUser).filter(AuthUser.email == user.email).first()
+    if not auth_user_record:
+        # Defensive fallback: create AuthUser record if missing
+        auth_user_record = AuthUser(
+            id=str(user.id),
+            email=user.email,
+            password_hash=hash_password(secrets.token_urlsafe(32)),
+            is_active=True,
+            is_email_verified=True,
+            password_changed_at=user.password_changed_at or now,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(auth_user_record)
+        db.flush()
+
     session = AuthSession(
-        auth_user_id=str(user.id),  # Kept for backward compat during transition
-        user_id=user.id,             # New direct FK — primary lookup going forward
+        auth_user_id=auth_user_record.id,  # Use actual AuthUser ID (satisfies FK)
+        user_id=user.id,                     # New direct FK — primary lookup going forward
         token_hash=token_hash,
         csrf_hash=csrf_hash,
         created_at=now,
