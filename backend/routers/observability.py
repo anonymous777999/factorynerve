@@ -159,7 +159,7 @@ def _serialize_alert_row(row: OpsAlertEvent) -> OpsAlertHistoryItem:
 @router.get("/ready")
 def readiness_check(db: Session = Depends(get_db)) -> dict[str, Any]:
     db.execute(text("SELECT 1"))
-    metrics = metrics_snapshot(limit_paths=5)
+    metrics = metrics_snapshot()
     return {
         "status": "ready",
         "app": config.app_name,
