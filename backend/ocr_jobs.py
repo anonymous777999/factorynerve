@@ -23,9 +23,11 @@ from backend.ledger_scan import (
 )
 from backend.table_scan import build_table_excel_bytes, extract_table_from_image as table_extract_table_from_image
 from backend.database import SessionLocal
+from backend.middleware.rls_context import set_rls_context, clear_rls_context
 from backend.models.report import AuditLog
 from backend.services.ops_alerts import record_ocr_failure
 from backend.utils import PROJECT_ROOT
+from .metrics import OCR_JOBS_TOTAL, OCR_JOB_LATENCY
 
 
 logger = logging.getLogger(__name__)
@@ -163,19 +165,25 @@ def _log_job_success(job: OcrJob) -> None:
     size_bytes = job.params.get("size_bytes", 0)
     action = "OCR_LEDGER_EXCEL_ASYNC" if job.kind == "ledger" else "OCR_TABLE_EXCEL_ASYNC"
     details = f"{action} completed size_bytes={size_bytes}"
-    with SessionLocal() as db:
-        db.add(
-            AuditLog(
-                user_id=int(user_id),
-                org_id=org_id,
-                factory_id=factory_id,
-                action=action,
-                details=details,
-                ip_address=None,
-                timestamp=datetime.now(timezone.utc),
+    # Set RLS context for this background worker so the session inherits
+    # the correct tenant isolation via the PostgreSQL checkout event.
+    set_rls_context(org_id=org_id, user_id=int(user_id), factory_id=factory_id)
+    try:
+        with SessionLocal() as db:
+            db.add(
+                AuditLog(
+                    user_id=int(user_id),
+                    org_id=org_id,
+                    factory_id=factory_id,
+                    action=action,
+                    details=details,
+                    ip_address=None,
+                    timestamp=datetime.now(timezone.utc),
+                )
             )
-        )
-        db.commit()
+            db.commit()
+    finally:
+        clear_rls_context()
 
 
 def _split_pdf_to_single_image(pdf_bytes: bytes) -> bytes:
@@ -277,6 +285,7 @@ def _worker_loop() -> None:
             _queue.task_done()
             continue
         _update_job(job_id, status="running", error=None, attempts=job.attempts + 1)
+        start_time = time.time()
         try:
             if job.kind == "ledger":
                 _process_ledger(job)
@@ -285,8 +294,13 @@ def _worker_loop() -> None:
             else:
                 raise RuntimeError(f"Unknown job kind: {job.kind}")
             _update_job(job_id, status="completed")
+            _circuit_breaker_record_success()  # P2-4: Reset circuit on success
+            # Success metrics
+            OCR_JOBS_TOTAL.labels(status="success").inc()
+            OCR_JOB_LATENCY.labels(document_type=job.kind).observe(time.time() - start_time)
         except Exception as error:  # pylint: disable=broad-except
             logger.exception("OCR job failed: %s", job_id)
+            _circuit_breaker_record_failure()  # P2-4: Record failure for circuit breaker
             if job.attempts < job.max_attempts:
                 delay = OCR_JOB_RETRY_BACKOFF_SECONDS * (2 ** max(0, job.attempts - 1))
                 _update_job(job_id, status="retrying", error=str(error))
@@ -301,6 +315,9 @@ def _worker_loop() -> None:
                     attempts=job.attempts,
                     max_attempts=job.max_attempts,
                 )
+            # Failure metrics
+            OCR_JOBS_TOTAL.labels(status="failure").inc()
+            OCR_JOB_LATENCY.labels(document_type=job.kind if job else "unknown").observe(time.time() - start_time)
         finally:
             _queue.task_done()
 
@@ -322,6 +339,9 @@ def start_workers() -> None:
 def _save_jobs_to_disk() -> None:
     """Save all OCR job state to disk so jobs survive server restart.
 
+    Uses atomic write (temp file + rename) to prevent corruption if the
+    process crashes mid-write (P1-4).
+
     NOTE: Must be called while _jobs_lock is ALREADY held (callers include
     _update_job() and enqueue_job()).  Do NOT acquire the lock here or it
     will deadlock.
@@ -342,7 +362,10 @@ def _save_jobs_to_disk() -> None:
                 "metadata": job.metadata,
                 "params": job.params,
             }
-        _JOB_PERSIST_PATH.write_text(json_module.dumps(data), encoding="utf-8")
+    # Atomic write: write to .tmp then rename
+    tmp_path = _JOB_PERSIST_PATH.with_suffix(".tmp")
+    tmp_path.write_text(json_module.dumps(data), encoding="utf-8")
+    tmp_path.rename(_JOB_PERSIST_PATH)
 
 
 def _recover_jobs_on_startup() -> int:
@@ -390,29 +413,86 @@ def _recover_jobs_on_startup() -> int:
 
 
 # ── Circuit breaker: reject enqueue when recent failure rate is high ─────────
+# States: CLOSED (normal), OPEN (rejecting), HALF_OPEN (testing)
 _OCR_FAILURE_COUNTER: dict[str, int] = {}
 _OCR_FAILURE_WINDOW = 300  # 5 minutes
-_OCR_FAILURE_THRESHOLD = 20  # Reject after 20 failures in window
+_OCR_FAILURE_THRESHOLD = 20  # Open after 20 failures in window
+_OCR_HALF_OPEN_TIMEOUT = 60  # Wait 60 seconds before testing (P2-4)
+_OCR_CIRCUIT_STATE: str = "CLOSED"
+_OCR_CIRCUIT_OPENED_AT: float = 0.0
 
 
 def _circuit_breaker_allow() -> bool:
-    """Check if OCR circuit breaker allows new jobs."""
+    """Check if OCR circuit breaker allows new jobs (P2-4).
+
+    States:
+    - CLOSED: normal operation, allow all requests
+    - OPEN: rejecting all requests after too many failures
+    - HALF_OPEN: after a cooldown period, allow a single test request
+      to see if the underlying issue is resolved
+    """
+    global _OCR_CIRCUIT_STATE, _OCR_CIRCUIT_OPENED_AT  # noqa: PLW0603
     now = time.time()
-    cutoff = now - _OCR_FAILURE_WINDOW
-    # Simple approach: clear stale entries and count recent
-    stale_keys = [k for k, v in list(_OCR_FAILURE_COUNTER.items()) if v < cutoff]
-    for k in stale_keys:
-        del _OCR_FAILURE_COUNTER[k]
-    total = sum(1 for v in _OCR_FAILURE_COUNTER.values() if v >= cutoff)
-    return total < _OCR_FAILURE_THRESHOLD
+    
+    if _OCR_CIRCUIT_STATE == "CLOSED":
+        # Normal path: count recent failures
+        cutoff = now - _OCR_FAILURE_WINDOW
+        stale_keys = [k for k, v in list(_OCR_FAILURE_COUNTER.items()) if v < cutoff]
+        for k in stale_keys:
+            del _OCR_FAILURE_COUNTER[k]
+        total = sum(1 for v in _OCR_FAILURE_COUNTER.values() if v >= cutoff)
+        if total >= _OCR_FAILURE_THRESHOLD:
+            # Too many failures — open the circuit
+            _OCR_CIRCUIT_STATE = "OPEN"
+            _OCR_CIRCUIT_OPENED_AT = now
+            logger.warning(
+                "OCR circuit breaker OPEN after %s failures in %ss window",
+                total, _OCR_FAILURE_WINDOW,
+            )
+            return False
+        return True
+    
+    if _OCR_CIRCUIT_STATE == "OPEN":
+        # Check if cooldown has elapsed
+        if now - _OCR_CIRCUIT_OPENED_AT >= _OCR_HALF_OPEN_TIMEOUT:
+            _OCR_CIRCUIT_STATE = "HALF_OPEN"
+            logger.info("OCR circuit breaker HALF_OPEN — allowing test request")
+            return True  # Allow a single test request
+        return False
+    
+    # HALF_OPEN: We allowed a test request; the caller must record success
+    # or failure via the appropriate function.
+    return True
 
 
 def _circuit_breaker_record_failure() -> None:
+    """Record a failure and transition to OPEN if in HALF_OPEN state."""
+    global _OCR_CIRCUIT_STATE, _OCR_CIRCUIT_OPENED_AT  # noqa: PLW0603
     _OCR_FAILURE_COUNTER[uuid.uuid4().hex] = time.time()
+    if _OCR_CIRCUIT_STATE == "HALF_OPEN":
+        # Test request failed — back to OPEN
+        _OCR_CIRCUIT_STATE = "OPEN"
+        _OCR_CIRCUIT_OPENED_AT = time.time()
+        logger.warning("OCR circuit breaker HALF_OPEN test failed — back to OPEN")
+
+
+def _circuit_breaker_record_success() -> None:
+    """Record a success and reset the circuit to CLOSED."""
+    global _OCR_CIRCUIT_STATE, _OCR_CIRCUIT_OPENED_AT, _OCR_FAILURE_COUNTER  # noqa: PLW0603
+    if _OCR_CIRCUIT_STATE == "HALF_OPEN":
+        # Test request succeeded — reset the circuit
+        _OCR_CIRCUIT_STATE = "CLOSED"
+        _OCR_CIRCUIT_OPENED_AT = 0.0
+        _OCR_FAILURE_COUNTER.clear()
+        logger.info("OCR circuit breaker reset to CLOSED after successful test")
 
 
 def _circuit_breaker_reset() -> None:
+    """Force reset the circuit breaker to CLOSED."""
+    global _OCR_CIRCUIT_STATE, _OCR_CIRCUIT_OPENED_AT  # noqa: PLW0603
     _OCR_FAILURE_COUNTER.clear()
+    _OCR_CIRCUIT_STATE = "CLOSED"
+    _OCR_CIRCUIT_OPENED_AT = 0.0
 
 def enqueue_job(kind: str, image_bytes: bytes, params: dict[str, Any]) -> OcrJob:
     """Enqueue an OCR job for async processing.
@@ -426,6 +506,19 @@ def enqueue_job(kind: str, image_bytes: bytes, params: dict[str, Any]) -> OcrJob
     """
     _ensure_dirs()
     job_id = uuid.uuid4().hex
+
+    # --- Step 0: Circuit breaker check (P2-4) ---
+    # If the breaker is OPEN (too many recent failures), reject immediately
+    # to prevent cascading failures and wasted work.
+    if not _circuit_breaker_allow():
+        logger.warning(
+            "OCR enqueue rejected by circuit breaker for job_id=%s kind=%s",
+            job_id, kind,
+        )
+        raise RuntimeError(
+            "OCR service is temporarily unavailable due to high failure rate. "
+            "Please retry later."
+        )
 
     # --- Step 1: Claim a queue slot BEFORE touching disk ---
     # We put the job_id speculatively; if the queue is full we bail immediately

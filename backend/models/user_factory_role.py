@@ -15,7 +15,10 @@ from backend.models.user import UserRole
 class UserFactoryRole(Base):
     __tablename__ = "user_factory_roles"
     __table_args__ = (
-        UniqueConstraint("user_id", "factory_id", name="uq_user_factory"),
+        # FIX (DB-02): Added org_id to unique constraint. Previously only
+        # (user_id, factory_id) was unique, which could allow inconsistent
+        # data entry with different org_ids for the same user-factory pair.
+        UniqueConstraint("user_id", "factory_id", "org_id", name="uq_user_factory_role"),
         Index("ix_user_factory_roles_org_id", "org_id"),
     )
 

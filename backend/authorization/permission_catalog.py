@@ -860,16 +860,19 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
     ),
 }
 
-# Deduplicate permission keys that were accidentally added twice
-PERMISSION_CATALOG = {
-    k: v for k, v in sorted(PERMISSION_CATALOG.items(), key=lambda item: item[0])
-}
+# Deduplicate permission keys that were accidentally added twice.
+# NOTE: This should never happen — duplicate keys mean a programmer error.
+# We detect duplicates at startup and crash loudly with a clear message.
+_PERMISSION_KEYS_SEEN: set[str] = set()
+for _k in PERMISSION_CATALOG:
+    if _k in _PERMISSION_KEYS_SEEN:
+        raise ValueError(
+            f"Permission catalog has a duplicate key: '{_k}'. "
+            "Each permission key must be unique. Remove the duplicate definition."
+        )
+    _PERMISSION_KEYS_SEEN.add(_k)
 
-# Rebuild the dict to remove duplicate keys (last duplicate wins, but they should be identical)
-PERMISSION_CATALOG_UNIQUE: dict[str, PermissionDef] = {}
-for k, v in PERMISSION_CATALOG.items():
-    PERMISSION_CATALOG_UNIQUE[k] = v
-PERMISSION_CATALOG = PERMISSION_CATALOG_UNIQUE
+PERMISSION_CATALOG = dict(sorted(PERMISSION_CATALOG.items(), key=lambda item: item[0]))
 
 
 class PermissionCatalog:

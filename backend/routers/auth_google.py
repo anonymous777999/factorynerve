@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models.user_factory_role import UserFactoryRole
-from backend.models.auth_user import AuthUser
+from backend.models.user import User
 from backend.routers.auth import _log_auth_event, _resolve_active_factory_id
 from backend.auth_security.sessions import create_session
 from backend.auth_security.passwords import hash_password
@@ -38,13 +38,10 @@ def _jwt_sign(payload: dict) -> str:
 
 
 def _jwt_verify(token: str) -> dict:
-    """Verify a JWT trying RS256 first, then HS256 fallback."""
+    """Verify a JWT using the configured algorithm only (RS256 if RSA key available, else HS256)."""
     rsa_public = get_jwt_rsa_public_key()
     if rsa_public is not None:
-        try:
-            return jwt.decode(token, rsa_public, algorithms=["RS256"])
-        except Exception:
-            pass  # Fall through to HS256
+        return jwt.decode(token, rsa_public, algorithms=["RS256"])
     return jwt.decode(token, config.jwt_secret_key, algorithms=["HS256"])
 
 
@@ -224,24 +221,17 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
         factory_id=active_factory_id,
     )
 
-    # Find or create AuthUser record for v2 session
-    auth_user = db.query(AuthUser).filter(AuthUser.email == email, AuthUser.is_active.is_(True)).first()
-    if not auth_user:
-        # Create AuthUser with a random password hash (Google users don't log in with password)
-        import secrets as _secrets
-        random_password = _secrets.token_urlsafe(32)
-        auth_user = AuthUser(
-            email=email,
-            password_hash=hash_password(random_password),
-            is_active=True,
-            is_email_verified=True,
-            password_changed_at=datetime.now(timezone.utc),
-        )
-        db.add(auth_user)
-        db.flush()
+    # Ensure the User record has auth fields needed for v2 session
+    now = datetime.now(timezone.utc)
+    if not user.password_changed_at:
+        user.password_changed_at = now
+    user.is_email_verified = True
+    user.updated_at = now
+    db.add(user)
+    db.flush()
 
     final = _build_frontend_redirect(next_path)
     response = RedirectResponse(final)
-    create_session(db, user=auth_user, request=request, response=response, factory_id=active_factory_id)
+    create_session(db, user=user, request=request, response=response, factory_id=active_factory_id)
     db.commit()
     return response

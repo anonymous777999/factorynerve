@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Index, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -19,7 +19,10 @@ class AuthPasswordReset(Base):
     auth_user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("auth_users.id"), nullable=False
     )
-    token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)  # unique=True creates an implicit index
+    user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False

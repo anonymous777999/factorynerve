@@ -412,11 +412,12 @@ def _write_steel_audit(
     )
 
 
-def _get_item_or_404(db: Session, *, factory_id: str, item_id: int) -> SteelInventoryItem:
+def _get_item_or_404(db: Session, *, org_id: str, factory_id: str, item_id: int) -> SteelInventoryItem:
     item = (
         db.query(SteelInventoryItem)
         .filter(
             SteelInventoryItem.id == item_id,
+            SteelInventoryItem.org_id == org_id,
             SteelInventoryItem.factory_id == factory_id,
             SteelInventoryItem.is_active.is_(True),
         )
@@ -1587,11 +1588,12 @@ def _signed_transaction_quantity(
     return float(quantity_kg) if normalized_direction == "increase" else -float(quantity_kg)
 
 
-def _get_batch_or_404(db: Session, *, factory_id: str, batch_id: int) -> SteelProductionBatch:
+def _get_batch_or_404(db: Session, *, org_id: str, factory_id: str, batch_id: int) -> SteelProductionBatch:
     row = (
         db.query(SteelProductionBatch)
         .filter(
             SteelProductionBatch.id == batch_id,
+            SteelProductionBatch.org_id == org_id,
             SteelProductionBatch.factory_id == factory_id,
         )
         .first()
@@ -1601,11 +1603,12 @@ def _get_batch_or_404(db: Session, *, factory_id: str, batch_id: int) -> SteelPr
     return row
 
 
-def _get_invoice_or_404(db: Session, *, factory_id: str, invoice_id: int) -> SteelSalesInvoice:
+def _get_invoice_or_404(db: Session, *, org_id: str, factory_id: str, invoice_id: int) -> SteelSalesInvoice:
     row = (
         db.query(SteelSalesInvoice)
         .filter(
             SteelSalesInvoice.id == invoice_id,
+            SteelSalesInvoice.org_id == org_id,
             SteelSalesInvoice.factory_id == factory_id,
         )
         .first()
@@ -1615,11 +1618,12 @@ def _get_invoice_or_404(db: Session, *, factory_id: str, invoice_id: int) -> Ste
     return row
 
 
-def _get_customer_or_404(db: Session, *, factory_id: str, customer_id: int) -> SteelCustomer:
+def _get_customer_or_404(db: Session, *, org_id: str, factory_id: str, customer_id: int) -> SteelCustomer:
     row = (
         db.query(SteelCustomer)
         .filter(
             SteelCustomer.id == customer_id,
+            SteelCustomer.org_id == org_id,
             SteelCustomer.factory_id == factory_id,
             SteelCustomer.is_active.is_(True),
         )
@@ -1630,10 +1634,10 @@ def _get_customer_or_404(db: Session, *, factory_id: str, customer_id: int) -> S
     return row
 
 
-def _get_dispatch_or_404(db: Session, *, factory_id: str, dispatch_id: int) -> SteelDispatch:
+def _get_dispatch_or_404(db: Session, *, org_id: str, factory_id: str, dispatch_id: int) -> SteelDispatch:
     row = (
         db.query(SteelDispatch)
-        .filter(SteelDispatch.id == dispatch_id, SteelDispatch.factory_id == factory_id)
+        .filter(SteelDispatch.id == dispatch_id, SteelDispatch.org_id == org_id, SteelDispatch.factory_id == factory_id)
         .first()
     )
     if not row:
@@ -1644,6 +1648,7 @@ def _get_dispatch_or_404(db: Session, *, factory_id: str, dispatch_id: int) -> S
 def _get_customer_follow_up_task_or_404(
     db: Session,
     *,
+    org_id: str,
     factory_id: str,
     customer_id: int,
     task_id: int,
@@ -1652,6 +1657,7 @@ def _get_customer_follow_up_task_or_404(
         db.query(SteelCustomerFollowUpTask)
         .filter(
             SteelCustomerFollowUpTask.id == task_id,
+            SteelCustomerFollowUpTask.org_id == org_id,
             SteelCustomerFollowUpTask.customer_id == customer_id,
             SteelCustomerFollowUpTask.factory_id == factory_id,
         )
@@ -2063,7 +2069,7 @@ def create_steel_inventory_transaction(
     elif approval_decision_txn.result not in ("approved", "no_approval_required"):
         raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision_txn.result}")
 
-    item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.item_id)
+    item = _get_item_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, item_id=payload.item_id)
     # Lock the item row to prevent concurrent stock underflow (TOCTOU race)
     db.query(SteelInventoryItem).filter(SteelInventoryItem.id == item.id).with_for_update().first()
     balances = stock_balances_for_factory(db, factory.factory_id)
@@ -2125,7 +2131,7 @@ def create_steel_stock_reconciliation(
         request_context=build_request_context(request),
     )
 
-    item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.item_id)
+    item = _get_item_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, item_id=payload.item_id)
     balances = stock_balances_for_factory(db, factory.factory_id)
     system_qty = float(balances.get(item.id, 0.0))
     physical_qty = float(payload.physical_qty_kg or 0.0)
@@ -2377,7 +2383,7 @@ def approve_steel_stock_reconciliation(
             )
         )
 
-    item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=row.item_id)
+    item = _get_item_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, item_id=row.item_id)
     _write_steel_audit(
         db,
         actor=current_user,
@@ -2493,7 +2499,7 @@ def reject_steel_stock_reconciliation(
     row.rejected_by_user_id = current_user.id
     row.approved_at = None
     row.rejected_at = datetime.now(timezone.utc)
-    item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=row.item_id)
+    item = _get_item_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, item_id=row.item_id)
     _write_steel_audit(
         db,
         actor=current_user,
@@ -2947,7 +2953,7 @@ def get_steel_customer_ledger(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
+    customer = _get_customer_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=customer_id)
     invoices = (
         db.query(SteelSalesInvoice)
         .filter(SteelSalesInvoice.factory_id == factory.factory_id, SteelSalesInvoice.customer_id == customer.id)
@@ -3115,10 +3121,10 @@ def create_steel_customer_follow_up_task(
         request_context=build_request_context(request),
     )
 
-    customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
+    customer = _get_customer_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=customer_id)
     invoice = None
     if payload.invoice_id is not None:
-        invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=payload.invoice_id)
+        invoice = _get_invoice_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, invoice_id=payload.invoice_id)
         if invoice.customer_id != customer.id:
             raise HTTPException(status_code=400, detail="Follow-up invoice must belong to this customer.")
     assignee = None
@@ -3168,7 +3174,7 @@ def update_steel_customer_follow_up_task_status(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     PDP(db=db).require_permission(actor=current_user, permission_key="followup.task.manage", resource=ResourceContext(factory_id=factory.factory_id))
-    task = _get_customer_follow_up_task_or_404(db, factory_id=factory.factory_id, customer_id=customer_id, task_id=task_id)
+    task = _get_customer_follow_up_task_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=customer_id, task_id=task_id)
     task.status = _normalize_follow_up_task_status(payload.status)
     if payload.note:
         task.note = sanitize_text(payload.note, max_length=500)
@@ -3186,7 +3192,7 @@ def update_steel_customer_follow_up_task_status(
     db.refresh(task)
     assignee = db.query(User).filter(User.id == task.assigned_to_user_id).first() if task.assigned_to_user_id else None
     creator = db.query(User).filter(User.id == task.created_by_user_id).first() if task.created_by_user_id else None
-    invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=task.invoice_id) if task.invoice_id else None
+    invoice = _get_invoice_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, invoice_id=task.invoice_id) if task.invoice_id else None
     return {"task": _serialize_steel_follow_up_task(task, assignee=assignee, creator=creator, invoice=invoice)}
 
 
@@ -3209,7 +3215,7 @@ def run_steel_customer_verification_check(
         request_context=build_request_context(request),
     )
 
-    customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
+    customer = _get_customer_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=customer_id)
     _apply_customer_verification_state(customer, verification_source="system_check")
     db.add(customer)
     _write_steel_audit(
@@ -3241,7 +3247,7 @@ def get_steel_customer_verification_document(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
+    customer = _get_customer_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=customer_id)
     document_name = _customer_verification_document_name(customer, document_type)
     if not document_name:
         raise HTTPException(status_code=404, detail="Verification document not found.")
@@ -3277,7 +3283,7 @@ async def upload_steel_customer_verification_document(
         request=request,
     )
 
-    customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
+    customer = _get_customer_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=customer_id)
     if not file.filename:
         raise HTTPException(status_code=400, detail="Select a document to upload.")
     extension = _guess_verification_document_extension(file)
@@ -3336,7 +3342,7 @@ def review_steel_customer_verification(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     PDP(db=db).require_permission(actor=current_user, permission_key="customer.verification.review", resource=ResourceContext(factory_id=factory.factory_id))
-    customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
+    customer = _get_customer_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=customer_id)
 
     # Approval service initiation (maker-checker for verification review)
     org_id_cv = resolve_org_id(current_user)
@@ -3429,7 +3435,7 @@ def create_steel_customer_payment(
         request_context=build_request_context(request),
     )
 
-    customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=payload.customer_id)
+    customer = _get_customer_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=payload.customer_id)
     # Re-read customer with FOR UPDATE to serialize concurrent payment
     # creations for the same customer and prevent double-allocation (Bug #13).
     locked_customer = (        db.query(SteelCustomer)        .filter(SteelCustomer.id == customer.id)        .with_for_update()        .first()    )
@@ -3439,7 +3445,7 @@ def create_steel_customer_payment(
 
     invoice = None
     if payload.invoice_id is not None:
-        invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=payload.invoice_id)
+        invoice = _get_invoice_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, invoice_id=payload.invoice_id)
         if invoice.customer_id is None:
             if invoice.customer_name.strip().lower() != customer.name.strip().lower():
                 raise HTTPException(status_code=400, detail="Invoice does not belong to the selected customer.")
@@ -3873,7 +3879,7 @@ def create_steel_invoice(
     customer: SteelCustomer | None = None
     payment_terms_days = int(payload.payment_terms_days or 0)
     if payload.customer_id is not None:
-        customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=payload.customer_id)
+        customer = _get_customer_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=payload.customer_id)
         customer_name = customer.name
         payment_terms_days = int(payload.payment_terms_days if payload.payment_terms_days is not None else customer.payment_terms_days or 0)
     else:
@@ -3912,12 +3918,12 @@ def create_steel_invoice(
     prepared_lines: list[dict[str, Any]] = []
     import math
     for line in payload.lines:
-        item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=line.item_id)
+        item = _get_item_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, item_id=line.item_id)
         if item.category != "finished_goods":
             raise HTTPException(status_code=400, detail="Steel invoicing currently supports finished goods only.")
         batch = None
         if line.batch_id is not None:
-            batch = _get_batch_or_404(db, factory_id=factory.factory_id, batch_id=line.batch_id)
+            batch = _get_batch_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, batch_id=line.batch_id)
             if batch.output_item_id != item.id:
                 raise HTTPException(status_code=400, detail="Selected batch does not produce the chosen invoice item.")
         weight_kg = float(line.weight_kg or 0.0)
@@ -4004,7 +4010,7 @@ def create_steel_invoice(
         payment_terms_days=payment_terms_days,
         total_weight_kg=round(total_weight_kg, 3),
         subtotal_amount=round(subtotal_amount, 2),
-        total_amount=round(subtotal_amount, 2),
+        total_amount=round(total_amount, 2),
         notes=sanitize_text(payload.notes, max_length=500),
         created_by_user_id=current_user.id,
     )
@@ -4026,9 +4032,9 @@ def create_steel_invoice(
             gst_rate=line["item"].gst_rate if line["item"].gst_rate else None,
             taxable_amount=round(float(line["weight_kg"]) * float(line["rate_per_kg"]), 2),
             # P1-8: Auto-calc CGST/SGST (intra-state, 50/50 split) or IGST (inter-state)
-            cgst_amount=0.0,
-            sgst_amount=0.0,
-            igst_amount=0.0,
+            cgst_amount=line["cgst_amount"],
+            sgst_amount=line["sgst_amount"],
+            igst_amount=line["igst_amount"],
         )
         db.add(row)
         line_rows.append(row)
@@ -4135,7 +4141,7 @@ def get_steel_dispatch_detail(
     )
     if not dispatch:
         raise HTTPException(status_code=404, detail="Steel dispatch not found.")
-    invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=dispatch.invoice_id)
+    invoice = _get_invoice_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, invoice_id=dispatch.invoice_id)
     line_rows = (
         db.query(SteelDispatchLine)
         .filter(SteelDispatchLine.dispatch_id == dispatch.id)
@@ -4281,12 +4287,12 @@ def create_steel_dispatch(
         if existing_by_crid:
             return {"dispatch": existing_by_crid, "idempotent": True}
 
-    invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=payload.invoice_id)
+    invoice = _get_invoice_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, invoice_id=payload.invoice_id)
     requested_status = _normalize_dispatch_status(payload.status)
 
     # P1-13: Customer credit alert - block dispatch if customer is over-limit or blocked
     if invoice.customer_id:
-        customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=invoice.customer_id)
+        customer = _get_customer_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, customer_id=invoice.customer_id)
         customer = (
             db.query(SteelCustomer)
             .filter(SteelCustomer.id == customer.id)
@@ -4460,7 +4466,8 @@ def create_steel_dispatch(
         # Create the dispatch with "pending" status so the approval callback
         # can find it and finalize (update status + post inventory) when approved.
         # This mirrors the pattern used by stock reconciliations.
-        truck_number = sanitize_text(payload.truck_number, max_length=40, preserve_newlines=False)
+        pass
+    truck_number = sanitize_text(payload.truck_number, max_length=40, preserve_newlines=False)
     driver_name = sanitize_text(payload.driver_name, max_length=120, preserve_newlines=False)
     if not truck_number or not driver_name:
         raise HTTPException(status_code=400, detail="Truck number and driver name are required.")
@@ -4635,7 +4642,7 @@ def create_steel_dispatch(
         APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
 
         # P1-6: Propagate heat numbers from batches to dispatch lines
-    for line in dispatch_lines:
+    for line in dispatch_line_rows:
         if line.batch_id:
             batch = db.query(SteelProductionBatch).filter(SteelProductionBatch.id == line.batch_id).first()
             if batch and batch.heat_number:
@@ -4678,7 +4685,7 @@ def update_steel_dispatch_status(
         request_context=build_request_context(request),
     )
 
-    dispatch = _get_dispatch_or_404(db, factory_id=factory.factory_id, dispatch_id=dispatch_id)
+    dispatch = _get_dispatch_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, dispatch_id=dispatch_id)
     # Re-read the dispatch with FOR UPDATE to serialize concurrent status
     # updates and prevent duplicate inventory postings (Bug #12).
     dispatch = (
@@ -4689,7 +4696,7 @@ def update_steel_dispatch_status(
     )
     if dispatch is None:
         raise HTTPException(status_code=404, detail="Dispatch not found.")
-    invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=dispatch.invoice_id)
+    invoice = _get_invoice_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, invoice_id=dispatch.invoice_id)
     next_status = _normalize_dispatch_status(payload.status)
     current_status = _normalize_dispatch_status(dispatch.status)
 
@@ -4892,8 +4899,8 @@ def create_steel_batch(
         request_context=build_request_context(request),
     )
 
-    input_item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.input_item_id)
-    output_item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.output_item_id)
+    input_item = _get_item_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, item_id=payload.input_item_id)
+    output_item = _get_item_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, item_id=payload.output_item_id)
     if input_item.id == output_item.id:
         raise HTTPException(status_code=400, detail="Input and output items must be different.")
     if payload.expected_output_kg > payload.input_quantity_kg:
@@ -5753,7 +5760,7 @@ def verify_gate_pass(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     
-    dispatch = _get_dispatch_or_404(db, factory_id=factory.factory_id, dispatch_id=dispatch_id)
+    dispatch = _get_dispatch_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, dispatch_id=dispatch_id)
     
     if dispatch.status not in {"pending", "loaded"}:
         raise HTTPException(status_code=400, detail=f"Gate pass can only be verified for pending or loaded dispatches (current: {dispatch.status}).")
@@ -5808,3 +5815,86 @@ def list_dispatches_by_heat_number(
     user_ids = {d.created_by_user_id for d in dispatches if d.created_by_user_id}
     users = {u.id: u for u in db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
     return [_serialize_steel_dispatch(d, creator=users.get(d.created_by_user_id), invoice=invoices.get(d.invoice_id)) for d in dispatches]
+
+
+# ── Invoice Void (BILLING-02: requires MFA via PDP) ─────────────────────
+
+
+@router.post("/invoices/{invoice_id}/void")
+def void_steel_invoice(
+    invoice_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Void/cancel a steel sales invoice.
+
+    Requires ``invoice.record.void`` permission, which has ``requires_mfa=True``
+    in the permission catalog.  The PDP ``_check_mfa()`` enforces that the
+    current session has passed MFA verification before allowing this action.
+
+    Only unpaid/partial invoices with no shipped dispatches can be voided.
+    Invoices that already have dispatches in ``exited``, ``dispatched``, or
+    ``delivered`` status cannot be voided — the dispatches must be cancelled first.
+    """
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    # PDP permission check — invoice.record.void requires MFA
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="invoice.record.void",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
+
+    invoice = _get_invoice_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, invoice_id=invoice_id)
+
+    # Already voided?
+    if invoice.status == "cancelled":
+        raise HTTPException(status_code=400, detail="Invoice is already voided.")
+
+    # Cannot void invoices with shipped dispatches
+    active_dispatches = (
+        db.query(SteelDispatch.id)
+        .filter(
+            SteelDispatch.factory_id == factory.factory_id,
+            SteelDispatch.invoice_id == invoice_id,
+            SteelDispatch.status.in_(["exited", "dispatched", "delivered"]),
+        )
+        .first()
+    )
+    if active_dispatches:
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot void an invoice with active dispatches. Cancel all dispatches first.",
+        )
+
+    now = datetime.now(timezone.utc)
+    invoice.status = "cancelled"
+    invoice.notes = (invoice.notes or "") + f" [VOIDED by user {current_user.id} at {now.isoformat()}]"
+    invoice.updated_at = now
+
+    _write_steel_audit(
+        db,
+        actor=current_user,
+        factory_id=factory.factory_id,
+        action="STEEL_INVOICE_VOIDED",
+        details=f"invoice_id={invoice_id} invoice_number={invoice.invoice_number} status_changed={invoice.status}",
+        request=request,
+    )
+
+    db.commit()
+    db.refresh(invoice)
+
+    return {
+        "message": "Invoice voided successfully.",
+        "invoice": {
+            "id": invoice.id,
+            "invoice_number": invoice.invoice_number,
+            "status": invoice.status,
+        },
+    }

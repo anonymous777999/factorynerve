@@ -41,8 +41,8 @@ Base = declarative_base(metadata=metadata)
 pool_kwargs: dict[str, Any] = {}
 if not _IS_SQLITE:
     pool_kwargs = {
-        "pool_size": int(os.getenv("DB_POOL_SIZE", "3")),
-        "max_overflow": int(os.getenv("DB_POOL_OVERFLOW", "3")),
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "10")),
+        "max_overflow": int(os.getenv("DB_POOL_OVERFLOW", "10")),
         "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "10")),
         "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
     }
@@ -92,8 +92,10 @@ class EncryptedString(TypeDecorator):
         try:
             return self._fernet.decrypt(value.encode("utf-8")).decode("utf-8")
         except Exception as error:  # pylint: disable=broad-except
-            logger.exception("Failed to decrypt database field.")
-            raise ValueError("Could not decrypt stored value.") from error
+            logger.exception("Failed to decrypt database field (returning None).")
+            # FIX (DB-01): Return None instead of raising ValueError — a single
+            # corrupted encrypted field should not crash every request that reads it.
+            return None
 
 
 def hash_ip_address(ip_address: str | None) -> str | None:
@@ -306,13 +308,15 @@ def init_db() -> None:
                     conn.execute(
                         text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
                     )
-                    conn.execute(
-                        text("DELETE FROM alembic_version")
-                    )
-                    conn.execute(
-                        text("INSERT INTO alembic_version (version_num) VALUES (:rev)"),
-                        {"rev": heads[0]},
-                    )
+                    # FIX (DB-02): Only stamp if no version row exists yet —
+                    # prevents overwriting a previously-applied migration chain
+                    # (e.g. when init_db runs after alembic upgrade head).
+                    existing = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
+                    if existing is None:
+                        conn.execute(
+                            text("INSERT INTO alembic_version (version_num) VALUES (:rev)"),
+                            {"rev": heads[0]},
+                        )
                 logger.info("Database initialized and stamped at Alembic head (%s).", heads[0])
         except Exception as stamp_error:
             logger.warning(

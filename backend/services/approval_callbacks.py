@@ -341,15 +341,10 @@ def _on_user_deactivate_completed(db: Session, instance: dict[str, Any]) -> None
         user.is_active = False
         user.profile_picture = None
         # Revoke all v2 sessions so the user is immediately logged out
+        # Auth consolidation: User model now has direct user_id FK in sessions.
         try:
-            from backend.models.auth_user import AuthUser
             from backend.auth_security.sessions import revoke_all_sessions as _revoke_sessions
-            _auth = db.query(AuthUser).filter(
-                AuthUser.email == user.email,
-                AuthUser.is_active.is_(True),
-            ).first()
-            if _auth:
-                _revoke_sessions(db, user_id=_auth.id)
+            _revoke_sessions(db, user_id=user.id)
         except Exception:
             logger.exception("Failed to revoke sessions for deactivated user %s", user_id)
         logger.info("User %s deactivated via approval completion", user_id)

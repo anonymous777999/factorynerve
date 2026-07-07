@@ -49,6 +49,11 @@ from backend.utils import normalize_confidence
 from backend.services.ocr_cross_validator import OcrCrossValidator, CrossValidationResult
 from backend.services.pipeline_metadata import PipelineMetadata
 from backend.services.ocr_image_preprocessing import preprocess_image, preprocess_image_metadata
+from backend.validators import OcrValidationPipeline
+from backend.metrics import (
+    OCR_CACHE_HIT_RATIO,
+    OCR_EXTRACTION_SUCCESS_RATE,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -62,6 +67,31 @@ _DEFAULT_ROUTE = {
     "cost_saved_usd": 0.0132,
 }
 _AI_REQUIRED_DOC_TYPES = {"table", "sheet", "spreadsheet"}
+
+
+def _build_validation_from_verification(verification: OcrVerification) -> dict | None:
+    """Run the validation pipeline against stored verification data.
+
+    Reconstructs the validation result from the stored headers/rows.
+    Returns None if no validation can be run (no rows/headers).
+    """
+    headers = verification.headers or []
+    rows = verification.reviewed_rows or verification.original_rows or []
+    if not headers and not rows:
+        return None
+    try:
+        pipeline = OcrValidationPipeline()
+        result = pipeline.validate(
+            headers=headers,
+            rows=rows,
+            doc_type=verification.doc_type_hint,
+            cross_validation=verification.cross_validation,
+        )
+        return result.to_dict()
+    except Exception:
+        logger.warning("Validation from cache failed for verification id=%s", verification.id, exc_info=True)
+        return None
+
 
 # Feature flag for cell object structure (Phase 1)
 # IMPORTANT: Cell objects should ONLY exist in export/metadata layers
@@ -599,6 +629,7 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
         "last_reprocessed_at": routing.get("last_reprocessed_at"),
         "previous_confidence": routing.get("previous_confidence"),
         "model": routing.get("provider_model") or routing.get("selected_model") or "local-tesseract",
+        "validation": _build_validation_from_verification(verification),
     }
 
 
@@ -612,6 +643,7 @@ def find_reusable_verification(
     requested_model: str | None = None,
 ) -> OcrVerification | None:
     if not org_id or not document_hash:
+        OCR_CACHE_HIT_RATIO.set(0.0)
         return None
     query = (
         db.query(OcrVerification)
@@ -634,7 +666,10 @@ def find_reusable_verification(
         if not _reuse_matches_requested_model(candidate, requested_model):
             continue
         if candidate.reviewed_rows or candidate.original_rows:
+            # Cache hit — update hit ratio
+            OCR_CACHE_HIT_RATIO.set(1.0)
             return candidate
+    OCR_CACHE_HIT_RATIO.set(0.0)
     return None
 
 
@@ -926,6 +961,26 @@ def build_structured_ocr_result(
                 "explanation": "No cross-validation data available. Factual confidence capped at 50% of structural.",
             }
 
+    # Phase 4: Run multi-stage validation pipeline
+    validation_result: dict | None = None
+    try:
+        pipeline = OcrValidationPipeline()
+        validation_result = pipeline.validate(
+            headers=normalized_headers,
+            rows=normalized_rows,
+            doc_type=doc_type_hint,
+            data={"headers": normalized_headers, "rows": normalized_rows},                cross_validation=cross_validation_result.to_dict() if cross_validation_result else None,
+        )
+        for issue in validation_result.all_issues:
+            if issue.severity == "error":
+                warnings.append(f"VALIDATION: {issue.message}")
+        # Phase 7: Track extraction success rate
+        OCR_EXTRACTION_SUCCESS_RATE.set(1.0 if validation_result.passed else 0.0)
+    except Exception as val_err:
+        logger.warning("Validation pipeline failed: %s", val_err, exc_info=True)
+        validation_result = None
+        OCR_EXTRACTION_SUCCESS_RATE.set(0.0)
+
     # NEW (P0-3): Update pipeline metadata with AI result
     pipeline_metadata.ai_attempted = route_meta.get("ai_attempted", False)
     pipeline_metadata.ai_succeeded = route_meta.get("ai_applied", False)
@@ -978,4 +1033,5 @@ def build_structured_ocr_result(
         "cross_validation": cross_validation_result.to_dict() if cross_validation_result else None,
         "factual_confidence": factual_confidence_payload if _OCR_NEW_CONFIDENCE_ENABLED else None,
         "pipeline_metadata": pipeline_metadata.to_dict(),
+        "validation": validation_result.to_dict() if validation_result else None,
     }

@@ -9,7 +9,7 @@ from fastapi import HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from backend.models.auth_session import AuthSession
-from backend.models.auth_user import AuthUser
+from backend.models.user import User
 from backend.auth_security.tokens import generate_token, hash_token
 from backend.utils import ensure_utc
 
@@ -60,14 +60,15 @@ def _csrf_cookie_kwargs(*, request: Request) -> dict:
     }
 
 
-def create_session(db: Session, *, user: AuthUser, request: Request, response: Response, factory_id: str | None = None) -> AuthSession:
+def create_session(db: Session, *, user: User, request: Request, response: Response, factory_id: str | None = None) -> AuthSession:
     raw_token = generate_token(32)
     csrf_token = generate_token(16)
     token_hash = hash_token(raw_token)
     csrf_hash = hash_token(csrf_token)
     now = datetime.now(timezone.utc)
     session = AuthSession(
-        auth_user_id=user.id,
+        auth_user_id=str(user.id),  # Kept for backward compat during transition
+        user_id=user.id,             # New direct FK — primary lookup going forward
         token_hash=token_hash,
         csrf_hash=csrf_hash,
         created_at=now,
@@ -90,12 +91,23 @@ def revoke_session(db: Session, *, session: AuthSession, response: Response) -> 
     response.delete_cookie(CSRF_COOKIE, path="/")
 
 
-def revoke_all_sessions(db: Session, *, user_id: str) -> None:
+def revoke_all_sessions(db: Session, *, user_id: int | str) -> None:
+    """Revoke all active sessions for a user.
+
+    Accepts both int (user.id) and str (legacy auth_user_id) for backward
+    compatibility during the auth consolidation transition period.
+    """
     now = datetime.now(timezone.utc)
-    db.query(AuthSession).filter(
-        AuthSession.auth_user_id == user_id,
-        AuthSession.revoked_at.is_(None),
-    ).update({"revoked_at": now}, synchronize_session=False)
+    if isinstance(user_id, int):
+        db.query(AuthSession).filter(
+            AuthSession.user_id == user_id,
+            AuthSession.revoked_at.is_(None),
+        ).update({"revoked_at": now}, synchronize_session=False)
+    else:
+        db.query(AuthSession).filter(
+            AuthSession.auth_user_id == user_id,
+            AuthSession.revoked_at.is_(None),
+        ).update({"revoked_at": now}, synchronize_session=False)
 
 
 def require_csrf(request: Request, session: AuthSession) -> None:
@@ -159,12 +171,42 @@ def get_current_session(db: Session, request: Request) -> AuthSession:
     return session
 
 
-def get_current_user(db: Session, session: AuthSession) -> AuthUser:
-    user = db.query(AuthUser).filter(AuthUser.id == session.auth_user_id, AuthUser.is_active.is_(True)).first()
+def get_current_user(db: Session, session: AuthSession) -> User:
+    """Return the User associated with this session.
+
+    Prefers the direct FK (session.user_id) when available (auth consolidation
+    Phase 2+). Falls back to the email bridge via AuthUser for sessions created
+    before the migration (Phase 1 transition period).
+    """
+    if session.user_id is not None:
+        user = db.query(User).filter(
+            User.id == session.user_id,
+            User.is_active.is_(True),
+        ).first()
+        if user:
+            if session.created_at < (user.password_changed_at or datetime.min.replace(tzinfo=timezone.utc)):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Session invalidated.",
+                )
+            return user
+
+    # Fallback: resolve via AuthUser email bridge (transition period)
+    from backend.models.auth_user import AuthUser
+    auth_user = db.query(AuthUser).filter(
+        AuthUser.id == session.auth_user_id,
+        AuthUser.is_active.is_(True),
+    ).first()
+    if not auth_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
+    if session.created_at < auth_user.password_changed_at:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated.")
+    user = db.query(User).filter(
+        User.email == auth_user.email,
+        User.is_active.is_(True),
+    ).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-    if session.created_at < user.password_changed_at:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated.")
     return user
 
 

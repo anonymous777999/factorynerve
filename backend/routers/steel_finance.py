@@ -739,7 +739,7 @@ def create_steel_cash_ledger_entry(
     account = db.query(SteelCashAccount).filter(
         SteelCashAccount.id == payload.account_id,
         SteelCashAccount.factory_id == factory.factory_id,
-    ).first()
+    ).with_for_update().first()
     if not account:
         raise HTTPException(status_code=404, detail="Cash account not found in this factory.")
 

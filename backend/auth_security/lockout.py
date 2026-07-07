@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.orm import Session
 
-from backend.models.auth_user import AuthUser
+from backend.models.user import User
 from backend.utils import ensure_utc
 logger = logging.getLogger(__name__)
 
@@ -20,13 +20,21 @@ PERSISTENT_LOCKOUT_ATTEMPTS = int(
 )  # after this many consecutive failures, requires admin unlock
 
 
-def check_account_locked(user: AuthUser) -> bool:
+def check_account_locked(user: User) -> bool:
     """Check if an account is currently locked.
 
     Auto-unlocks if the lockout duration has passed.
     Returns True if the account is locked, False otherwise.
+
+    FIX (AUTH-02): Also check that locked_until is actually set. A stale
+    failed_login_attempts counter without a corresponding locked_until
+    should NOT lock the account — prevents false lockouts on password
+    reset/change for users with stale counters.
     """
     if user.locked_until is None:
+        # No lockout timer set — account is not locked regardless of
+        # failed_login_attempts count. A stale counter with no lockout
+        # should not block password reset/change (FIX AUTH-02).
         return False
     now = datetime.now(timezone.utc)
     locked_until = ensure_utc(user.locked_until)
@@ -37,7 +45,7 @@ def check_account_locked(user: AuthUser) -> bool:
     return True
 
 
-def increment_failed_login(db: Session, user: AuthUser) -> bool:
+def increment_failed_login(db: Session, user: User) -> bool:
     """Record a failed login attempt.
 
     Locks the account if threshold is reached.
@@ -73,7 +81,7 @@ def increment_failed_login(db: Session, user: AuthUser) -> bool:
     return False
 
 
-def reset_failed_login(db: Session, user: AuthUser) -> None:
+def reset_failed_login(db: Session, user: User) -> None:
     """Reset failed login counter and unlock the account after a successful login."""
     if user.failed_login_attempts > 0 or user.locked_until is not None:
         user.failed_login_attempts = 0
@@ -83,7 +91,7 @@ def reset_failed_login(db: Session, user: AuthUser) -> None:
 
 def admin_unlock_account(db: Session, *, email: str) -> bool:
     """Admin-only: unlock a locked account by email. Returns True if found and unlocked."""
-    user = db.query(AuthUser).filter(AuthUser.email == email, AuthUser.is_active.is_(True)).first()
+    user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
     if not user:
         return False
     user.failed_login_attempts = 0

@@ -39,3 +39,6 @@ passlib[argon2]
 argon2-cffi
 pyotp
 itsdangerous
+
+# Optional: QR code generation in PDF exports
+qrcode[pil]>=7.4

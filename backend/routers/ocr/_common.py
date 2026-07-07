@@ -121,7 +121,28 @@ from backend.services.ocr_normalization import (
     build_cell_confidence_matrix as build_heuristic_confidence_matrix,
     normalize_structured_payload,
 )
+from backend.services.ocr_cost_router import (
+    select_cost_optimal_model,
+    detect_document_nature,
+    build_correction_request,
+)
+from backend.understanding.classifier import classify as classify_document
+from backend.services.ocr_document_registry import get_document_type
+from backend.services.ocr_document_types import _build_type_specific_prompt_for_claude
+from backend.services.export_gate import validate_export_readiness, ExportGateResult
+from backend.services.excel_export_engine import excel_export_engine
+from backend.services.pdf_export_engine import generate_pdf_export
+from backend.ai.prompts.unstructured_documents import get_unstructured_prompt
+from backend.metrics import (
+    OCR_MODEL_TIER_REQUESTS,
+    OCR_COST_SAVED,
+    OCR_CORRECTION_PASSES,
+    OCR_EXTRACTION_LATENCY,
+    OCR_TIER_COST,
+    OCR_CLASSIFICATION_ACCURACY,
+)
 from backend.services.ocr_confidence import calculate_structural_confidence
+from backend.validators import OcrValidationPipeline
 from backend.tenancy import resolve_factory_id, resolve_org_id
 
 
@@ -563,7 +584,7 @@ def _flatten_preview_rows(rows: list[list[str]]) -> str | None:
     return joined or None
 
 
-def _table_excel_prompt_text(system_prompt: str | None, user_message: str | None) -> str:
+def _table_excel_prompt_text(system_prompt: str | None, user_message: str | None, base_prompt: str | None = None) -> str:
     extras: list[str] = []
     safe_system = sanitize_prompt_input(system_prompt, max_length=2000)
     safe_user = sanitize_prompt_input(user_message, max_length=2000)
@@ -571,9 +592,10 @@ def _table_excel_prompt_text(system_prompt: str | None, user_message: str | None
         extras.append(f"Additional caller context: {safe_system}")
     if safe_user:
         extras.append(f"Additional caller request: {safe_user}")
+    effective_base = base_prompt or _TABLE_EXCEL_PROMPT
     if not extras:
-        return _TABLE_EXCEL_PROMPT
-    return f"{_TABLE_EXCEL_PROMPT}\n\n" + "\n".join(extras)
+        return effective_base
+    return f"{effective_base}\n\n" + "\n".join(extras)
 
 
 def _validate_table_excel_json(data: object | None) -> list[str]:
@@ -667,9 +689,12 @@ def _call_table_excel_anthropic(
     *,
     image_mime_type: str,
     selected_model: str,
+    model_type_prompt: str | None = None,
     requested_model: str | None = None,
+    doc_type_hint: str | None = None,
     system_prompt: str | None,
     user_message: str | None,
+    needs_correction_pass: bool = False,
 ) -> dict[str, object]:
     api_key = _require_anthropic_api_key()
     encoded_image = (
@@ -704,7 +729,7 @@ def _call_table_excel_anthropic(
             "system": [
                 {
                     "type": "text",
-                    "text": _table_excel_prompt_text(system_prompt, user_message),
+                    "text": _table_excel_prompt_text(system_prompt, user_message, base_prompt=model_type_prompt),
                     "cache_control": {"type": "ephemeral"},
                 }
             ],
@@ -836,105 +861,32 @@ def _call_table_excel_anthropic(
         raise _table_excel_error(502, "Extraction failed for all configured models.")
 
     validation_errors = _validate_table_excel_json(extraction_json)
-    if validation_errors:
-        logger.warning("[OCR] Validation failed for %s: %s", first_model_used, validation_errors)
-        correction_model = explicit_model or get_next_anthropic_model_upgrade(first_model_used) or _TABLE_EXCEL_MODEL_OPUS
-        correction_prompt = (
-            f"Your previous response had structural inconsistencies:\n"
-            f"- " + "\n- ".join(validation_errors) + "\n\n"
-            "Fix the JSON structure. Do not change values. Only correct formatting and alignment. "
-            "Return ONLY the fixed JSON object."
+
+    # Decide whether to run a correction pass
+    should_correct = bool(validation_errors) or needs_correction_pass
+
+    if should_correct:
+        corrected = _run_anthropic_correction_pass(
+            extraction_json=extraction_json,
+            validation_errors=validation_errors,
+            first_model_used=first_model_used,
+            explicit_model=explicit_model,
+            selected_model=selected_model,
+            image_base64=image_base64,
+            image_mime_type=image_mime_type,
+            usage_summaries=usage_summaries,
+            model_attempts=model_attempts,
+            last_response_debug=last_response_debug,
         )
-
-        retry_payload = {
-            "model": correction_model,
-            "max_tokens": 4096,
-            "messages": [
-                {"role": "user", "content": "Extract data from an image (provided in previous context)."},
-                {"role": "assistant", "content": json.dumps(extraction_json)},
-                {"role": "user", "content": correction_prompt},
-            ],
-        }
-
-        try:
-            logger.info("[OCR] Pass 2 request correction_model=%s", correction_model)
-            response = requests.post(
-                _ANTHROPIC_MESSAGES_URL,
-                headers={
-                    "Content-Type": "application/json",
-                    "x-api-key": api_key,
-                    "anthropic-version": "2023-06-01",
-                },
-                json=retry_payload,
-                timeout=_table_excel_timeout_seconds(),
+        if corrected is not None:
+            logger.info(
+                "[OCR] Correction pass applied for model=%s errors=%s proactive=%s",
+                first_model_used,
+                len(validation_errors) if validation_errors else 0,
+                needs_correction_pass and not validation_errors,
             )
-            if response.status_code == 200:
-                ai_data = response.json()
-                actual_model = verify_anthropic_response_model(
-                    correction_model,
-                    ai_data,
-                    context="OCR route correction pass",
-                )
-                usage_summary = build_anthropic_usage_summary(actual_model, ai_data)
-                usage_summaries.append(usage_summary)
-                last_response_debug = serialize_anthropic_response_debug(ai_data)
-                model_attempts.append(
-                    {
-                        "model": actual_model,
-                        "status": "correction_success",
-                        "usage": usage_summary,
-                        "response": last_response_debug,
-                    }
-                )
-                logger.info(
-                    "[OCR] Pass 2 response model=%s input_tokens=%s output_tokens=%s total_tokens=%s estimated_cost=%s",
-                    actual_model,
-                    usage_summary["input_tokens"],
-                    usage_summary["output_tokens"],
-                    usage_summary["total_tokens"],
-                    usage_summary["estimated_cost"],
-                )
-                raw_text = _extract_table_excel_json_text(ai_data)
-                corrected_json = _extract_json_candidate(raw_text)
-                if isinstance(corrected_json, dict):
-                    logger.info("[OCR] Correction pass successful model=%s", actual_model)
-                    corrected_json.setdefault("_provider_model", actual_model)
-                    corrected_json.setdefault("_correction_applied", True)
-                    corrected_json["_usage_summary"] = merge_anthropic_usage_summaries(
-                        actual_model,
-                        usage_summaries,
-                    )
-                    corrected_json["_model_attempts"] = model_attempts
-                    corrected_json["_debug_response"] = last_response_debug
-                    corrected_json["_requested_model"] = explicit_model
-                    corrected_json["_selected_model"] = selected_model
-                    return corrected_json
-                logger.error("[OCR] Correction pass returned invalid JSON")
-            else:
-                logger.error("[OCR] Correction pass failed status=%s", response.status_code)
-                try:
-                    error_payload = response.json()
-                except ValueError:
-                    error_payload = {"error": {"message": f"Anthropic API returned status {response.status_code}."}}
-                model_attempts.append(
-                    {
-                        "model": correction_model,
-                        "status": "correction_error",
-                        "status_code": response.status_code,
-                        "error": (error_payload.get("error") or {}).get("message")
-                        if isinstance(error_payload, dict)
-                        else str(error_payload),
-                    }
-                )
-        except Exception as error:
-            logger.error("[OCR] Correction pass failed unexpectedly: %s", error)
-            model_attempts.append(
-                {
-                    "model": correction_model,
-                    "status": "correction_exception",
-                    "error": str(error),
-                }
-            )
+            return corrected
+        logger.warning("[OCR] Correction pass failed, falling back to original extraction")
 
     extraction_json.setdefault("_provider_model", first_model_used)
     extraction_json["_usage_summary"] = merge_anthropic_usage_summaries(
@@ -946,6 +898,147 @@ def _call_table_excel_anthropic(
     extraction_json["_requested_model"] = explicit_model
     extraction_json["_selected_model"] = selected_model
     return extraction_json
+
+
+def _run_anthropic_correction_pass(
+    *,
+    extraction_json: dict[str, object],
+    validation_errors: list[str] | None,
+    first_model_used: str | None,
+    explicit_model: str | None,
+    selected_model: str,
+    image_base64: str | bytes,
+    image_mime_type: str,
+    usage_summaries: list[dict[str, Any]],
+    model_attempts: list[dict[str, Any]],
+    last_response_debug: dict[str, Any] | None,
+) -> dict[str, object] | None:
+    """Run a correction pass via the cost router.
+
+    Called when:
+    1. ``needs_correction_pass`` from cost decision is True (proactive)
+    2. Validation errors were found (reactive)
+
+    Returns corrected JSON with merged metadata, or None on failure.
+    """
+    api_key = _require_anthropic_api_key()
+
+    correction_request = build_correction_request(
+        extraction_json=extraction_json,
+        validation_errors=validation_errors,
+        first_model_used=first_model_used,
+        explicit_model=explicit_model,
+    )
+    correction_model = correction_request["correction_model"]
+    messages = correction_request["messages"]
+    is_proactive = correction_request["is_proactive"]
+
+    logger.info(
+        "[OCR] Correction pass: model=%s proactive=%s reason=%s",
+        correction_model,
+        is_proactive,
+        correction_request["reason"],
+    )
+
+    retry_payload = {
+        "model": correction_model,
+        "max_tokens": 4096,
+        "messages": messages,
+    }
+
+    try:
+        response = requests.post(
+            _ANTHROPIC_MESSAGES_URL,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json=retry_payload,
+            timeout=_table_excel_timeout_seconds(),
+        )
+
+        if response.status_code == 200:
+            ai_data = response.json()
+            actual_model = verify_anthropic_response_model(
+                correction_model,
+                ai_data,
+                context="OCR route correction pass",
+            )
+            usage_summary = build_anthropic_usage_summary(actual_model, ai_data)
+            usage_summaries.append(usage_summary)
+            response_debug = serialize_anthropic_response_debug(ai_data)
+            model_attempts.append(
+                {
+                    "model": actual_model,
+                    "status": "correction_success",
+                    "usage": usage_summary,
+                    "response": response_debug,
+                }
+            )
+            OCR_CORRECTION_PASSES.labels(status="success").inc()
+            logger.info(
+                "[OCR] Correction pass response model=%s input_tokens=%s output_tokens=%s total_tokens=%s estimated_cost=%s",
+                actual_model,
+                usage_summary["input_tokens"],
+                usage_summary["output_tokens"],
+                usage_summary["total_tokens"],
+                usage_summary["estimated_cost"],
+            )
+            raw_text = _extract_table_excel_json_text(ai_data)
+            corrected_json = _extract_json_candidate(raw_text)
+            if isinstance(corrected_json, dict):
+                logger.info(
+                    "[OCR] Correction pass successful model=%s proactive=%s",
+                    actual_model,
+                    is_proactive,
+                )
+                corrected_json.setdefault("_provider_model", actual_model)
+                corrected_json.setdefault("_correction_applied", True)
+                corrected_json["_usage_summary"] = merge_anthropic_usage_summaries(
+                    actual_model,
+                    usage_summaries,
+                )
+                corrected_json["_model_attempts"] = list(model_attempts)
+                corrected_json["_debug_response"] = response_debug
+                corrected_json["_requested_model"] = explicit_model
+                corrected_json["_selected_model"] = selected_model
+                corrected_json["_correction_proactive"] = is_proactive
+                return corrected_json
+
+            logger.error("[OCR] Correction pass returned invalid JSON")
+        else:
+            logger.error("[OCR] Correction pass failed status=%s", response.status_code)
+            try:
+                error_payload = response.json()
+                error_message = (
+                    (error_payload.get("error") or {}).get("message")
+                    if isinstance(error_payload, dict)
+                    else str(error_payload)
+                )
+            except ValueError:
+                error_message = f"Anthropic API returned status {response.status_code}."
+            model_attempts.append(
+                {
+                    "model": correction_model,
+                    "status": "correction_error",
+                    "status_code": response.status_code,
+                    "error": error_message,
+                }
+            )
+            OCR_CORRECTION_PASSES.labels(status="failure").inc()
+    except Exception as error:
+        logger.error("[OCR] Correction pass failed unexpectedly: %s", error)
+        model_attempts.append(
+            {
+                "model": correction_model,
+                "status": "correction_exception",
+                "error": str(error),
+            }
+        )
+        OCR_CORRECTION_PASSES.labels(status="failure").inc()
+
+    return None
 
 
 def _extract_table_excel_scalar(
@@ -1144,6 +1237,7 @@ def _build_table_preview_payload(
         headers = ["Text"]
         rows = [[str(line)] for line in normalized.get("lines", [])]
     else:
+        # "mixed" type: sections already structured by format_for_ui
         structured = format_for_ui(
             {
                 "title": _table_preview_title(doc_type_hint, template),
@@ -1151,16 +1245,17 @@ def _build_table_preview_payload(
                 "sections": normalized.get("sections", []),
             }
         )
-        structured["type"] = _table_preview_doc_type(doc_type_hint)    # Merge warnings from post-processing (e.g., ragged row detection) with AI warnings
-    _post_warnings = [str(v).strip() for v in normalized.get("warnings", []) if str(v).strip()] if isinstance(normalized.get("warnings"), list) else []
-    _ai_warnings = [str(v).strip() for v in extracted_json.get("warnings", []) if str(v).strip()] if isinstance(extracted_json.get("warnings"), list) else []
-    structured["warnings"] = _post_warnings + [w for w in _ai_warnings if w not in _post_warnings]
-    if not structured.get("rows"):
-        raise _table_excel_error(502, "Anthropic API did not return any extractable data for this scan.")
-    if not structured.get("raw_text"):
-        structured["raw_text"] = _flatten_preview_rows(structured.get("rows") or [])
-    return structured
+        structured["type"] = _table_preview_doc_type(doc_type_hint)
+        _post_warnings = [str(v).strip() for v in normalized.get("warnings", []) if str(v).strip()] if isinstance(normalized.get("warnings"), list) else []
+        _ai_warnings = [str(v).strip() for v in extracted_json.get("warnings", []) if str(v).strip()] if isinstance(extracted_json.get("warnings"), list) else []
+        structured["warnings"] = _post_warnings + [w for w in _ai_warnings if w not in _post_warnings]
+        if not structured.get("rows"):
+            raise _table_excel_error(502, "Anthropic API did not return any extractable data for this scan.")
+        if not structured.get("raw_text"):
+            structured["raw_text"] = _flatten_preview_rows(structured.get("rows") or [])
+        return structured
 
+    # ---- "table", "form", and "text" types reach here ----
     fallback_headers = list(template.column_names or []) if template and template.column_names else headers
     structured = normalize_structured_payload(
         {
@@ -1174,7 +1269,6 @@ def _build_table_preview_payload(
         fallback_type=_table_preview_doc_type(doc_type_hint),
         fallback_title=_table_preview_title(doc_type_hint, template),
     )
-    # Merge warnings from post-processing with AI warnings for the non-table path
     _post_warnings = [str(v).strip() for v in normalized.get("warnings", []) if str(v).strip()] if isinstance(normalized.get("warnings"), list) else []
     _ai_warnings = [str(v).strip() for v in extracted_json.get("warnings", []) if str(v).strip()] if isinstance(extracted_json.get("warnings"), list) else []
     structured["warnings"] = _post_warnings + [w for w in _ai_warnings if w not in _post_warnings]
@@ -1283,6 +1377,7 @@ def _run_table_excel_pipeline(
     content_type: str | None,
     filename: str | None,
     requested_model: str | None = None,
+    doc_type_hint: str | None = None,
     system_prompt: str | None,
     user_message: str | None,
 ) -> tuple[bytes, dict[str, object]]:
@@ -1297,8 +1392,34 @@ def _run_table_excel_pipeline(
             imageQualityScore=image_quality_score,
         )
 
+    # Detect document nature for prompt selection and cost routing
+    cost_decision = None
     explicit_model = _normalize_requested_model(requested_model)
-    selected_model = explicit_model or _select_table_excel_model(image_quality_score)
+    try:
+        nature_result = detect_document_nature(image_bytes)
+        has_handwriting = nature_result.get("handwriting", {}).get("has_handwriting", False) or nature_result.get("nature") == "handwritten"
+        doc_nature = nature_result.get("nature", "printed")
+    except Exception:
+        has_handwriting = False
+        doc_nature = "printed"
+
+    if explicit_model:
+        selected_model = explicit_model
+        logger.info("[OCR] Using user-requested model for Excel: %s", selected_model)
+    else:
+        # Cost-optimized model selection (Phase 2)
+        cost_decision = select_cost_optimal_model(
+            image_quality_score=float(image_quality_score),
+            has_handwriting=has_handwriting,
+            doc_nature=doc_nature,
+        )
+        selected_model = cost_decision["model"]
+        logger.info(
+            "[OCR] Cost-optimized model selection for Excel: tier=%s model=%s reason=%s",
+            cost_decision["tier"],
+            cost_decision["model"],
+            cost_decision["reason"],
+        )
     logger.info("[OCR] Using AI")
     logger.info(
         "Table Excel model selected requested_model=%s model=%s quality_score=%s mime=%s size_bytes=%s",
@@ -1309,16 +1430,34 @@ def _run_table_excel_pipeline(
         inspection["size_bytes"],
     )
 
+    # Record model tier selection metric
+    _tier = cost_decision["tier"] if cost_decision else resolve_anthropic_model_tier(selected_model)
+    OCR_MODEL_TIER_REQUESTS.labels(tier=_tier).inc()
+
     # Harden vision payload with resizing
     image_base64 = preprocess_image_bytes(image_bytes)
 
+    needs_correction = bool(cost_decision and cost_decision.get("needs_correction_pass"))
+    # Phase 5: Select unstructured prompt for handwritten/ledger/screenshot docs
+    # Phase 0.2: Classify document and select type-specific prompt as fallback
+    model_type_prompt = None
+    unstructured_prompt = get_unstructured_prompt(doc_nature)
+    if unstructured_prompt:
+        model_type_prompt = unstructured_prompt
+        logger.info("[OCR] Using unstructured prompt for doc_nature=%s", doc_nature)
+    elif doc_type_hint:
+        model_type_prompt = _build_type_specific_prompt_for_claude(doc_type_hint, None)
+        if model_type_prompt:
+            logger.info("[OCR] Using type-specific prompt for Excel pipeline: %s", doc_type_hint)
     extracted_json = _call_table_excel_anthropic(
         image_base64,
         image_mime_type="image/jpeg", # preprocess_image_bytes always returns JPEG
         selected_model=selected_model,
+        model_type_prompt=model_type_prompt,
         requested_model=requested_model,
         system_prompt=system_prompt,
         user_message=user_message,
+        needs_correction_pass=needs_correction,
     )
     used_model = str(extracted_json.get("_provider_model") or selected_model)
     excel_bytes, metadata = _build_table_excel_workbook(extracted_json)
@@ -1337,6 +1476,19 @@ def _run_table_excel_pipeline(
         usage_summary.get("total_tokens", 0),
         usage_summary.get("estimated_cost", 0),
     )
+    # Record cost and latency metrics
+    OCR_EXTRACTION_LATENCY.labels(tier=_tier).observe(elapsed_ms / 1000.0)
+    _opus_cost_for_metrics = calculate_anthropic_cost(
+        _TABLE_EXCEL_MODEL_OPUS,
+        input_tokens=int(usage_summary.get("input_tokens", 0) or 0),
+        output_tokens=int(usage_summary.get("output_tokens", 0) or 0),
+    )
+    _opus_est = float(_opus_cost_for_metrics.get("estimated_cost", 0) or 0)
+    _actual = float(usage_summary.get("estimated_cost", 0) or 0)
+    _saved = max(0.0, _opus_est - _actual)
+    if _saved > 0:
+        OCR_COST_SAVED.inc(_saved)
+    OCR_TIER_COST.labels(tier=_tier).inc(float(usage_summary.get("estimated_cost", 0) or 0))
     metadata.update(
         {
             "image_quality_score": image_quality_score,
@@ -1377,12 +1529,43 @@ def _run_table_preview_pipeline(
             imageQualityScore=image_quality_score,
         )
 
-    selected_model, forced, explicit_model = _select_table_preview_model(
-        image_quality_score,
-        requested_model=requested_model or force_model,
-    )
-    logger.info("[OCR] Using AI")
-    model_tier = resolve_anthropic_model_tier(selected_model)
+    # Use cost-optimized model selection (Phase 2)
+    # If user explicitly requested a model, respect that. Otherwise use cost router.
+    # Detect document nature for prompt selection
+    try:
+        nature_result = detect_document_nature(image_bytes)
+        has_handwriting = nature_result.get("handwriting", {}).get("has_handwriting", False) or nature_result.get("nature") == "handwritten"
+        doc_nature = nature_result.get("nature", "printed")
+    except Exception:
+        has_handwriting = False
+        doc_nature = "printed"
+
+    if requested_model or force_model:
+        selected_model, forced, explicit_model = _select_table_preview_model(
+            image_quality_score,
+            requested_model=requested_model or force_model,
+        )
+        model_tier = resolve_anthropic_model_tier(selected_model)
+        cost_decision = None
+        logger.info("[OCR] Using user-requested model: %s (tier=%s)", selected_model, model_tier)
+    else:
+        # Cost-optimized model selection (Phase 2)
+        
+        cost_decision = select_cost_optimal_model(
+            image_quality_score=float(image_quality_score),
+            has_handwriting=has_handwriting,
+            doc_nature=doc_nature,
+        )
+        selected_model = cost_decision["model"]
+        model_tier = cost_decision["tier"]
+        forced = False
+        explicit_model = None
+        logger.info(
+            "[OCR] Cost-optimized model selection: tier=%s model=%s reason=%s",
+            cost_decision["tier"],
+            cost_decision["model"],
+            cost_decision["reason"],
+        )
     logger.info(
         "Structured table preview model selected requested_model=%s model=%s quality_score=%s mime=%s size_bytes=%s",
         explicit_model or "auto",
@@ -1392,16 +1575,55 @@ def _run_table_preview_pipeline(
         inspection["size_bytes"],
     )
 
+    # Record model tier selection metric
+    OCR_MODEL_TIER_REQUESTS.labels(tier=model_tier).inc()
+
     # Harden vision payload with resizing
     image_base64 = preprocess_image_bytes(image_bytes)
 
+    needs_correction = bool(cost_decision and cost_decision.get("needs_correction_pass"))
+    # Phase 5: Select unstructured prompt for handwritten/ledger/screenshot docs
+    # Phase 0.2: Classify document and select type-specific prompt as fallback
+    model_type_prompt = None
+    unstructured_prompt = get_unstructured_prompt(doc_nature)
+    if unstructured_prompt:
+        model_type_prompt = unstructured_prompt
+        logger.info("[OCR] Using unstructured prompt for doc_nature=%s", doc_nature)
+    elif not doc_type_hint or doc_type_hint == "unknown":
+        try:
+            from backend.ocr_utils import _require_ocr_dependencies, _extract_words_safe
+            _require_ocr_dependencies()
+            words, _, _, _, _ = _extract_words_safe(image_bytes, "eng")
+            ocr_text_preview = " ".join(str(w.get("text", "")) for w in words)[:1000]
+            classification_results = classify_document(ocr_text_preview, image_bytes)
+            if classification_results and classification_results[0][1] >= 0.6:
+                classified_type = classification_results[0][0]
+                classifier_confidence = classification_results[0][1]
+                logger.info("[OCR] Classified document as %s (confidence=%.2f)", classified_type, classifier_confidence)
+                OCR_CLASSIFICATION_ACCURACY.set(classifier_confidence)
+                model_type_prompt = _build_type_specific_prompt_for_claude(classified_type, ocr_text_preview)
+                if model_type_prompt:
+                    logger.info("[OCR] Using type-specific prompt for %s", classified_type)
+            elif classification_results:
+                # Classification below threshold - set accuracy to the top confidence anyway
+                OCR_CLASSIFICATION_ACCURACY.set(classification_results[0][1])
+            else:
+                OCR_CLASSIFICATION_ACCURACY.set(0.0)
+        except Exception as classify_error:
+            logger.warning("[OCR] Classification failed, using generic prompt: %s", classify_error)
+    elif doc_type_hint:
+        model_type_prompt = _build_type_specific_prompt_for_claude(doc_type_hint, None)
+        if model_type_prompt:
+            logger.info("[OCR] Using type-specific prompt for provided doc_type_hint=%s", doc_type_hint)
     extracted_json = _call_table_excel_anthropic(
         image_base64,
         image_mime_type="image/jpeg", # preprocess_image_bytes always returns JPEG
         selected_model=selected_model,
+        model_type_prompt=model_type_prompt,
         requested_model=requested_model or force_model,
         system_prompt=None,
         user_message=None,
+        needs_correction_pass=needs_correction,
     )
     used_model = str(extracted_json.get("_provider_model") or selected_model)
     structured = _build_table_preview_payload(
@@ -1444,6 +1666,11 @@ def _run_table_preview_pipeline(
         usage_summary.get("total_tokens", 0),
         estimated_cost,
     )
+    # Record cost and latency metrics
+    OCR_EXTRACTION_LATENCY.labels(tier=model_tier).observe(elapsed_ms / 1000.0)
+    if cost_saved_usd > 0:
+        OCR_COST_SAVED.inc(cost_saved_usd)
+    OCR_TIER_COST.labels(tier=model_tier).inc(estimated_cost)
     debug_payload = {
         "requested_model": explicit_model or None,
         "selected_model": selected_model,
@@ -1489,6 +1716,11 @@ def _run_table_preview_pipeline(
         "used_language": language,
         "fallback_used": False,
         "raw_column_added": False,
+        "validation": OcrValidationPipeline().validate(
+            headers=headers,
+            rows=rows,
+            doc_type=doc_type_hint,
+        ).to_dict() if headers else None,
         "reused": False,
         "reused_verification_id": None,
     }
@@ -1758,6 +1990,31 @@ def _normalize_routing_meta(values: dict | None, *, field_name: str) -> dict | N
         "processing_time_ms": max(0, int(_safe_float("processing_time_ms", default=0.0, maximum=3_600_000.0))),
         "usage": normalized_usage,
     }
+
+
+def _build_verification_validation(verification: OcrVerification) -> dict[str, Any] | None:
+    """Run the validation pipeline against stored verification data.
+
+    Reconstructs the validation result from stored headers/rows.
+    Returns None if no validation can be run.
+    """
+    headers = verification.headers or []
+    rows = verification.reviewed_rows or verification.original_rows or []
+    if not headers and not rows:
+        return None
+    try:
+        pipeline = OcrValidationPipeline()
+        result = pipeline.validate(
+            headers=headers,
+            rows=rows,
+            doc_type=verification.doc_type_hint,
+            cross_validation=verification.cross_validation,
+        )
+        return result.to_dict()
+    except Exception:
+        logger.warning("Validation from cache failed for verification id=%s", verification.id, exc_info=True)
+        return None
+
 
 
 def _save_verification_source(filename: str | None, image_bytes: bytes) -> tuple[str, str]:
@@ -2107,20 +2364,63 @@ def _verification_export_response(verification: OcrVerification) -> Response:
             status_code=409,
             detail="Reviewed sheet has blocking validation issues and must be corrected before export.",
         )
+
+    # Phase 6: ExportGate check (non-blocking — logs warnings, doesn't block export)
+    try:
+        gate_result = validate_export_readiness(verification)
+        if not gate_result.passed:
+            logger.warning(
+                "[EXPORT GATE] %d blocking checks for verification id=%s: %s",
+                len(gate_result.blocking_issues),
+                verification.id,
+                [c.name for c in gate_result.blocking_issues],
+            )
+    except Exception as gate_error:
+        logger.warning("[EXPORT GATE] Validation error (non-blocking): %s", gate_error)
+
     trusted_export = verification.status == "approved"
     export_source = _verification_export_source(verification)
     filename = _verification_export_filename(verification)
-    excel_bytes = build_table_excel_bytes(
-        {"headers": headers, "rows": rows},
-        sheet_name="Verification Export",
-        metadata={
-            "Verification Id": verification.id,
-            "Verification Status": verification.status,
-            "Export Source": export_source,
-            "Trusted Export": "Yes" if trusted_export else "No",
-            "Review Required": "Yes" if validation_warnings or (verification.scan_quality or {}).get("review_required") else "No",
-        },
-    )
+
+    # Build verification metadata for audit trail
+    verification_meta = {
+        "id": verification.id,
+        "status": verification.status,
+        "avg_confidence": verification.avg_confidence,
+        "doc_type_hint": verification.doc_type_hint,
+        "source_filename": verification.source_filename,
+        "reviewer_notes": verification.reviewer_notes,
+    }
+
+    # Phase 6: Use ExcelExportEngine for type-specific exports, fall back to generic
+    doc_type = (verification.doc_type_hint or "").strip().lower()
+    try:
+        data = {"headers": headers, "rows": rows}
+        if doc_type:
+            data["metadata"] = {
+                "id": verification.id,
+                "status": verification.status,
+                "avg_confidence": verification.avg_confidence,
+            }
+        excel_bytes = excel_export_engine.export(
+            data=data,
+            doc_type=doc_type if doc_type else "generic_table",
+            verification_meta=verification_meta,
+        )
+    except Exception as excel_error:
+        logger.warning("[EXPORT] ExcelExportEngine failed, falling back to generic: %s", excel_error)
+        excel_bytes = build_table_excel_bytes(
+            {"headers": headers, "rows": rows},
+            sheet_name="Verification Export",
+            metadata={
+                "Verification Id": verification.id,
+                "Verification Status": verification.status,
+                "Export Source": export_source,
+                "Trusted Export": "Yes" if trusted_export else "No",
+                "Review Required": "Yes" if validation_warnings or (verification.scan_quality or {}).get("review_required") else "No",
+            },
+        )
+
     return Response(
         content=excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -2134,6 +2434,7 @@ def _verification_export_response(verification: OcrVerification) -> Response:
             "X-Ocr-Review-Required": str(bool(validation_warnings or (verification.scan_quality or {}).get("review_required"))).lower(),
             "X-Total-Rows": str(len(rows)),
             "X-Total-Columns": str(len(headers)),
+            "X-Export-Engine": "excel_export_engine_v6",
         },
     )
 
@@ -2612,3 +2913,172 @@ def _run_ocr_with_fallback(
 
     return result, used_language, fallback_used
 
+
+
+# ── Async OCR Logbook (ARCH-01) ─────────────────────────────────────────────
+
+
+def _run_ocr_logbook_job(progress, *, job_id: str) -> dict[str, object]:
+    """Background worker for /ocr/logbook-async.
+
+    Runs OCR extraction in a background thread.  Exceptions propagate
+    to ``start_job()`` which marks the job as failed automatically.
+    """
+    job = get_background_job(job_id)
+    if not job:
+        raise RuntimeError("OCR logbook job not found.")
+    context = job.get("context") or {}
+    mode = str(context.get("mode") or "table")
+    input_file = context.get("input_file")
+    if not isinstance(input_file, dict):
+        raise RuntimeError("OCR input file is missing.")
+    stored_path = input_file.get("stored_path")
+    if not stored_path:
+        raise RuntimeError("OCR input file path is missing.")
+    from pathlib import Path
+    image_bytes = Path(stored_path).read_bytes()
+    requested_model = context.get("requested_model")
+    template_id = context.get("template_id")
+    doc_type_hint = context.get("doc_type_hint") or "table"
+    columns = context.get("columns", 3)
+    language = context.get("language", "eng")
+    content_type = context.get("content_type")
+    filename = context.get("source_filename")
+    progress(15, "Image loaded, starting OCR")
+    logger.info(
+        "[OCR-ASYNC] Running logbook job %s doc_type=%s",
+        job_id, doc_type_hint,
+    )
+    from backend.database import SessionLocal
+    from backend.middleware.rls_context import set_rls_context, clear_rls_context
+    from backend.models.ocr_template import OcrTemplate
+    # Set RLS context so the background worker session respects tenant isolation.
+    org_id = context.get("org_id")
+    user_id = context.get("owner_id")
+    factory_id = context.get("factory_id")
+    set_rls_context(org_id=org_id, user_id=user_id, factory_id=factory_id)
+    try:
+        with SessionLocal() as worker_db:
+            progress(25, "Loading template")
+            template = None
+            if template_id is not None:
+                template = worker_db.query(OcrTemplate).filter(
+                    OcrTemplate.id == template_id,
+                    OcrTemplate.is_active.is_(True),
+                ).first()
+            progress(35, "Running OCR pipeline")
+            # _run_table_preview_pipeline is defined in THIS module
+            if doc_type_hint in {"table", "sheet", "spreadsheet", "logbook", "ledger", "register"}:
+                structured = _run_table_preview_pipeline(
+                    image_bytes,
+                    content_type=content_type,
+                    filename=filename,
+                    template=template,
+                    doc_type_hint=doc_type_hint,
+                    requested_model=requested_model,
+                    language=language,
+                )
+                structured["reused"] = False
+                structured["cached"] = False
+            else:
+                from backend.ocr_utils import extract_table_from_image as _local_extract
+                from backend.services.ocr_document_pipeline import build_structured_ocr_result as _build_result
+                result, used_language, fallback_used = _local_extract(
+                    image_bytes,
+                    columns=template.columns if template else columns,
+                    language=template.language if template else language,
+                    column_centers=template.column_centers if template else None,
+                    column_keywords=template.column_keywords if template else None,
+                    enable_raw_column=bool(template.enable_raw_column) if template else False,
+                    allow_fallback=True,
+                )
+                structured = _build_result(
+                    image_bytes,
+                    base_result=result,
+                    used_language=used_language,
+                    fallback_used=fallback_used,
+                    template=template,
+                    doc_type_hint=doc_type_hint,
+                    force_model=requested_model,
+                )
+            progress(85, "OCR extraction complete")
+    finally:
+        clear_rls_context()
+    logger.info("[OCR-ASYNC] Logbook job %s completed", job_id)
+    return {
+        "ocr_result": structured,
+        "mode": mode,
+        "source_filename": context.get("source_filename"),
+    }
+
+
+def _queue_ocr_logbook_job(
+    *,
+    owner_id: int,
+    org_id: str | None,
+    factory_id: str | None,
+    source_filename: str,
+    content_type: str | None,
+    size_bytes: int,
+    columns: int = 3,
+    language: str = "eng",
+    template_id: int | None = None,
+    doc_type_hint: str | None = None,
+    requested_model: str | None = None,
+    force_refresh: bool = False,
+    image_bytes: bytes | None = None,
+    input_file: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """Queue an async OCR logbook job.
+
+    Returns the job payload (with job_id) so the caller can return it to the client.
+    The client polls /ocr/jobs/{job_id} for status, then reads result from job data.
+    """
+    job_kind = "ocr_logbook"
+    context: dict[str, object] = {
+        "route": "ocr_logbook_async",
+        "mode": "logbook",
+        "factory_id": factory_id,
+        "source_filename": source_filename,
+        "content_type": content_type,
+        "columns": columns,
+        "language": language,
+        "template_id": template_id,
+        "doc_type_hint": doc_type_hint,
+        "requested_model": requested_model,
+        "force_refresh": force_refresh,
+        "size_bytes": size_bytes,
+    }
+    retry_context = dict(context)
+    job = create_job(
+        kind=job_kind,
+        owner_id=owner_id,
+        org_id=org_id,
+        message=f"Queued OCR logbook extraction",
+        context=context,
+        retry_context=retry_context,
+    )
+    if image_bytes is not None:
+        file_meta = write_job_file(
+            job["job_id"],
+            filename=source_filename,
+            content=image_bytes,
+            media_type=content_type or "image/png",
+        )
+        update_job(
+            job["job_id"],
+            context={
+                **context,
+                "input_file": file_meta,
+            },
+        )
+    elif input_file is not None:
+        update_job(
+            job["job_id"],
+            context={
+                **context,
+                "input_file": input_file,
+            },
+        )
+    start_job(job["job_id"], lambda progress: _run_ocr_logbook_job(progress, job_id=job["job_id"]))
+    return job

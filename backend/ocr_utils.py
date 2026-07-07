@@ -233,6 +233,11 @@ def _detect_tessdata_prefix() -> str | None:
 _OCR_DEPENDENCIES_CHECKED = False
 _OCR_DEPENDENCIES_OK = False
 
+# Module-level ThreadPoolExecutor for Tesseract calls with timeout (P0-7).
+# Reused across all _extract_words invocations to avoid thread leak.
+from concurrent.futures import ThreadPoolExecutor
+_TESS_EXECUTOR = ThreadPoolExecutor(max_workers=2)
+
 
 def _require_ocr_dependencies() -> None:
     """Check Tesseract & OpenCV are available.
@@ -327,12 +332,25 @@ def _extract_words(image_bytes: bytes, language: str) -> tuple[list[dict[str, fl
     image = Image.open(io.BytesIO(image_bytes))
     processed = _preprocess_image(image)
     config = "--oem 1 --psm 6"
-    data = pytesseract.image_to_data(
+    
+    # Run pytesseract with a 30-second timeout (P0-7). pytesseract does not
+    # natively support timeout and can hang indefinitely on corrupted or very
+    # large images, blocking all 4 OCR worker threads. We use a module-level
+    # ThreadPoolExecutor to enforce timeout without creating/destroying threads
+    # on every call.
+    from concurrent.futures import TimeoutError as _FuturesTimeout
+    _TESS_TIMEOUT = int(os.getenv("OCR_TESSERACT_TIMEOUT_SECONDS", "30"))
+    _future = _TESS_EXECUTOR.submit(
+        pytesseract.image_to_data,
         processed,
         output_type=pytesseract.Output.DICT,
         lang=language,
         config=config,
     )
+    try:
+        data = _future.result(timeout=_TESS_TIMEOUT)
+    except _FuturesTimeout:
+        raise RuntimeError(f"Tesseract timed out after {_TESS_TIMEOUT}s.")
     words: list[dict[str, float | str]] = []
     confidences: list[float] = []
     num_items = len(data.get("text", []))
@@ -374,14 +392,14 @@ def _extract_words_safe(image_bytes: bytes, language: str) -> tuple[list[dict[st
     try:
         words, confs, processed = _extract_words(image_bytes, language)
         return words, confs, processed, warnings, language
-    except Exception as error:  # pylint: disable=broad-except
+    except (RuntimeError, OSError, ValueError, TypeError) as error:
         if language != "eng":
             try:
                 words, confs, processed = _extract_words(image_bytes, "eng")
                 warnings.append("Requested OCR language unavailable. Fell back to English.")
                 return words, confs, processed, warnings, "eng"
-            except Exception:
-                raise RuntimeError(f"OCR failed for language '{language}'. {error}") from error
+            except (RuntimeError, OSError, ValueError, TypeError) as fallback_error:
+                raise RuntimeError(f"OCR failed for language '{language}'. {error}") from fallback_error
         raise
 
 

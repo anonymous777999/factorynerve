@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
 
 import bcrypt
 from fastapi import Depends, HTTPException, Request, status
@@ -14,8 +13,10 @@ from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.auth_security.sessions import (
     get_current_session as get_v2_session,
-    SESSION_COOKIE,
+    get_current_user as get_user_from_session,
 )
+from backend.middleware.rls_context import set_rls_context
+from backend.cache import build_cache_key, set_json
 
 
 logger = logging.getLogger(__name__)
@@ -47,26 +48,16 @@ def get_current_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> User:
-    # Use v2 session cookie to authenticate
-    from backend.models.auth_user import AuthUser
+    """Authenticate the current request via v2 session cookie.
 
+    Uses the unified session.user_id FK when available (auth consolidation
+    Phase 2+), falling back to the AuthUser email bridge for sessions
+    created before migration (transition period).
+    """
     session = get_v2_session(db, request)
-    auth_user = db.query(AuthUser).filter(
-        AuthUser.id == session.auth_user_id,
-        AuthUser.is_active.is_(True),
-    ).first()
-    if not auth_user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
+    user = get_user_from_session(db, session)
 
-    # Resolve the legacy User record by email
-    user = db.query(User).filter(
-        User.email == auth_user.email,
-        User.is_active.is_(True),
-    ).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-
-    # Resolve active factory from the v2 session's stored factory field
+    # Resolve active factory from the session's stored factory field
     active_factory_id = getattr(session, "factory_id", None)
     if active_factory_id:
         membership = (
@@ -83,6 +74,32 @@ def get_current_user(
 
     setattr(user, "active_org_id", user.org_id)
     setattr(user, "active_factory_id", active_factory_id)
+
+    # ── Set RLS context for PostgreSQL Row-Level Security ────────────
+    # This sets the thread-local context that the SQLAlchemy checkout
+    # event uses to configure PostgreSQL GUCs (app.current_org_id,
+    # app.current_user_id, app.current_factory_id) on every connection
+    # from the pool. Platform admins get an empty-string bypass signal
+    # so their queries can see all tenants.
+    is_platform_admin = bool(getattr(user, "is_platform_admin", False))
+    if is_platform_admin:
+        set_rls_context(
+            org_id="",
+            user_id=user.id,
+            factory_id="",
+        )
+    else:
+        set_rls_context(
+            org_id=user.org_id,
+            user_id=user.id,
+            factory_id=active_factory_id,
+        )
+
+    # Cache role_revision for this user so the PDP can use it as a
+    # fast-path freshness check on subsequent requests within the TTL.
+    # Redis-backed (via cache.py) so it survives server restarts.
+    set_json(build_cache_key("role_revision", user.id), user.role_revision, 300)
+
     return user
 
 

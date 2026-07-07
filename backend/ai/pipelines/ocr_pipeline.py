@@ -28,8 +28,19 @@ _INJECTION_PATTERNS = [
     r"ignore (all |previous )?instructions?",
     r"system\s*:",
     r"<\|.*?\|>",
-    r"you are now",
+    r"you are (now )?",
     r"new instructions?",
+    r"disregard",
+    r"override",
+    r"forget (all )?",
+    r"pretend",
+    r"act as if",
+    r"from now on",
+    r"your (new )?(role|persona|identity)",
+    r"### instructions?",
+    r"#\s*instructions?",
+    r"you are a (free|better|different)",
+    r"change your (instructions|rules|guidelines)",
 ]
 
 

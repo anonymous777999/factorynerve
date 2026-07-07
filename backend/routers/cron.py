@@ -27,6 +27,38 @@ router = APIRouter(tags=["Cron"])
 CRON_SECRET = os.getenv("CRON_SECRET_TOKEN", "")
 
 
+def _rq_enabled() -> bool:
+    """Check if rq worker integration is enabled for dual-run mode."""
+    return os.getenv("RQ_WORKER_ENABLED", "").strip().lower() in ("1", "true", "yes")
+
+
+def _try_enqueue_rq(enqueue_fn, name: str, results: dict, **kwargs) -> None:
+    """Try to enqueue an rq job and record the result in the results dict.
+
+    Args:
+        enqueue_fn: Callable that accepts **kwargs and returns a job_id or None.
+        name: Short label for logging (e.g. "email", "auto-close").
+        results: Dict to update with rq_enqueued, rq_job_id, etc.
+    """
+    if not _rq_enabled():
+        results["rq_enqueued"] = False
+        results["rq_message"] = "RQ_WORKER_ENABLED not set"
+        return
+    if enqueue_fn is None:
+        results["rq_enqueued"] = False
+        results.setdefault("rq_error", "enqueue function not available")
+        return
+    try:
+        job_id = enqueue_fn(**kwargs)
+        results["rq_enqueued"] = job_id is not None
+        if job_id:
+            results["rq_job_id"] = job_id
+    except Exception as exc:
+        logger.exception("rq enqueue failed for %s.", name)
+        results["rq_error"] = str(exc)
+        results["rq_enqueued"] = False
+
+
 async def verify_cron_secret(x_cron_secret: str = Header(..., alias="X-Cron-Secret")) -> None:
     if not CRON_SECRET:
         raise HTTPException(status_code=503, detail="Cron secret not configured.")
@@ -55,17 +87,39 @@ def run_daily_maintenance() -> dict:
 def process_email_queue() -> dict:
     """Process one batch of pending/failed emails from the queue.
 
+    Dual-run (ARCH-03): Runs the legacy daemon-thread processor AND
+    enqueues an rq job simultaneously. When RQ_WORKER_ENABLED=true,
+    the rq worker also processes the email queue, providing redundancy
+    and a safety net during migration.
+
     Schedule: every 5 minutes.
     """
+    results: dict[str, object] = {"status": "ok"}
+
+    # Legacy path: daemon-thread processor
     try:
         processor = get_email_processor()
-        if processor is None:
-            return {"status": "ok", "processed": 0, "message": "Processor not started"}
-        count = processor.process_batch()
-        return {"status": "ok", "processed": count}
+        if processor is not None:
+            count = processor.process_batch()
+            results["legacy_processed"] = count
+        else:
+            results["legacy_processed"] = 0
+            results["legacy_message"] = "Processor not started"
     except Exception as exc:
-        logger.exception("Email queue processing via cron failed.")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.exception("Email queue processing via cron (legacy) failed.")
+        results["legacy_error"] = str(exc)
+
+    # rq path: enqueue job for worker process (guarded import — rq may not be installed)
+    enqueue_fn = None
+    if _rq_enabled():
+        try:
+            from backend.workers.email_queue_worker import enqueue_email_batch
+            enqueue_fn = enqueue_email_batch
+        except ImportError:
+            results["rq_error"] = "rq module not available"
+    _try_enqueue_rq(enqueue_fn, "email", results)
+
+    return results
 
 
 @router.post("/cron/daily-summary", dependencies=[Depends(verify_cron_secret)])
@@ -89,20 +143,36 @@ def trigger_auto_close_attendance() -> dict:
     Scans all active factories for missed punch-outs and closes them
     using shift end times. Reports per-factory results.
 
+    Dual-run (ARCH-03): Runs the legacy sweep function AND enqueues
+    an rq job simultaneously. When RQ_WORKER_ENABLED=true, the rq
+    worker also runs the sweep.
+
     Schedule: every 5 minutes or on-demand via external cron.
     """
+    main_results: dict[str, object] = {"status": "ok"}
+
+    # Legacy path: run sweep directly
     try:
-        results = run_auto_close_sweep_once()
-        total_closed = sum(r.get("closed_count", 0) for r in results)
-        return {
-            "status": "ok",
-            "total_closed": total_closed,
-            "factories_affected": len(results),
-            "results": results,
-        }
+        legacy_results = run_auto_close_sweep_once()
+        total_closed = sum(r.get("closed_count", 0) for r in legacy_results)
+        main_results["total_closed"] = total_closed
+        main_results["factories_affected"] = len(legacy_results)
+        main_results["legacy_results"] = legacy_results
     except Exception as exc:
-        logger.exception("Auto-close attendance via cron failed.")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        logger.exception("Auto-close attendance via cron (legacy) failed.")
+        main_results["legacy_error"] = str(exc)
+
+    # rq path: enqueue job for worker process (guarded import — rq may not be installed)
+    enqueue_fn = None
+    if _rq_enabled():
+        try:
+            from backend.workers.attendance_auto_close import enqueue_auto_close_sweep
+            enqueue_fn = enqueue_auto_close_sweep
+        except ImportError:
+            main_results["rq_error"] = "rq module not available"
+    _try_enqueue_rq(enqueue_fn, "auto-close", main_results)
+
+    return main_results
 
 
 @router.get("/cron/auto-close-attendance/status", dependencies=[Depends(verify_cron_secret)])

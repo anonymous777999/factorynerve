@@ -7,11 +7,15 @@ Supports two modes:
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
+
+
+logger = logging.getLogger(__name__)
 
 from backend.authorization.permission_catalog import (
     PermissionCatalog,
@@ -23,6 +27,7 @@ from backend.database import get_db
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.security import get_current_user
+from backend.cache import build_cache_key, get_json
 
 
 # ── PDP Modes ─────────────────────────────────────────────────────────────────
@@ -97,7 +102,25 @@ class PDP:
         resource: ResourceContext | None = None,
         request_context: dict[str, Any] | None = None,
     ) -> PDPDecision:
-        """Check permission and raise 403 if denied. Returns the decision if allowed."""
+        """Check permission and raise 403 if denied. Returns the decision if allowed.
+
+        Performs a quick role_revision freshness check using the Redis-backed
+        cache (D-18). If the cached role_revision differs from the actor's
+        current role_revision, it means the role was modified externally.
+        The DB already has the latest value (actor is loaded fresh), so no
+        additional action is needed, but the discrepancy is logged.
+        """
+        # ── Role revision freshness check ───────────────────────────────
+        cached_revision = get_json(build_cache_key("role_revision", actor.id))
+        if cached_revision is not None and cached_revision != actor.role_revision:
+            logger.info(
+                "Role revision changed for user_id=%s: cached=%s current=%s. "
+                "Role may have been modified externally.",
+                actor.id,
+                cached_revision,
+                actor.role_revision,
+            )
+
         decision = self.check_permission(
             actor=actor,
             permission_key=permission_key,
@@ -181,8 +204,15 @@ class PDP:
 
     @staticmethod
     def _check_platform_scope(actor: User) -> bool:
-        """PLATFORM-scoped permissions are reserved for platform admins / superadmins."""
-        return bool(getattr(actor, "is_platform_admin", False)) or actor.role in {
+        """PLATFORM-scoped permissions are reserved for platform admins / superadmins.
+
+        FIX (PDP-02): Requires BOTH the is_platform_admin flag AND an ADMIN/OWNER
+        role. Previously having ADMIN/OWNER role alone was sufficient, which could
+        grant unintended platform-level access to org-level admins.
+        """
+        if not bool(getattr(actor, "is_platform_admin", False)):
+            return False
+        return actor.role in {
             UserRole.ADMIN,
             UserRole.OWNER,
         }
@@ -219,32 +249,34 @@ class PDP:
     def _check_mfa(self, actor: User) -> bool:
         """Check whether the actor has passed MFA verification for the current session.
 
-        Reads the `mfa_verified` claim from the JWT token payload that was stored on
-        the User object by `get_current_user()` during authentication.
+        Uses the unified User model (auth consolidation Phase 2+). MFA fields
+        are now on the User model directly, so no AuthUser query is needed.
 
         Returns True if:
         - The token payload contains `mfa_verified: True`, OR
-        - The user does NOT have MFA enabled (no MFA required for them), OR
-        - No token payload is available (defensive fallback - allow through)
+        - The user does NOT have MFA enabled (no MFA requirement)
 
         Returns False only when the user has MFA enabled but the current token was
         NOT issued after an MFA verification (i.e., they logged in without MFA).
+
+        FIX (PDP-01): When payload is None (no token available), we now check
+        whether the user has MFA enabled. Previously this fell through to True,
+        allowing MFA-required actions to proceed without verification. If MFA
+        is enabled and we can't verify it, we require it.
         """
         payload = getattr(actor, "current_token_payload", None)
-        if payload is None:
+
+        # If payload explicitly confirms MFA verification, allow
+        if payload is not None and payload.get("mfa_verified"):
             return True
 
-        if payload.get("mfa_verified"):
-            return True
-
-        from backend.models.auth_user import AuthUser
-        auth_user = self._db.query(AuthUser).filter(
-            AuthUser.email == actor.email,
-            AuthUser.is_active.is_(True),
-        ).first()
-        if auth_user and auth_user.mfa_enabled:
+        # MFA fields are now directly on the User model (auth consolidation).
+        # No more AuthUser lookup — actor IS the user with all auth fields.
+        if actor.mfa_enabled:
+            # MFA is enabled — if payload is None or mfa_verified is False, block
             return False
 
+        # User doesn't have MFA enabled — always allowed
         return True
 
 

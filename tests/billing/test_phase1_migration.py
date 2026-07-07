@@ -31,18 +31,20 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
     monkeypatch.setattr(billing_manager, "resolve_factory_id", lambda db, user: None)
     monkeypatch.setattr(billing_manager, "AuditLog", lambda **kwargs: SimpleNamespace(**kwargs))
 
+    future = datetime.now(timezone.utc) + timedelta(days=30)
     active_sub = SimpleNamespace(
         id=1,
         org_id="org-123",
         user_id=42,
         plan="pilot",
-        status="trialing",
+        status="active",
         provider=None,
-        current_period_end_at=None,
+        current_period_end_at=future,
         trial_end_at=None,
         pending_plan=None,
         pending_plan_effective_at=None,
         updated_at=None,
+        grace_period_end_at=None,
     )
     apply_sub = SimpleNamespace(
         id=2,
@@ -88,7 +90,7 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
     plan_row = SimpleNamespace(user_id=42, plan="pilot", updated_at=None)
 
     active_query = MagicMock()
-    active_query.filter.return_value.first.return_value = active_sub
+    active_query.filter.return_value.limit.return_value.all.return_value = [active_sub]
 
     resolve_user_apply_query = MagicMock()
     resolve_user_apply_query.filter.return_value.first.return_value = user

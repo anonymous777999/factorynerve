@@ -98,7 +98,7 @@ _register_attempts: dict[str, deque[float]] = defaultdict(deque)
 
 @router.on_event("startup")
 def log_deprecated_auth_route_warning() -> None:
-    logger.warning("DEPRECATED_AUTH_ROUTE_ACTIVE: /auth/login will be removed 2025-09-01")
+    logger.warning("AUTH_CONSOLIDATION: /auth router is now at /auth-secure (canonical: /auth). Legacy auth router moved to /auth-legacy.")
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -660,13 +660,26 @@ def _preview_public_registration(
             org_id = legacy.org_id
             normalized_factory = legacy.factory_name
     else:
+        # P0-09: Without a company_code, the lookup falls back to factory name
+        # matching alone.  This is unsafe in a multi-tenant system because
+        # two factories in different orgs can share the same name, causing
+        # cross-org pollution (the first user registering "Acme Factory"
+        # creates the org, and the second registration silently joins it).
+        # Raise a clear error asking for a company code to disambiguate.
         existing_factory_user = (
             db.query(User)
             .filter(User.factory_name == normalized_factory, User.is_active.is_(True))
             .first()
         )
         if existing_factory_user:
-            org_id = existing_factory_user.org_id
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "A factory with this name already exists. "
+                    "Please provide a company code to verify you belong to this factory. "
+                    "Contact your factory admin if you don't have a company code."
+                ),
+            )
 
     has_existing_org_user = False
     if org_id:
@@ -692,9 +705,23 @@ def _activate_pending_registration(
     pending: PendingRegistration,
     request: Request,
 ) -> None:
-    existing_user = db.query(User).filter(User.email == pending.email.lower()).first()
+    # P0-08 / AUTH-03: Constant-time response — never reveal whether or not
+    # the email is already registered through error messages or timing.
+    # Silently ignore activation requests that don't match a valid pending
+    # registration (already verified, already used, already superseded).
+    email = pending.email.lower()
+    existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
-        raise HTTPException(status_code=409, detail="Email is already registered.")
+        # The token was valid, but the email is now registered.
+        # Do NOT raise 409 — just silently succeed so the caller sees
+        # the same "verified" response regardless of whether the email
+        # was already taken. The activation link is single-use; a second
+        # attempt will hit the "used or expired" path anyway.
+        logger.info(
+            "Silently ignored activation for %s — email already registered.",
+            email,
+        )
+        return
 
     requested_factory = (
         sanitize_text(pending.factory_name, max_length=255, preserve_newlines=False)
@@ -795,9 +822,11 @@ def register_user(
         if payload.role == UserRole.OWNER:
             raise HTTPException(status_code=403, detail="Owner accounts cannot be created from public registration.")
         validate_password_strength(payload.password)
-        existing_user = db.query(User).filter(User.email == payload.email.lower()).first()
-        if existing_user:
-            raise HTTPException(status_code=409, detail="Email is already registered.")
+        # P0-08: Constant-time response — always return the same message
+        # regardless of whether the email already exists, to prevent
+        # account enumeration via timing or error message differences.
+        _ = db.query(User).filter(User.email == payload.email.lower()).first()
+
 
         requested_factory = (
             sanitize_text(payload.factory_name, max_length=255, preserve_newlines=False)
@@ -1218,14 +1247,9 @@ def deactivate_user(
     target_user.profile_picture = None
 
     # Revoke all v2 sessions so the user is immediately logged out
+    # User model now has lockout fields directly — use user.id for session revocation.
     try:
-        from backend.models.auth_user import AuthUser
-        auth_user = db.query(AuthUser).filter(
-            AuthUser.email == target_user.email,
-            AuthUser.is_active.is_(True),
-        ).first()
-        if auth_user:
-            revoke_all_v2_sessions(db, user_id=auth_user.id)
+        revoke_all_v2_sessions(db, user_id=target_user.id)
     except Exception:
         logger.exception("Failed to revoke sessions for deactivated user %s", target_user.id)
 
@@ -1453,16 +1477,13 @@ def logout_all_devices(
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
     session_revoked = False
-    from backend.models.auth_user import AuthUser
-
-    # Attempt to revoke all sessions for this user's AuthUser account.
-    # We use two strategies: first via the session cookie (preferred), then
-    # via email lookup (fallback for when the session cookie is already gone
-    # or CSRF validation fails).
+    # Attempt to revoke all sessions for this user.
+    # Prefers session.user_id (direct FK) when available, falls back to
+    # the session's auth_user_id for pre-migration sessions.
     try:
         session = get_v2_session(db, request)
-        auth_user_id = session.auth_user_id
-        revoke_all_v2_sessions(db, user_id=auth_user_id)
+        user_id_for_revoke = session.user_id if session.user_id is not None else session.auth_user_id
+        revoke_all_v2_sessions(db, user_id=user_id_for_revoke)
         session_revoked = True
         # Attempt CSRF validation — log a warning on failure but don't block
         # the logout since we already revoked all sessions.
@@ -1474,21 +1495,16 @@ def logout_all_devices(
                 current_user.id,
             )
     except HTTPException:
-        # Fallback: resolve AuthUser by email and revoke all sessions.
+        # Fallback: revoke sessions by user.id (direct FK).
         # This handles the case where the session cookie is expired or
         # missing entirely.
         try:
-            auth_user = db.query(AuthUser).filter(
-                AuthUser.email == current_user.email,
-                AuthUser.is_active.is_(True),
-            ).first()
-            if auth_user:
-                revoke_all_v2_sessions(db, user_id=auth_user.id)
-                session_revoked = True
-                logger.info(
-                    "Fallback logout-all for user %s — revoked sessions via email lookup.",
-                    current_user.id,
-                )
+            revoke_all_v2_sessions(db, user_id=current_user.id)
+            session_revoked = True
+            logger.info(
+                "Fallback logout-all for user %s — revoked sessions via user.id.",
+                current_user.id,
+            )
         except Exception as fallback_error:
             logger.exception(
                 "Fallback session revocation failed during logout-all for user %s.",
@@ -1729,29 +1745,24 @@ def password_forgot(
     delivery_mode = "preview" if _should_expose_reset_link() else "email"
     reset_link: str | None = None
 
-    # Lockout check: if the AuthUser account is locked, silently return
-    # the generic message so we don't reveal the locked state to an attacker.
+    # Lockout check: the User model now has lockout fields directly
+    # (auth consolidation Phase 2+), so no AuthUser lookup is needed.
     if user:
-        from backend.models.auth_user import AuthUser
-        auth_user = db.query(AuthUser).filter(
-            AuthUser.email == email, AuthUser.is_active.is_(True)
-        ).first()
-        if auth_user:
-            from backend.auth_security.lockout import check_account_locked
-            if check_account_locked(auth_user):
-                logger.info(
-                    "Password reset requested for locked account %s — silently ignored.",
-                    email,
-                )
-                db.add(auth_user)
-                db.commit()
-                return PasswordForgotResponse(
-                    message="If an account exists for this email, you will receive a reset link.",
-                    reset_link=None,
-                    delivery_mode=delivery_mode,
-                )
+        from backend.auth_security.lockout import check_account_locked
+        if check_account_locked(user):
+            logger.info(
+                "Password reset requested for locked account %s — silently ignored.",
+                email,
+            )
+            db.add(user)
+            db.commit()
+            return PasswordForgotResponse(
+                message="If an account exists for this email, you will receive a reset link.",
+                reset_link=None,
+                delivery_mode=delivery_mode,
+            )
 
-    if user:
+
         token = create_reset_token(db, user=user, ttl_minutes=PASSWORD_RESET_TTL_MINUTES)
         reset_link = _frontend_reset_link_from_request(request, token) or build_reset_link(token)
         delivered = True
@@ -1814,36 +1825,29 @@ def password_reset(
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
 
-    # Lockout check: prevent resetting password for locked accounts
-    from backend.models.auth_user import AuthUser as AuthUserModel
+    # Lockout check: prevent resetting password for locked accounts.
+    # User model now has lockout fields directly (auth consolidation Phase 2+).
     from backend.auth_security.lockout import check_account_locked
-    auth_user_locked = db.query(AuthUserModel).filter(
-        AuthUserModel.email == user.email, AuthUserModel.is_active.is_(True)
-    ).first()
-    if auth_user_locked and check_account_locked(auth_user_locked):
+    if check_account_locked(user):
         logger.info(
             "Password reset blocked for locked account %s (user_id=%s).",
             user.email,
             user.id,
         )
-        db.add(auth_user_locked)
+        db.add(user)
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
             detail="Account temporarily locked due to too many failed login attempts. Try again later.",
         )
 
+    from backend.auth_security.passwords import hash_password as argon2_hash_password
     now = datetime.now(timezone.utc)
-    user.password_hash = hash_password(payload.new_password)
+    user.password_hash = argon2_hash_password(payload.new_password)
+    user.password_hash_version = "argon2"
+    user.password_changed_at = now
+    user.updated_at = now
     record.used_at = now
-
-    # Sync the new password hash to AuthUser (argon2) so v2 login also works
-    if auth_user_locked:
-        from backend.auth_security.passwords import hash_password as auth_hash_password
-        auth_user_locked.password_hash = auth_hash_password(payload.new_password)
-        auth_user_locked.password_changed_at = now
-        auth_user_locked.updated_at = now
-        db.add(auth_user_locked)
 
     # Invalidate all other pending reset tokens for this user
     from backend.models.password_reset_token import PasswordResetToken
@@ -1852,6 +1856,14 @@ def password_reset(
         PasswordResetToken.used_at.is_(None),
         PasswordResetToken.id != record.id,
     ).update({"used_at": now}, synchronize_session=False)
+
+    # P0-02: Token rotation — revoke all v2 sessions so attacker-held
+    # session cookies are immediately invalidated after password reset.
+    # User model now has direct user_id FK, so use user.id directly.
+    try:
+        revoke_all_v2_sessions(db, user_id=user.id)
+    except Exception:
+        logger.exception("Failed to revoke v2 sessions on password reset for %s", user.email)
 
     _log_auth_event(
         db,
@@ -1941,20 +1953,13 @@ def get_session_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    from backend.models.auth_user import AuthUser
     from backend.models.auth_session import AuthSession
-    auth_user = db.query(AuthUser).filter(
-        AuthUser.email == current_user.email,
-        AuthUser.is_active.is_(True),
-    ).first()
-    active_devices = 0
-    if auth_user:
-        now = datetime.now(timezone.utc)
-        active_devices = db.query(AuthSession).filter(
-            AuthSession.auth_user_id == auth_user.id,
-            AuthSession.revoked_at.is_(None),
-            AuthSession.expires_at > now,
-        ).count()
+    now = datetime.now(timezone.utc)
+    active_devices = db.query(AuthSession).filter(
+        AuthSession.user_id == current_user.id,
+        AuthSession.revoked_at.is_(None),
+        AuthSession.expires_at > now,
+    ).count()
     return {
         "active_devices": active_devices,
         "last_activity": current_user.last_login,
@@ -2109,19 +2114,16 @@ def change_password(
     if not verify_password(payload.old_password, current_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
 
-    # Lockout check: prevent password change for locked accounts
-    from backend.models.auth_user import AuthUser as AuthUserModel
+    # Lockout check: prevent password change for locked accounts.
+    # User model now has lockout fields directly (auth consolidation Phase 2+).
     from backend.auth_security.lockout import check_account_locked
-    auth_user_change = db.query(AuthUserModel).filter(
-        AuthUserModel.email == current_user.email, AuthUserModel.is_active.is_(True)
-    ).first()
-    if auth_user_change and check_account_locked(auth_user_change):
+    if check_account_locked(current_user):
         logger.info(
             "Password change blocked for locked account %s (user_id=%s).",
             current_user.email,
             current_user.id,
         )
-        db.add(auth_user_change)
+        db.add(current_user)
         db.commit()
         raise HTTPException(
             status_code=status.HTTP_423_LOCKED,
@@ -2129,15 +2131,12 @@ def change_password(
         )
 
     try:
+        from backend.auth_security.passwords import hash_password as argon2_hash_password
         validate_password_strength(payload.new_password)
-        current_user.password_hash = hash_password(payload.new_password)
-
-        # Sync the new password hash to AuthUser (argon2) so v2 login stays in sync
-        if auth_user_change:
-            from backend.auth_security.passwords import hash_password as auth_hash_password
-            auth_user_change.password_hash = auth_hash_password(payload.new_password)
-            auth_user_change.password_changed_at = datetime.now(timezone.utc)
-            auth_user_change.updated_at = datetime.now(timezone.utc)
+        current_user.password_hash = argon2_hash_password(payload.new_password)
+        current_user.password_hash_version = "argon2"
+        current_user.password_changed_at = datetime.now(timezone.utc)
+        current_user.updated_at = datetime.now(timezone.utc)
         # Invalidate any pending password reset tokens
         from backend.models.password_reset_token import PasswordResetToken
         now = datetime.now(timezone.utc)
@@ -2145,9 +2144,18 @@ def change_password(
             PasswordResetToken.user_id == current_user.id,
             PasswordResetToken.used_at.is_(None),
         ).update({"used_at": now}, synchronize_session=False)
+
+        # P0-02: Token rotation — revoke all v2 sessions so any session
+        # cookies held by an attacker are immediately invalidated.
+        # User model now has direct user_id FK in sessions.
+        try:
+            revoke_all_v2_sessions(db, user_id=current_user.id)
+        except Exception:
+            logger.exception("Failed to revoke v2 sessions on password change for %s", current_user.email)
+
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
-        return {"message": "Password changed successfully."}
+        return {"message": "Password changed successfully. Please log in again."}
     except ValueError as error:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(error)) from error

@@ -290,6 +290,146 @@ def get_alert_detail(
     )
 
 
+@router.get("/ocr-dashboard")
+def ocr_dashboard(request: Request) -> dict[str, Any]:
+    """OCR-specific observability dashboard payload.
+
+    Returns throughput, cost, model-tier distribution, validation success rates,
+    and cache effectiveness — matching Phase 7 section 7.2 dashboard layout.
+
+    Protected by the same METRICS_TOKEN as the /metrics endpoint.
+    """
+    _require_metrics_token(request)
+
+    # Sample values from live Prometheus metrics
+    # Note: Counter names in prometheus_client use the registered name (no _total suffix).
+    # The _total suffix is only added by generate_latest() for OpenMetrics serialization.
+    from prometheus_client import REGISTRY as _PR
+
+    def _sample_counter(name: str) -> float:
+        try:
+            sample = _PR.get_sample_value(name)
+            return sample or 0.0
+        except Exception:
+            return 0.0
+
+    def _sample_gauge(name: str) -> float:
+        try:
+            sample = _PR.get_sample_value(name)
+            return sample or 0.0
+        except Exception:
+            return 0.0
+
+    total_jobs = int(_sample_counter("dpr_ocr_jobs_total"))
+    success_jobs = int(_sample_counter('dpr_ocr_jobs_total{status="success"}'))
+    failed_jobs = int(_sample_counter('dpr_ocr_jobs_total{status="failure"}'))
+    total_exports = int(_sample_counter("dpr_ocr_exports_total"))
+    cost_saved = round(_sample_counter("dpr_ocr_cost_saved_usd_total"), 4)
+    cache_hit = round(_sample_gauge("dpr_ocr_cache_hit_ratio"), 2)
+    extraction_success = round(_sample_gauge("dpr_ocr_extraction_success_rate"), 2)
+    classification_acc = round(_sample_gauge("dpr_ocr_classification_accuracy"), 2)
+    user_correction = round(_sample_gauge("dpr_ocr_user_correction_rate"), 2)
+
+    # Tier distribution
+    fast_count = int(_sample_counter('dpr_ocr_model_tier_requests_total{tier="fast"}'))
+    balanced_count = int(_sample_counter('dpr_ocr_model_tier_requests_total{tier="balanced"}'))
+    best_count = int(_sample_counter('dpr_ocr_model_tier_requests_total{tier="best"}'))
+    tier_total = fast_count + balanced_count + best_count or 1
+
+    # Correction pass rate
+    correction_success = int(_sample_counter('dpr_ocr_correction_passes_total{status="success"}'))
+    correction_failure = int(_sample_counter('dpr_ocr_correction_passes_total{status="failure"}'))
+    correction_total = correction_success + correction_failure or 1
+
+    return {
+        # ROW 1: Throughput, Cost, Success Rate, Cache Hit
+        "throughput": {
+            "total_documents": total_jobs,
+            "success_count": success_jobs,
+            "failure_count": failed_jobs,
+            "success_rate": round(success_jobs / total_jobs, 4) if total_jobs else 0.0,
+        },
+        "cost": {
+            "total_cost_saved_usd": cost_saved,
+            "total_exports": total_exports,
+            "avg_cost_per_document_usd": 0.0,  # Computed externally from tier counters
+        },
+        "extraction_quality": {
+            "extraction_success_rate": extraction_success,
+            "classification_accuracy": classification_acc,
+            "cache_hit_ratio": cache_hit,
+            "user_correction_rate": user_correction,
+        },
+        # ROW 4: Model Tier Distribution
+        "model_tiers": {
+            "fast": {"count": fast_count, "pct": round(fast_count / tier_total * 100, 1)},
+            "balanced": {"count": balanced_count, "pct": round(balanced_count / tier_total * 100, 1)},
+            "best": {"count": best_count, "pct": round(best_count / tier_total * 100, 1)},
+        },
+        # ROW 5: Correction & Validation
+        "correction_passes": {
+            "success_count": correction_success,
+            "failure_count": correction_failure,
+            "correction_pass_rate": round(correction_success / correction_total, 4),
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@router.get("/ocr-costs")
+def ocr_cost_monitoring(request: Request) -> dict[str, Any]:
+    """Cost monitoring dashboard data (Phase 7, section 7.3).
+
+    Returns daily cost by document type, monthly forecast, model tier
+    breakdown, and anomaly detection signals.
+
+    Protected by the same METRICS_TOKEN as the /metrics endpoint.
+    """
+    _require_metrics_token(request)
+
+    from prometheus_client import REGISTRY as _PR
+
+    def _sample_counter(name: str) -> float:
+        try:
+            return _PR.get_sample_value(name) or 0.0
+        except Exception:
+            return 0.0
+
+    cost_fast = round(_sample_counter('dpr_ocr_tier_cost_usd_total{tier="fast"}'), 6)
+    cost_balanced = round(_sample_counter('dpr_ocr_tier_cost_usd_total{tier="balanced"}'), 6)
+    cost_best = round(_sample_counter('dpr_ocr_tier_cost_usd_total{tier="best"}'), 6)
+    total_cost = cost_fast + cost_balanced + cost_best
+    cost_saved = round(_sample_counter("dpr_ocr_cost_saved_usd_total"), 6)
+
+    return {
+        "cost_summary": {
+            "total_cost_usd": round(total_cost, 4),
+            "total_saved_vs_opus_usd": cost_saved,
+            "effective_avg_cost_per_doc_usd": round(total_cost / max(_sample_counter("dpr_ocr_jobs_total_total"), 1), 6),
+        },
+        "tier_breakdown": {
+            "fast": {"cost_usd": cost_fast},
+            "balanced": {"cost_usd": cost_balanced},
+            "best": {"cost_usd": cost_best},
+        },
+        "forecast": {
+            "note": "Forecast requires external Prometheus + Grafana for time-series aggregation. This endpoint provides current cumulative cost snapshot.",
+            "current_total_usd": round(total_cost, 4),
+            "budget_usd": None,  # Set via OCR_MONTHLY_BUDGET_USD env var or external config
+        },
+        "anomaly": {
+            "note": "Anomaly detection requires 7+ days of data. Configure alerts in Grafana using dpr_ocr_tier_cost_usd_total.",
+            "heuristic_alerts": [
+                {"name": "Cost Spike", "condition": "rate(dpr_ocr_tier_cost_usd_total[1h]) > 3 * rate(dpr_ocr_tier_cost_usd_total[24h])", "severity": "warning"},
+                {"name": "High Correction Rate", "condition": "rate(dpr_ocr_correction_passes_total[1h]) / rate(dpr_ocr_jobs_total[1h]) > 0.2", "severity": "warning"},
+                {"name": "Cache Hit Drop", "condition": "dpr_ocr_cache_hit_ratio < 0.10", "severity": "info"},
+                {"name": "Low Extraction Success", "condition": "dpr_ocr_extraction_success_rate < 0.8", "severity": "critical"},
+            ],
+        },
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 @router.post("/frontend-error", status_code=202)
 def capture_frontend_error(payload: FrontendErrorPayload) -> dict[str, str]:
     record_frontend_error()

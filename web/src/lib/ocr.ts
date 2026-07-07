@@ -185,6 +185,35 @@ export type OcrPreviewResult = {
     heuristics_applied?: string[];
     grouping_strategy?: string;
   };
+  // NEW: Document classification metadata
+  doc_type_hint?: string | null;
+  classification?: {
+    type_id: string;
+    confidence: number;
+    method: string;
+  } | null;
+  document_type_config?: {
+    type_id: string;
+    display_name: string;
+    category: string;
+    icon: string;
+    description: string;
+    ui_component: string;
+    preview_fields: string[];
+    confidence_thresholds: {
+      auto_approve: number;
+      review: number;
+      block: number;
+    };
+    export_formats: Array<{name: string; mime_type: string}>;
+    downstream_actions: Array<{
+      key: string;
+      label: string;
+      description: string;
+      confirmation_required: boolean;
+    }>;
+    validation_rules: Array<{name: string; severity: string}>;
+  } | null;
 };
 
 export type OcrJobPayload = {
@@ -459,14 +488,17 @@ export async function previewOcrLogbook(payload: {
   if (payload.forceRefresh) {
     formData.set("force_refresh", "true");
   }
-  console.info("[OCR] /ocr/logbook payload", {
-    model: payload.model || "auto",
-    columns: payload.columns,
-    language: payload.language,
-    docTypeHint: payload.docTypeHint || "table",
-    documentHash: payload.documentHash || "none",
-    forceRefresh: !!payload.forceRefresh,
-  });
+  // DEV-ONLY: Debug logging for OCR payload; stripped in production builds
+  if (process.env.NODE_ENV === "development") {
+    console.info("[OCR] /ocr/logbook payload", {
+      model: payload.model || "auto",
+      columns: payload.columns,
+      language: payload.language,
+      docTypeHint: payload.docTypeHint || "table",
+      documentHash: payload.documentHash || "none",
+      forceRefresh: !!payload.forceRefresh,
+    });
+  }
   return withOcrWakeRetry(
     () =>
       apiFetch<OcrPreviewResult>("/ocr/logbook", {

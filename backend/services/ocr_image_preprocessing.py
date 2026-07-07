@@ -134,7 +134,10 @@ def preprocess_image_metadata(image_bytes: bytes) -> dict[str, Any]:
     """Analyse image quality without applying transformations.
 
     Returns a dict with quality heuristics useful for routing decisions
-    (e.g. whether to force AI enhancement).
+    (e.g. whether to force AI enhancement, which model tier to use).
+
+    Enhanced in Phase 2 to include handwriting detection and a composite
+    quality score suitable for cost-optimal model routing.
     """
     if not OPENCV_AVAILABLE or not image_bytes:
         return {"available": False}
@@ -160,6 +163,18 @@ def preprocess_image_metadata(image_bytes: bytes) -> dict[str, Any]:
         # Detect very low contrast (stained / faded documents)
         contrast_ok = std_brightness > 25.0
 
+        # NEW: Composite quality score (0-100) for model routing
+        blur_score = min(100.0, laplacian_var / 20.0)  # Higher = sharper (div 20 gives better granularity than /5)
+        brightness_score = 100.0 - abs(mean_brightness - 128.0) * 0.5  # Peak at mid-gray
+        contrast_score = min(100.0, std_brightness * 2.0)
+        quality_score = round(
+            0.4 * blur_score + 0.3 * brightness_score + 0.3 * contrast_score,
+            1,
+        )
+
+        # NEW: Handwriting detection via connected components
+        handwriting_result = _detect_handwriting_simple(gray)
+
         return {
             "available": True,
             "width_px": width,
@@ -173,6 +188,13 @@ def preprocess_image_metadata(image_bytes: bytes) -> dict[str, Any]:
             "needs_denoise": laplacian_var < 50.0,
             "needs_deskew": abs(skew_angle) > 1.0,
             "needs_resize": width < _MIN_WIDTH_PX,
+            # NEW: Phase 2 cost-routing fields
+            "quality_score": quality_score,
+            "blur_score": round(blur_score, 1),
+            "brightness_score": round(brightness_score, 1),
+            "contrast_score": round(contrast_score, 1),
+            "has_handwriting": handwriting_result["has_handwriting"],
+            "handwriting_confidence": handwriting_result["confidence"],
         }
     except Exception as exc:
         logger.warning("OCR image metadata extraction failed: %s", exc)
@@ -322,6 +344,71 @@ def _array_to_bytes(arr: np.ndarray, original_ext: str) -> bytes:
         # Last-resort fallback
         success, buffer = cv2.imencode(".png", arr)
     return buffer.tobytes() if success else b""
+
+
+def _detect_handwriting_simple(gray: np.ndarray) -> dict:
+    """Lightweight handwriting detection using connected component analysis.
+
+    Handwritten text has more variable component sizes and spacing than
+    printed text. This heuristic is fast (~10ms) and suitable for real-time
+    cost routing decisions.
+
+    Returns dict with keys: has_handwriting (bool), confidence (float).
+    """
+    try:
+        height, width = gray.shape
+        if height < 50 or width < 50:
+            return {"has_handwriting": False, "confidence": 0.0}
+
+        # Invert if needed (dark text on light -> light text on dark)
+        working = gray.copy()
+        if working.mean() > 127:
+            working = cv2.bitwise_not(working)
+
+        _, binary = cv2.threshold(working, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        if cv2.countNonZero(binary) < 100:
+            return {"has_handwriting": False, "confidence": 0.0}
+
+        # Connected components
+        num_labels, _, stats, _ = cv2.connectedComponentsWithStats(binary, connectivity=8)
+        if num_labels < 5:
+            return {"has_handwriting": False, "confidence": 0.0}
+
+        # Collect component areas (filter noise and page edges)
+        areas = []
+        for i in range(1, num_labels):
+            area = stats[i, cv2.CC_STAT_AREA]
+            if 10 < area < 50000:
+                areas.append(area)
+
+        if not areas:
+            return {"has_handwriting": False, "confidence": 0.0}
+
+        # Handwriting has higher std/mean ratio for component sizes
+        mean_area = float(np.mean(areas))
+        std_area = float(np.std(areas))
+        irregularity = std_area / mean_area if mean_area > 0 else 0.0
+
+        # Horizontal projection profile variance
+        horizontal_profile = np.sum(binary, axis=1) // 255
+        text_rows = horizontal_profile > np.mean(horizontal_profile) * 0.3
+        if np.sum(text_rows) > 10:
+            row_indices = np.where(text_rows)[0]
+            gaps = np.diff(row_indices)
+            gap_variance = float(np.std(gaps)) / (float(np.mean(gaps)) + 1e-6) if len(gaps) > 0 else 0.0
+        else:
+            gap_variance = 0.0
+
+        # Combined score: printed text = low irregularity, regular spacing
+        has_handwriting = irregularity > 0.4 or gap_variance > 0.1
+        confidence = min(1.0, max(irregularity, gap_variance * 2.0))
+
+        return {
+            "has_handwriting": has_handwriting,
+            "confidence": round(confidence, 3),
+        }
+    except Exception:
+        return {"has_handwriting": False, "confidence": 0.0}
 
 
 def _estimate_skew(gray: np.ndarray) -> float:

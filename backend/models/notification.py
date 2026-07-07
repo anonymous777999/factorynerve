@@ -26,7 +26,7 @@ class Notification(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     org_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     notification_type: Mapped[str] = mapped_column(
         String(50), nullable=False, default="system"

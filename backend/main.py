@@ -15,7 +15,7 @@ from sqlalchemy import text
 from starlette.requests import Request
 from starlette.responses import Response
 
-from backend.database import SessionLocal, init_db
+from backend.database import SessionLocal, engine, init_db
 from backend.models.user import User
 from backend.routers.analytics import router as analytics_router
 from backend.routers.ai import router as ai_router
@@ -55,12 +55,12 @@ from backend.utils import get_config, setup_logging
 from backend.metrics import (
     record_exception,
     record_request,
-    snapshot as metrics_snapshot,
 )
 from backend.middleware.idempotency import IdempotencyMiddleware
+from backend.middleware.rls_context import RLSContextMiddleware, _register_checkout_event
 from backend.middleware.security import apply_security
 from backend.middleware.response_envelope import apply_response_envelope
-import threading
+from backend.cache import build_cache_key, get_json, set_json
 
 from backend.services.ops_alerts import (
     initialize_ops_alerting,
@@ -70,27 +70,40 @@ from backend.services.ops_alerts import (
 )
 
 
-# In-memory cache for User.role_revision to avoid a DB query on every request.
+# ── Role Revision Cache ──────────────────────────────────────────────────────
+# Redis-backed cache for User.role_revision, with automatic fallback to
+# in-memory cache when Redis is unavailable (handled by cache.py).
 # role_revision changes infrequently, so a 5-minute TTL is safe.
-_ROLE_REVISION_CACHE: dict[int, tuple[float, int]] = {}
-_ROLE_REVISION_CACHE_TTL: float = 300.0  # 5 minutes
-_ROLE_REVISION_LOCK = threading.Lock()
+_ROLE_REVISION_CACHE_TTL: int = 300  # 5 minutes
 
 
 def _get_cached_role_revision(user_id: int) -> int | None:
-    with _ROLE_REVISION_LOCK:
-        entry = _ROLE_REVISION_CACHE.get(user_id)
-        if entry is not None:
-            cached_at, revision = entry
-            if time.monotonic() - cached_at < _ROLE_REVISION_CACHE_TTL:
-                return revision
-            del _ROLE_REVISION_CACHE[user_id]
-    return None
+    """Get cached role_revision for a user.
+
+    Uses Redis (via cache.py) with automatic in-memory fallback.
+    Returns None if not cached or TTL expired.
+    """
+    return get_json(build_cache_key("role_revision", user_id))
 
 
 def _set_cached_role_revision(user_id: int, revision: int) -> None:
-    with _ROLE_REVISION_LOCK:
-        _ROLE_REVISION_CACHE[user_id] = (time.monotonic(), revision)
+    """Cache a user's role_revision with the configured TTL.
+
+    Persists across server restarts when Redis is available.
+    Falls back to in-memory when Redis is unavailable.
+    """
+    set_json(build_cache_key("role_revision", user_id), revision, _ROLE_REVISION_CACHE_TTL)
+
+
+# ── Metrics Rate Limiting ────────────────────────────────────────────────────
+# Simple in-memory rate limit for /metrics to prevent abuse.
+# Each IP can call /metrics at most once per 60 seconds.
+# Cache is bounded to 1000 entries and cleaned every 100 requests.
+_METRICS_RATE_LIMIT_WINDOW = 60.0  # seconds
+_METRICS_RATE_LIMIT_MAX = 1  # requests per window
+_METRICS_CACHE_MAX_SIZE = 1000
+_metrics_rate_limit_cache: dict[str, float] = {}  # ip -> timestamp
+_metrics_rate_cleanup_counter: int = 0
 from backend.services.whatsapp_sender import initialize_whatsapp_sender, shutdown_whatsapp_sender
 from backend.services.attendance_absence_service import (
     initialize_attendance_absence_scheduler,
@@ -109,6 +122,10 @@ from backend.services.attendance_auto_close_service import (
     shutdown_attendance_auto_close_scheduler,
 )
 from backend.services.email_queue_processor import start_email_processor, stop_email_processor
+from backend.services.audit_archival_service import (
+    initialize_audit_archival_service,
+    shutdown_audit_archival_service,
+)
 from backend.services.billing_manager import (
     enforce_expired_grace_periods,
     normalize_subscription_states,
@@ -152,7 +169,42 @@ async def lifespan(_app: FastAPI):
         initialize_feedback_anomaly_detector()
         initialize_attendance_auto_close_scheduler()
         initialize_ops_alerting()
+        initialize_audit_archival_service()
         start_email_processor()
+
+        # ── rq Worker Enqueue (ARCH-03) ─────────────────────────────────
+        # Feature-flagged: when RQ_WORKER_ENABLED=true, enqueue jobs to
+        # the rq worker process in addition to (or instead of) the
+        # existing daemon-thread schedulers. This is the dual-run phase
+        # for safe migration — both paths run simultaneously.
+        if os.getenv("RQ_WORKER_ENABLED", "").strip().lower() in ("1", "true", "yes"):
+            try:
+                from backend.workers.email_queue_worker import enqueue_email_batch
+                enqueue_email_batch()
+                logger.info("rq: enqueued email batch job.")
+            except Exception:
+                logger.exception("rq: failed to enqueue email batch job.")
+
+            try:
+                from backend.workers.attendance_auto_close import enqueue_auto_close_sweep
+                enqueue_auto_close_sweep()
+                logger.info("rq: enqueued auto-close sweep.")
+            except Exception:
+                logger.exception("rq: failed to enqueue auto-close sweep.")
+
+            try:
+                from backend.workers.approval_expiry import enqueue_approval_expiry_sweep
+                enqueue_approval_expiry_sweep()
+                logger.info("rq: enqueued approval expiry sweep.")
+            except Exception:
+                logger.exception("rq: failed to enqueue approval expiry sweep.")
+
+            try:
+                from backend.workers.feedback_anomaly import enqueue_anomaly_detection
+                enqueue_anomaly_detection()
+                logger.info("rq: enqueued anomaly detection.")
+            except Exception:
+                logger.exception("rq: failed to enqueue anomaly detection.")
 
         # Phase P3: Register approval completion callbacks
         try:
@@ -172,6 +224,7 @@ async def lifespan(_app: FastAPI):
         shutdown_feedback_anomaly_detector()
         shutdown_attendance_auto_close_scheduler()
         shutdown_ops_alerting()
+        shutdown_audit_archival_service()
         shutdown_whatsapp_sender()
         stop_email_processor()
 
@@ -186,11 +239,17 @@ if sentry_sdk and os.getenv("SENTRY_DSN"):
     )
     if SentryAsgiMiddleware:
         app.add_middleware(SentryAsgiMiddleware)
-app.include_router(auth_router, prefix="/auth")
-app.include_router(auth_google_router, prefix="/auth")
-app.include_router(phone_auth_router, prefix="/auth")
+# ── Auth Router Mounting ────────────────────────────────────────────────
+# auth_secure is the canonical auth router at /auth.
+# auth_legacy hosts public registration, email verification, and user
+# management flows that haven't been migrated to auth_secure yet.
+# auth-secure and /auth/v2 are backward-compatibility aliases.
+app.include_router(auth_secure_router, prefix="/auth")
 app.include_router(auth_secure_router, prefix="/auth-secure")
 app.include_router(auth_secure_router, prefix="/auth/v2")
+app.include_router(auth_router, prefix="/auth-legacy")
+app.include_router(auth_google_router, prefix="/auth")
+app.include_router(phone_auth_router, prefix="/auth")
 app.include_router(permissions_router, prefix="/auth")
 app.include_router(approvals_router, prefix="/api")
 app.include_router(jobs_router, prefix="/jobs")
@@ -221,6 +280,15 @@ app.include_router(notifications_router, prefix="/notifications")
 app.include_router(workforce_intelligence_router, prefix="/intelligence")
 app.include_router(cron_router)
 
+# ── Register RLS checkout event on the DB engine so that every
+# connection from the pool gets PostgreSQL RLS GUCs set according
+# to the current thread's tenant context.
+_register_checkout_event(engine)
+logger.info("RLS checkout event registered on database engine.")
+
+app.add_middleware(
+    RLSContextMiddleware,
+)
 app.add_middleware(IdempotencyMiddleware)
 apply_security(app)
 apply_response_envelope(app)
@@ -296,15 +364,37 @@ def root() -> dict[str, object]:
 
 
 @app.get("/metrics")
-def metrics(request: Request) -> dict:
+def metrics(request: Request) -> Response:
+    """Prometheus metrics endpoint with rate limiting and token protection."""
+    # Rate limiting: max 1 request per 60 seconds per IP (prevents abuse)
+    global _metrics_rate_cleanup_counter
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.monotonic()
+    last_access = _metrics_rate_limit_cache.get(client_ip, 0.0)
+    if now - last_access < _METRICS_RATE_LIMIT_WINDOW:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Metrics endpoint rate limited: max 1 request per {int(_METRICS_RATE_LIMIT_WINDOW)} seconds.",
+        )
+    _metrics_rate_limit_cache[client_ip] = now
+    # Periodic cleanup: every 100 requests, prune expired entries to prevent
+    # unbounded cache growth from different IP addresses.
+    _metrics_rate_cleanup_counter += 1
+    if _metrics_rate_cleanup_counter >= 100:
+        _metrics_rate_cleanup_counter = 0
+        cutoff = now - _METRICS_RATE_LIMIT_WINDOW * 2
+        stale = [ip for ip, ts in _metrics_rate_limit_cache.items() if ts < cutoff]
+        for ip in stale:
+            del _metrics_rate_limit_cache[ip]
+
     token = os.getenv("METRICS_TOKEN")
     if not token:
         raise HTTPException(status_code=403, detail="Metrics not configured.")
     header = request.headers.get("X-Metrics-Token") or ""
     if header.strip() != token:
         raise HTTPException(status_code=403, detail="Metrics token invalid.")
-    return {
-        **metrics_snapshot(),
-        "ai": snapshot_ai_telemetry(recent_limit=20),
-        "ai_governance": governance_snapshot(),
-    }
+
+    # Generate Prometheus metrics
+    from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+    data = generate_latest()
+    return Response(content=data, media_type=CONTENT_TYPE_LATEST)

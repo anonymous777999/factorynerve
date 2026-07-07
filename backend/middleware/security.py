@@ -33,7 +33,6 @@ def _parse_origins(raw: str | None) -> list[str]:
         "http://127.0.0.1:8502",
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "http://192.168.213.1:3000",
     ]
 
 

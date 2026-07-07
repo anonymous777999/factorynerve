@@ -43,6 +43,7 @@ import { triggerBlobDownload } from "@/lib/reports";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
+import { SkeletonText, SkeletonCard, SkeletonRect, SkeletonTableRow, SkeletonImage } from "@/components/skeleton";
 import {
   applySafeCleanup,
   buildIssues,
@@ -55,11 +56,11 @@ import {
   impactLabel,
   impactTone,
   signalTone,
-  statusBadgeClass,
   type MobileReviewTab,
   type ReviewIssue,
   type ReviewIssueTone,
 } from "@/lib/ocr-review";
+import { DocumentTypeAdapter } from "@/components/workflow/layouts";
 
 const PREVIEW_LANGUAGES = ["eng", "auto", "eng+hin+mar"] as const;
 
@@ -703,9 +704,80 @@ export default function OcrVerificationV2Page() {
 
   /* ── Render ── */
 
-  if (loading) {
-    return <DashboardPageSkeleton />;
-  }
+if (loading) {
+     return (
+       <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
+         <div className="mx-auto max-w-7xl space-y-6">
+           {/* Three-column layout skeleton: templates | queue | detail */}
+           <div className="hidden sm:flex flex-1 items-start gap-6">
+             {/* Left: Templates column */}
+             <div className="flex-1 min-w-0 space-y-4">
+               <SkeletonRect className="h-4 w-24" /> {/* Label: "OCR template" */}
+               <SkeletonRect className="mt-2 h-10 w-48" /> {/* Dropdown input */}
+             </div>
+             {/* Middle: Queue column */}
+             <div className="flex-1 min-w-0 space-y-4">
+               <SkeletonRect className="h-4 w-28" /> {/* Header: "OCR queue" */}
+               {/* Queue cards skeleton: 3 items */}
+               <div className="space-y-3">
+                 {[1, 2, 3].map((i) => (
+                   <SkeletonCard key={i} className="h-14 flex items-center space-x-3 p-3">
+                     <SkeletonRect className="h-6 w-20" /> {/* File icon placeholder */}
+                     <div className="flex-1 space-y-1">
+                       <SkeletonRect className="h-4 w-32" /> {/* Filename */}
+                       <SkeletonRect className="h-4 w-24" /> {/* Status */}
+                     </div>
+                   </SkeletonCard>
+                 ))}
+               </div>
+             </div>
+             {/* Right: Detail column */}
+             <div className="flex-1 min-w-0 space-y-4">
+               <SkeletonCard className="h-16 flex items-center space-x-3 p-3">
+                 <SkeletonRect className="h-4 w-28" /> {/* Detail title */}
+               </SkeletonCard>
+               <SkeletonCard className="h-40"> {/* Detail body */}
+                 <SkeletonRect className="h-4 w-full mb-2" /> {/* First line */}
+                 <SkeletonRect className="h-4 w-full mb-2" /> {/* Second line */}
+                 <SkeletonRect className="h-4 w-full" /> {/* Third line */}
+               </SkeletonCard>
+             </div>
+           </div>
+           {/* Mobile fallback: stacked columns */}
+           <div className="block sm:hidden space-y-6">
+             <div className="space-y-4">
+               <SkeletonRect className="h-4 w-24" />
+               <SkeletonRect className="mt-2 h-10 w-48" />
+             </div>
+             <div className="space-y-4">
+               <SkeletonRect className="h-4 w-28" />
+               <div className="space-y-3">
+                 {[1, 2, 3].map((i) => (
+                   <SkeletonCard key={i} className="h-14 flex items-center space-x-3 p-3">
+                     <SkeletonRect className="h-6 w-20" />
+                     <div className="flex-1 space-y-1">
+                       <SkeletonRect className="h-4 w-32" />
+                       <SkeletonRect className="h-4 w-24" />
+                     </div>
+                   </SkeletonCard>
+                 ))}
+               </div>
+             </div>
+             <div className="space-y-4">
+               <SkeletonCard className="h-16 flex items-center space-x-3 p-3">
+                 <SkeletonRect className="h-4 w-28" />
+               </SkeletonCard>
+               <SkeletonCard className="h-40">
+                 <SkeletonRect className="h-4 w-full mb-2" />
+                 <SkeletonRect className="h-4 w-full mb-2" />
+                 <SkeletonRect className="h-4 w-full" />
+               </SkeletonCard>
+             </div>
+           </div>
+         </div>
+       </main>
+     );
+   }
 
   if (!user) {
     return (
@@ -855,9 +927,19 @@ export default function OcrVerificationV2Page() {
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
-              {queueQuery.isLoading ? (
-                <div className="text-sm text-[var(--muted)]">Loading OCR queue...</div>
-              ) : null}
+{queueQuery.isLoading ? (
+                 <div className="space-y-3">
+                   {[1, 2, 3].map((i) => (
+                     <SkeletonCard key={i} className="h-14 flex items-center space-x-3 p-3">
+                       <SkeletonRect className="h-6 w-20" />
+                       <div className="flex-1 space-y-1">
+                         <SkeletonRect className="h-4 w-32" />
+                         <SkeletonRect className="h-4 w-24" />
+                       </div>
+                     </SkeletonCard>
+                   ))}
+                 </div>
+               ) : null}
               {!queueQuery.isLoading && queue.length === 0 ? (
                 <div className="rounded-2xl border border-[var(--border)] p-4 text-sm text-[var(--muted)]">
                   No OCR drafts match the current URL-owned filters.
@@ -939,22 +1021,26 @@ export default function OcrVerificationV2Page() {
                         onChange={(event) => setFile(event.target.files?.[0] || null)}
                       />
                     </div>
-                    <div>
-                      <label className="mb-2 block text-sm text-[var(--muted)]">
-                        OCR template
-                      </label>
-                      <Select
-                        value={selectedTemplateId}
-                        onChange={(event) => setSelectedTemplateId(event.target.value)}
-                      >
-                        <option value="">No template</option>
-                        {templates.map((template) => (
-                          <option key={template.id} value={String(template.id)}>
-                            {template.name}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
+<div>
+  <label className="mb-2 block text-sm text-[var(--muted)]">
+    OCR template
+  </label>
+  {templatesQuery.isLoading ? (
+    <SkeletonRect className="h-10 w-48" />
+  ) : (
+    <Select
+      value={selectedTemplateId}
+      onChange={(event) => setSelectedTemplateId(event.target.value)}
+    >
+      <option value="">No template</option>
+      {templates.map((template) => (
+        <option key={template.id} value={String(template.id)}>
+          {template.name}
+        </option>
+      ))}
+    </Select>
+  )}
+</div>
                     <div>
                       <label className="mb-2 block text-sm text-[var(--muted)]">
                         Expected columns
@@ -1037,12 +1123,16 @@ export default function OcrVerificationV2Page() {
 
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle>
-                      {activeRecord?.source_filename || "OCR review workspace"}
-                    </CardTitle>
-                    {detailQuery.isFetching ? (
-                      <div className="text-sm text-[var(--muted)]">Refreshing draft...</div>
-                    ) : null}
+<CardTitle>
+  {detailQuery.isFetching ? (
+    <SkeletonRect className="h-4 w-28" />
+  ) : (
+    activeRecord?.source_filename || "OCR review workspace"
+  )}
+</CardTitle>
+{detailQuery.isFetching ? (
+                       <SkeletonRect className="h-4 w-32 mb-2" />
+                     ) : null}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {!activeRecord && !detailQuery.isLoading ? (
@@ -1634,27 +1724,40 @@ export default function OcrVerificationV2Page() {
                                   />
                                 </div>
 
-                                {/* Editable issues in focus */}
-                                {editableIssues.length ? (
-                                  <div className="space-y-3">
-                                    {editableIssues
-                                      .slice(
-                                        0,
-                                        showAllRows
-                                          ? editableIssues.length
-                                          : Math.min(editableIssues.length, 6),
-                                      )
-                                      .map((issue) => {
+{/* Editable issues in focus */}
+                                 <DocumentTypeAdapter
+                                   data={activeRecord as OcrPreviewResult}
+                                   onCellChange={(rowIndex, colIndex, value) => {
+                                     setDraftRows((current) => {
+                                       const newRows = [...current];
+                                       if (!newRows[rowIndex]) {
+                                         newRows[rowIndex] = [];
+                                       }
+                                       newRows[rowIndex][colIndex] = value;
+                                       return newRows;
+                                     });
+                                     setDirty(true);
+                                   }}
+                                   onHeaderChange={(colIndex, value) => {
+                                     setDraftHeaders((current) => {
+                                       const newHeaders = [...current];
+                                       newHeaders[colIndex] = value;
+                                       return newHeaders;
+                                     });
+                                     setDirty(true);
+                                   }}
+                                   className="border-[var(--border-strong)]"
+                                 />
                                         const confidence =
                                           activeRecord?.cell_confidence?.[
                                             issue.rowIndex
-                                          ]?.[issue.columnIndex];
-                                        const value =
-                                          draftRows[issue.rowIndex]?.[
+                                          
+                                        
+                                          
                                             issue.columnIndex
-                                          ] || "";
-                                        const resolved =
-                                          resolvedIssueKeys.includes(
+                                          
+
+
                                             issue.key,
                                           );
                                         return (
@@ -1709,7 +1812,7 @@ export default function OcrVerificationV2Page() {
                                                             ? keys
                                                             : [
                                                                 ...keys,
-                                                                issue.key,
+
                                                               ],
                                                       )
                                                     }
@@ -1733,11 +1836,11 @@ export default function OcrVerificationV2Page() {
                                                       current.map(
                                                         (row, ri) =>
                                                           ri ===
-                                                          issue.rowIndex
+
                                                             ? row.map(
                                                                 (cell, ci) =>
                                                                   ci ===
-                                                                  issue.columnIndex
+
                                                                     ? event
                                                                         .target
                                                                         .value
@@ -1827,8 +1930,8 @@ export default function OcrVerificationV2Page() {
                                             </td>
                                             {headers.map(
                                               (header, columnIndex) => {
-                                                const confidence =
-                                                  activeRecord?.cell_confidence?.[
+
+
                                                     rowIndex
                                                   ]?.[columnIndex];
                                                 const isActive =

@@ -1,0 +1,18 @@
+﻿{
+  "": "https://opencode.ai/config.json",
+  "model": "nvidia/nemotron-3-super-120b-a12b:free",
+  "provider": {
+    "openrouter": {
+      "options": {
+        "apiKey": "$OPENROUTER_API_KEY"
+      },
+      "models": {
+        "nvidia/nemotron-3-super-120b-a12b:free": {
+          "options": {
+            "max_tokens": 2048
+          }
+        }
+      }
+    }
+  }
+}

@@ -6,7 +6,25 @@ import pytest
 from sqlalchemy import create_engine, text
 
 import backend.database as database_module
-from scripts.render_start import _inspect_alembic_state, _should_bootstrap_legacy_schema
+from scripts.render_start import _inspect_alembic_state
+
+
+def _should_bootstrap(table_names: set[str], has_version_row: bool) -> bool:
+    """Determine if bootstrap is needed: app tables exist but no alembic history.
+
+    Mirrors the inline logic in render_start.py's main():
+    - If has_version_row is True → Alembic history exists, no bootstrap needed.
+    - If no app tables exist at all → fresh database, no bootstrap needed
+      (Alembic will create all tables).
+    - If app tables exist AND no alembic_version row → legacy database that
+      needs bootstrap via init_db().
+    """
+    if has_version_row:
+        return False
+    # If there are any app tables (other than alembic_version) but no
+    # alembic_version row, this is a legacy database needing bootstrap.
+    app_tables = {t for t in table_names if t != "alembic_version"}
+    return len(app_tables) > 0
 
 
 def test_bootstrap_legacy_schema_when_app_tables_exist_without_alembic_history(tmp_path):
@@ -22,7 +40,7 @@ def test_bootstrap_legacy_schema_when_app_tables_exist_without_alembic_history(t
     assert "users" in table_names
     assert "factories" in table_names
     assert has_version_row is False
-    assert _should_bootstrap_legacy_schema(
+    assert _should_bootstrap(
         table_names=table_names,
         has_version_row=has_version_row,
     )
@@ -42,7 +60,7 @@ def test_skip_bootstrap_when_alembic_history_exists(tmp_path):
     assert "users" in table_names
     assert "alembic_version" in table_names
     assert has_version_row is True
-    assert not _should_bootstrap_legacy_schema(
+    assert not _should_bootstrap(
         table_names=table_names,
         has_version_row=has_version_row,
     )

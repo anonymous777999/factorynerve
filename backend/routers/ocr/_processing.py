@@ -27,12 +27,14 @@ from backend.ledger_scan import (
 )
 from backend.models.ocr_template import OcrTemplate
 from backend.services.background_jobs import get_job as get_background_job, read_job_file
+from backend.validators import OcrValidationPipeline
 from backend.services.ocr_document_pipeline import (
     build_structured_ocr_result,
     find_reusable_verification,
     serialize_reused_ocr_result,
 )
 
+from backend.services.ocr_cost_router import detect_document_nature
 from backend.routers.ocr._common import (
     logger,
     router,
@@ -54,13 +56,12 @@ from backend.routers.ocr._common import (
     _run_ocr_with_fallback,
     _run_table_excel_pipeline,
     _queue_ocr_excel_job,
+    _queue_ocr_logbook_job,  # ARCH-01: Async OCR logbook
     _job_urls,
     _read_validated_image_upload,
     _read_image_upload_for_mock,
     _safe_file_name,
     _compute_image_hash,
-    _OCR_SERVER_SIDE_CACHE_HASH,
-    _normalize_document_hash,
     _normalize_doc_type_hint,
     _template_query,
     _reject_mock_ocr,
@@ -76,7 +77,9 @@ from backend.models.ocr_verification import OcrVerification
 from backend.models.factory import Factory
 from backend.models.user import User
 
-@router.post("/logbook", status_code=status.HTTP_200_OK)
+@router.post("/logbook", status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_ocr_quota)],
+)
 async def ocr_logbook(
     file: UploadFile = File(...),
     columns: int = Form(default=3),
@@ -85,7 +88,6 @@ async def ocr_logbook(
     doc_type_hint: str | None = Form(default=None),
     model: str | None = Form(default=None),
     force_model: str | None = Form(default=None),
-    document_hash: str | None = Form(default=None),
     force_refresh: bool = Form(default=False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -95,10 +97,9 @@ async def ocr_logbook(
     requested_doc_type = _normalize_doc_type_hint(doc_type_hint) or "table"
     requested_model = sanitize_text(model or force_model, max_length=80, preserve_newlines=False) or None
     logger.info(
-        "[OCR] /ocr/logbook received filename=%s requested_model=%s document_hash=%s force_refresh=%s",
+        "[OCR] /ocr/logbook received filename=%s requested_model=%s force_refresh=%s",
         file.filename or "unknown",
         requested_model or "auto",
-        _normalize_document_hash(document_hash) or "none",
         force_refresh,
     )
 
@@ -112,16 +113,13 @@ async def ocr_logbook(
         if not template:
             raise HTTPException(status_code=404, detail="Template not found.")
 
-    # ── Server-side cache hash (fixes P0-8: cache poisoning) ──────────────
-    # Use SHA-256 of the actual image bytes for cache lookup, NOT the
-    # client-supplied document_hash which can be manipulated.
-    server_hash = _compute_image_hash(image_bytes)
-    cache_hash = server_hash if _OCR_SERVER_SIDE_CACHE_HASH else _normalize_document_hash(document_hash)
-    client_hash = _normalize_document_hash(document_hash)
+    # ── Server-side cache hash ──────────────────────────────────────────────
+    # Always use SHA-256 of actual image bytes for cache lookup. NEVER trust
+    # a client-supplied document_hash which can be manipulated to bypass
+    # quota or poison the cache (OCR-01 / P0-8).
+    cache_hash = _compute_image_hash(image_bytes)
     logger.info(
-        "[OCR-CACHE-DEBUG] server_hash=%s client_hash=%s active_hash=%s",
-        server_hash[:16],
-        (client_hash or "none")[:16],
+        "[OCR-CACHE-DEBUG] server_hash=%s",
         cache_hash[:16],
     )
 
@@ -174,7 +172,7 @@ async def ocr_logbook(
         previous_record = find_reusable_verification(
             db,
             org_id=resolve_org_id(current_user),
-            document_hash=_normalize_document_hash(document_hash),
+            document_hash=cache_hash,
             template_id=template.id if template else template_id,
             doc_type_hint=requested_doc_type,
             requested_model=requested_model,
@@ -349,7 +347,66 @@ async def ocr_logbook(
             else:
                 final_payload["confidence_improved"] = True
 
+    try:
+        pipeline = OcrValidationPipeline()
+        validation_result = pipeline.validate(
+            headers=structured.get("headers") or [],
+            rows=structured.get("rows") or [],
+            doc_type=requested_doc_type,
+            cross_validation=structured.get("cross_validation"),
+        )
+        final_payload["validation"] = validation_result.to_dict()
+    except Exception as val_err:
+        logger.warning("Validation pipeline failed in ocr_logbook: %s", val_err, exc_info=True)
+        final_payload["validation"] = None
+
+
     return final_payload
+
+
+
+@router.post("/detect-nature", status_code=status.HTTP_200_OK)
+async def detect_document_nature_endpoint(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Analyse an image and detect the document nature.
+
+    Returns a classification of whether the document is printed, handwritten,
+    a screenshot, or a ledger/account statement. Uses image analysis and
+    OCR text heuristics (Tesseract) to determine the document type.
+
+    This endpoint is useful for:
+    - Pre-classifying documents before OCR extraction
+    - Selecting the best Claude model tier for extraction
+    - Deciding whether to use the structured or unstructured extraction path
+    """
+    _require_ocr_access(db, current_user)
+    image_bytes = await _read_validated_image_upload(file)
+
+    try:
+        nature_result = detect_document_nature(image_bytes)
+        logger.info(
+            "[OCR] Document nature detection: nature=%s confidence=%s signals=%s",
+            nature_result.get("nature"),
+            nature_result.get("confidence"),
+            nature_result.get("signals"),
+        )
+    except Exception as error:
+        logger.warning("Document nature detection failed: %s", error, exc_info=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Document nature detection failed: {error}",
+        ) from error
+
+    return {
+        "nature": nature_result.get("nature", "unknown"),
+        "confidence": nature_result.get("confidence", 0.0),
+        "signals": nature_result.get("signals", []),
+        "has_handwriting": nature_result.get("handwriting", {}).get("has_handwriting", False),
+        "handwriting_confidence": nature_result.get("handwriting", {}).get("confidence", 0.0),
+    }
 
 
 @router.post("/warp", status_code=status.HTTP_200_OK)
@@ -861,3 +918,64 @@ def download_ocr_job(
         media_type=str(file_meta.get("media_type") or "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
         headers=headers,
     )
+
+
+@router.post(
+    "/logbook-async",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_ocr_quota)],
+)
+async def ocr_logbook_async(
+    file: UploadFile = File(...),
+    columns: int = Form(default=3),
+    language: str = Form(default="eng"),
+    template_id: int | None = Form(default=None),
+    doc_type_hint: str | None = Form(default=None),
+    model: str | None = Form(default=None),
+    force_model: str | None = Form(default=None),
+    force_refresh: bool = Form(default=False),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Submit an OCR logbook extraction request that runs asynchronously.
+
+    Unlike ``/ocr/logbook`` (which blocks until OCR completes), this endpoint:
+    1. Validates and stores the uploaded image
+    2. Creates a background job
+    3. Returns ``202 Accepted`` with a ``job_id`` and URLs for status polling
+
+    Poll ``/ocr/jobs/{job_id}`` to check status. When status is ``"succeeded"``,
+    the job ``result`` contains the structured OCR output under ``"ocr_result"``.
+    """
+    _require_ocr_access(db, current_user)
+    image_bytes = await _read_validated_image_upload(file)
+    requested_doc_type = _normalize_doc_type_hint(doc_type_hint) or "table"
+    requested_model = sanitize_text(model or force_model, max_length=80, preserve_newlines=False) or None
+    org_id = resolve_org_id(current_user)
+    logger.info(
+        "[OCR-ASYNC] /ocr/logbook-async received filename=%s requested_model=%s",
+        file.filename or "unknown",
+        requested_model or "auto",
+    )
+    try:
+        job = _queue_ocr_logbook_job(
+            owner_id=current_user.id,
+            org_id=org_id,
+            factory_id=resolve_factory_id(db, current_user),
+            source_filename=_safe_file_name(file.filename, "ocr-logbook-input.png"),
+            content_type=file.content_type,
+            size_bytes=len(image_bytes),
+            columns=columns,
+            language=language,
+            template_id=template_id,
+            doc_type_hint=requested_doc_type,
+            requested_model=requested_model,
+            force_refresh=force_refresh,
+            image_bytes=image_bytes,
+        )
+    except Exception:
+        logger.exception("[OCR-ASYNC] Failed to queue logbook job")
+        raise HTTPException(status_code=500, detail="Failed to queue OCR job.")
+    payload = dict(job)
+    payload.update(_job_urls(str(job["job_id"])))
+    return payload

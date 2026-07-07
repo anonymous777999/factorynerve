@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
@@ -156,48 +157,11 @@ def _normalize_database_url(database_url: str) -> str:
 
 @lru_cache(maxsize=1)
 def get_config() -> AppConfig:
-    load_dotenv(ENV_PATH)
-    raw = {
-        "GROQ_API_KEY": os.getenv("GROQ_API_KEY"),
-        "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
-        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
-        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        "AI_PROVIDER": os.getenv("AI_PROVIDER"),
-        "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY"),
-        "JWT_EXPIRE_HOURS": os.getenv("JWT_EXPIRE_HOURS"),
-        "APP_NAME": os.getenv("APP_NAME"),
-        "APP_ENV": os.getenv("APP_ENV", "development"),
-        "DEBUG": os.getenv("DEBUG"),
-        "LOG_LEVEL": os.getenv("LOG_LEVEL"),
-        "LOG_FORMAT": os.getenv("LOG_FORMAT", "text"),
-        "FASTAPI_PORT": os.getenv("FASTAPI_PORT"),
-        "STREAMLIT_PORT": os.getenv("STREAMLIT_PORT"),
-        "JWT_RSA_PRIVATE_KEY": os.getenv("JWT_RSA_PRIVATE_KEY", ""),
-        "DATA_ENCRYPTION_KEY": os.getenv("DATA_ENCRYPTION_KEY"),
-        "DATABASE_URL": os.getenv(
-            "DATABASE_URL", f"sqlite:///{(PROJECT_ROOT / 'dpr_ai.db').as_posix()}"
-        ),
-    }
-    _validate_required_values(raw)
-    return AppConfig(
-        groq_api_key=str(raw.get("GROQ_API_KEY") or ""),
-        anthropic_api_key=str(raw.get("ANTHROPIC_API_KEY") or ""),
-        gemini_api_key=str(raw.get("GEMINI_API_KEY") or ""),
-        openai_api_key=str(raw.get("OPENAI_API_KEY") or ""),
-        ai_provider=str(raw["AI_PROVIDER"]),
-        jwt_secret_key=str(raw["JWT_SECRET_KEY"]),
-        jwt_expire_hours=_to_int(raw["JWT_EXPIRE_HOURS"], 8),
-        app_name=str(raw["APP_NAME"]),
-        app_env=str(raw.get("APP_ENV") or "development").strip().lower(),
-        jwt_rsa_private_key=str(raw.get("JWT_RSA_PRIVATE_KEY") or ""),
-        debug=_to_bool(raw["DEBUG"], False),
-        log_level=str(raw.get("LOG_LEVEL") or "INFO").upper(),
-        log_format=str(raw.get("LOG_FORMAT") or "text").strip().lower(),
-        fastapi_port=_to_int(raw["FASTAPI_PORT"], 8765),
-        streamlit_port=_to_int(raw["STREAMLIT_PORT"], 8502),
-        data_encryption_key=str(raw["DATA_ENCRYPTION_KEY"]),
-        database_url=_normalize_database_url(str(raw["DATABASE_URL"])),
-    )
+    # Delegate to the new Pydantic‑based configuration.
+    from .config import config as cfg  # noqa: WPS433
+
+    # The cfg object exposes the same attributes as AppConfig.
+    return cfg  # type: ignore[return-value]
 
 
 def setup_logging() -> None:
@@ -323,6 +287,9 @@ def sanitize_text(value: str | None, *, max_length: int | None = None, preserve_
         return None
     cleaned = value.replace("\r\n", "\n").replace("\r", "\n")
     cleaned = _CONTROL_CHARS_RE.sub("", cleaned).strip()
+    # FIX (SEC-02): HTML-escape user input to prevent stored XSS when this
+    # text is rendered in audit logs, OCR review pages, or any frontend view.
+    cleaned = html.escape(cleaned)
     if not preserve_newlines:
         cleaned = re.sub(r"\s+", " ", cleaned)
     if max_length is not None and len(cleaned) > max_length:
