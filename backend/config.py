@@ -10,9 +10,37 @@ from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def _resolve_env_file() -> str:
+    """Resolve the correct .env file by checking candidates on disk.
+
+    Checks files by priority order using filesystem existence
+    (not os.environ, which may not be populated at import time):
+      1. .env (user's runtime config — copied from .env.local)
+      2. .env.local (local dev overrides)
+      3. .env.development (env-specific template)
+      4. .env.production (env-specific template)
+
+    Returns the first match, or ".env" as fallback for pydantic-settings.
+    """
+    script_dir = Path(__file__).resolve().parents[1]  # project root
+
+    candidates = [
+        ".env",            # 1. User's runtime config
+        ".env.local",      # 2. Local dev overrides
+        ".env.development",# 3. Dev template
+        ".env.production", # 4. Production template
+    ]
+    for name in candidates:
+        path = script_dir / name
+        if path.exists():
+            return str(path)
+
+    return ".env"
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_resolve_env_file(),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

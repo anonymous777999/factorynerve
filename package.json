@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "claude-openrouter-proxy",
   "version": "1.0.0",
   "description": "Proxy that translates Anthropic API calls to OpenRouter free models",

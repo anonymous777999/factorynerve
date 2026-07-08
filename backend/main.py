@@ -70,6 +70,14 @@ from backend.services.ops_alerts import (
 )
 
 
+# ── Startup Validation (development only) ────────────────────────────────────
+# When SKIP_STARTUP_VALIDATION=1, environment checks are skipped.
+# When FAIL_ON_STARTUP_VALIDATION=1 (production), failures block startup.
+_SKIP_VALIDATION = os.getenv("SKIP_STARTUP_VALIDATION", "").strip().lower() in ("1", "true", "yes")
+_FAIL_ON_VALIDATION = os.getenv("FAIL_ON_STARTUP_VALIDATION", "").strip().lower() in ("1", "true", "yes")
+
+
+
 # ── Role Revision Cache ──────────────────────────────────────────────────────
 # Redis-backed cache for User.role_revision, with automatic fallback to
 # in-memory cache when Redis is unavailable (handled by cache.py).
@@ -144,10 +152,85 @@ config = get_config()
 if config.app_env == "production" and config.debug:
     raise RuntimeError("DEBUG must be disabled in production.")
 
+
+def _run_startup_validation() -> None:
+    """Run environment validation on startup (development only).
+
+    In production, set FAIL_ON_STARTUP_VALIDATION=1 to treat
+    validation failures as fatal. In development, warnings
+    are logged but do not block startup.
+
+    Executed synchronously in FastAPI's blocking startup path
+    (alongside init_db(), billing recovery, etc.) so there
+    is no benefit to making this async.
+    """
+    if _SKIP_VALIDATION:
+        logger.info("Startup validation skipped via SKIP_STARTUP_VALIDATION.")
+        return
+
+    try:
+        import subprocess
+        import sys
+        from pathlib import Path
+
+        script = Path(__file__).resolve().parents[1] / "scripts" / "validate_env.py"
+        if not script.exists():
+            logger.warning("startup_validation skipped: scripts/validate_env.py not found.")
+            return
+
+        result = subprocess.run(
+            [sys.executable, str(script), "--json"],
+            capture_output=True, text=True, timeout=15,
+            cwd=str(script.parents[1]),
+        )
+
+        if result.returncode == 0:
+            logger.info("startup_validation passed.")
+            return
+
+        # Parse JSON output for details
+        try:
+            import json as _json
+            report = _json.loads(result.stdout.strip())
+            failures = report.get("failure_details", [])
+            warnings = report.get("warning_details", [])
+        except Exception:
+            failures = []
+            warnings = []
+
+        if failures:
+            for f in failures:
+                logger.warning("startup_validation FAILURE: %s", f)
+
+        if warnings:
+            for w in warnings:
+                logger.warning("startup_validation WARNING: %s", w)
+
+        if _FAIL_ON_VALIDATION and failures:
+            raise RuntimeError(
+                f"Startup validation failed with {len(failures)} error(s): {failures[0]}"
+            )
+
+        logger.warning(
+            "startup_validation completed with %d failure(s) and %d warning(s). "
+            "Set SKIP_STARTUP_VALIDATION=1 to skip.",
+            len(failures),
+            len(warnings),
+        )
+    except subprocess.TimeoutExpired:
+        logger.warning("startup_validation timed out after 15s.")
+    except Exception as exc:
+        logger.warning("startup_validation failed to run: %s", exc)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     try:
         logger.info("Starting backend initialization.")
+
+        # Run environment validation (non-blocking warnings in dev)
+        _run_startup_validation()
+
         init_db()
         try:
             with SessionLocal() as db:
@@ -285,6 +368,25 @@ app.include_router(cron_router)
 # to the current thread's tenant context.
 _register_checkout_event(engine)
 logger.info("RLS checkout event registered on database engine.")
+
+# ── Dev-only routes & middleware ──────────────────────────────────────
+# The dev router and failure injection middleware are ONLY registered
+# when APP_ENV=development or FORCE_FAILURES=1. They are NEVER added
+# to the middleware/router stack in production, which avoids the
+# BaseHTTPMiddleware ASGI compatibility issues that cause 400 errors
+# on Render and other production ASGI servers.
+#
+# NOTE: Imports are inside the conditional block so that on Render
+# (where these files don't exist in Git), the app starts without error.
+_DEV_MODE_ENABLED = os.getenv("APP_ENV", "development").strip().lower() == "development" \
+    or os.getenv("FORCE_FAILURES", "").strip().lower() in ("1", "true", "yes")
+
+if _DEV_MODE_ENABLED:
+    from backend.routers.dev import router as dev_router
+    from backend.middleware.failure_injection import FailureInjectionMiddleware
+    app.include_router(dev_router)
+    app.add_middleware(FailureInjectionMiddleware)
+    logger.info("Dev router and failure injection middleware registered (development mode).")
 
 app.add_middleware(
     RLSContextMiddleware,
