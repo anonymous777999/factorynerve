@@ -309,15 +309,21 @@ def _is_entry_reviewed(db: Session, entry_id: int) -> bool:
     )
 
 
+STATUS_ALIASES = {
+    "pending": "submitted",
+}
+
+
 def _normalize_status_values(values: list[str]) -> list[str]:
     normalized: list[str] = []
     for raw in values:
         key = str(raw or "").strip().lower()
         if not key:
             continue
-        if key not in ALLOWED_ENTRY_STATUSES:
+        resolved = STATUS_ALIASES.get(key, key)
+        if resolved not in ALLOWED_ENTRY_STATUSES:
             raise HTTPException(status_code=400, detail=f"Unknown status '{raw}'.")
-        normalized.append(key)
+        normalized.append(resolved)
     return normalized
 
 

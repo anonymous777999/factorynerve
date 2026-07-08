@@ -3,6 +3,23 @@ import { useCallback, useRef, useState } from "react";
 import type { OcrVerificationRecord } from "@/lib/ocr";
 import { cn } from "@/lib/utils";
 
+// Backend-supported image formats for OCR processing.
+// Matches _TABLE_EXCEL_SUPPORTED_MIME_TYPES in backend/routers/ocr/_common.py.
+// BMP, TIFF, and HEIC/HEIF pass the magic-bytes check but are rejected at
+// the OCR processing gate (_inspect_table_excel_image). PDF is not supported.
+const SUPPORTED_UPLOAD_MIME_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+  "image/gif",
+];
+const SUPPORTED_ACCEPT_STRING = SUPPORTED_UPLOAD_MIME_TYPES.join(",");
+
+function isSupportedImageFile(file: File): boolean {
+  return SUPPORTED_UPLOAD_MIME_TYPES.includes(file.type);
+}
+
 type UploadBoxProps = {
   disabled?: boolean;
   fileName?: string | null;
@@ -37,8 +54,10 @@ export function UploadBox({
         entry.type.startsWith("image/"),
       );
       if (!item) return;
+      const file = item.getAsFile();
+      if (file && !isSupportedImageFile(file)) return; // reject unsupported formats silently
       event.preventDefault();
-      void onUploadFile(item.getAsFile());
+      void onUploadFile(file);
     },
     [onUploadFile],
   );
@@ -60,7 +79,12 @@ export function UploadBox({
         onDrop={(event) => {
           event.preventDefault();
           setDragging(false);
-          void onUploadFile(event.dataTransfer.files?.[0] || null);
+          const file = event.dataTransfer.files?.[0] || null;
+          if (file && !isSupportedImageFile(file)) {
+            alert("Unsupported file type. Please upload a PNG, JPG, JPEG, WEBP, or GIF image.");
+            return;
+          }
+          void onUploadFile(file);
         }}
         onPaste={handlePaste}
         tabIndex={0}
@@ -77,7 +101,7 @@ export function UploadBox({
             Upload image
           </h1>
           <p className="mt-3 text-sm text-[var(--muted)]">
-            PNG, JPG, JPEG, PDF, TIFF up to 20 MB
+            PNG, JPG, JPEG, WEBP, GIF up to 20 MB
           </p>
           <button
             type="button"
@@ -140,7 +164,7 @@ export function UploadBox({
         <input
           ref={inputRef}
           type="file"
-          accept="image/png,image/jpeg,image/jpg,image/tiff,image/heic,image/heif,application/pdf"
+          accept={SUPPORTED_ACCEPT_STRING}
           className="hidden"
           onChange={(event) => {
             void onUploadFile(event.target.files?.[0] || null);

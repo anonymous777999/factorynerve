@@ -588,6 +588,21 @@ def _ensure_trial(db: Session, user_id: int, plan: str) -> Subscription:
         trial_end_at=now + timedelta(days=TRIAL_DAYS),
     )
     db.add(sub)
+    db.flush()
+    # Initialize OCR quota for the trial period so require_ocr_quota does not
+    # fail with "quota_exhausted" on the very first scan.  The ocr_limit is
+    # derived from the plan's built-in OCR allowance (e.g. Pilot = 150 scans).
+    plan_key = normalize_plan(plan)
+    ocr_limit = int(plan_limit(plan_key, "ocr") or 0)
+    trial_end = now + timedelta(days=TRIAL_DAYS)
+    if ocr_limit > 0:
+        _reset_org_ocr_quota_period(
+            db,
+            org_id=org_id,
+            ocr_limit=ocr_limit,
+            period_start=now,
+            period_end=trial_end,
+        )
     db.commit()
     db.refresh(sub)
     return sub
