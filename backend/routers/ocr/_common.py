@@ -1536,36 +1536,54 @@ def _run_table_preview_pipeline(
         nature_result = detect_document_nature(image_bytes)
         has_handwriting = nature_result.get("handwriting", {}).get("has_handwriting", False) or nature_result.get("nature") == "handwritten"
         doc_nature = nature_result.get("nature", "printed")
-    except Exception:
+    except Exception as nature_error:
+        logger.warning("[OCR] Document nature detection failed, using defaults: %s", nature_error)
         has_handwriting = False
         doc_nature = "printed"
 
     if requested_model or force_model:
-        selected_model, forced, explicit_model = _select_table_preview_model(
-            image_quality_score,
-            requested_model=requested_model or force_model,
-        )
-        model_tier = resolve_anthropic_model_tier(selected_model)
-        cost_decision = None
-        logger.info("[OCR] Using user-requested model: %s (tier=%s)", selected_model, model_tier)
+        try:
+            selected_model, forced, explicit_model = _select_table_preview_model(
+                image_quality_score,
+                requested_model=requested_model or force_model,
+            )
+            model_tier = resolve_anthropic_model_tier(selected_model)
+            cost_decision = None
+            logger.info("[OCR] Using user-requested model: %s (tier=%s)", selected_model, model_tier)
+        except Exception as model_select_error:
+            logger.warning("[OCR] Model selection failed, falling back to default: %s", model_select_error)
+            # Fallback to default model selection
+            selected_model = _TABLE_EXCEL_MODEL_SONNET
+            forced = bool(force_model)
+            explicit_model = requested_model or force_model
+            model_tier = resolve_anthropic_model_tier(selected_model)
+            cost_decision = None
     else:
         # Cost-optimized model selection (Phase 2)
-        
-        cost_decision = select_cost_optimal_model(
-            image_quality_score=float(image_quality_score),
-            has_handwriting=has_handwriting,
-            doc_nature=doc_nature,
-        )
-        selected_model = cost_decision["model"]
-        model_tier = cost_decision["tier"]
-        forced = False
-        explicit_model = None
-        logger.info(
-            "[OCR] Cost-optimized model selection: tier=%s model=%s reason=%s",
-            cost_decision["tier"],
-            cost_decision["model"],
-            cost_decision["reason"],
-        )
+        try:
+            cost_decision = select_cost_optimal_model(
+                image_quality_score=float(image_quality_score),
+                has_handwriting=has_handwriting,
+                doc_nature=doc_nature,
+            )
+            selected_model = cost_decision["model"]
+            model_tier = cost_decision["tier"]
+            forced = False
+            explicit_model = None
+            logger.info(
+                "[OCR] Cost-optimized model selection: tier=%s model=%s reason=%s",
+                cost_decision["tier"],
+                cost_decision["model"],
+                cost_decision["reason"],
+            )
+        except Exception as cost_opt_error:
+            logger.warning("[OCR] Cost-optimized model selection failed, falling back to default: %s", cost_opt_error)
+            # Fallback to default model selection
+            selected_model = _TABLE_EXCEL_MODEL_SONNET
+            model_tier = resolve_anthropic_model_tier(selected_model)
+            forced = False
+            explicit_model = None
+            cost_decision = {"needs_correction_pass": False}  # Default fallback
     logger.info(
         "Structured table preview model selected requested_model=%s model=%s quality_score=%s mime=%s size_bytes=%s",
         explicit_model or "auto",
@@ -1579,58 +1597,102 @@ def _run_table_preview_pipeline(
     OCR_MODEL_TIER_REQUESTS.labels(tier=model_tier).inc()
 
     # Harden vision payload with resizing
-    image_base64 = preprocess_image_bytes(image_bytes)
+    try:
+        image_base64 = preprocess_image_bytes(image_bytes)
+    except Exception as preprocess_error:
+        logger.warning("[OCR] Image preprocessing failed, using raw bytes: %s", preprocess_error)
+        # Fallback to base64 encoding of raw bytes
+        import base64
+        image_base64 = base64.b64encode(image_bytes).decode('utf-8')
 
     needs_correction = bool(cost_decision and cost_decision.get("needs_correction_pass"))
     # Phase 5: Select unstructured prompt for handwritten/ledger/screenshot docs
     # Phase 0.2: Classify document and select type-specific prompt as fallback
     model_type_prompt = None
-    unstructured_prompt = get_unstructured_prompt(doc_nature)
-    if unstructured_prompt:
-        model_type_prompt = unstructured_prompt
-        logger.info("[OCR] Using unstructured prompt for doc_nature=%s", doc_nature)
-    elif not doc_type_hint or doc_type_hint == "unknown":
-        try:
-            from backend.ocr_utils import _require_ocr_dependencies, _extract_words_safe
-            _require_ocr_dependencies()
-            words, _, _, _, _ = _extract_words_safe(image_bytes, "eng")
-            ocr_text_preview = " ".join(str(w.get("text", "")) for w in words)[:1000]
-            classification_results = classify_document(ocr_text_preview, image_bytes)
-            if classification_results and classification_results[0][1] >= 0.6:
-                classified_type = classification_results[0][0]
-                classifier_confidence = classification_results[0][1]
-                logger.info("[OCR] Classified document as %s (confidence=%.2f)", classified_type, classifier_confidence)
-                OCR_CLASSIFICATION_ACCURACY.set(classifier_confidence)
-                model_type_prompt = _build_type_specific_prompt_for_claude(classified_type, ocr_text_preview)
+    try:
+        unstructured_prompt = get_unstructured_prompt(doc_nature)
+        if unstructured_prompt:
+            model_type_prompt = unstructured_prompt
+            logger.info("[OCR] Using unstructured prompt for doc_nature=%s", doc_nature)
+        elif not doc_type_hint or doc_type_hint == "unknown":
+            try:
+                from backend.ocr_utils import _require_ocr_dependencies, _extract_words_safe
+                _require_ocr_dependencies()
+                words, _, _, _, _ = _extract_words_safe(image_bytes, "eng")
+                ocr_text_preview = " ".join(str(w.get("text", "")) for w in words)[:1000]
+                classification_results = classify_document(ocr_text_preview, image_bytes)
+                if classification_results and classification_results[0][1] >= 0.6:
+                    classified_type = classification_results[0][0]
+                    classifier_confidence = classification_results[0][1]
+                    logger.info("[OCR] Classified document as %s (confidence=%.2f)", classified_type, classifier_confidence)
+                    OCR_CLASSIFICATION_ACCURACY.set(classifier_confidence)
+                    model_type_prompt = _build_type_specific_prompt_for_claude(classified_type, ocr_text_preview)
+                    if model_type_prompt:
+                        logger.info("[OCR] Using type-specific prompt for %s", classified_type)
+                elif classification_results:
+                    # Classification below threshold - set accuracy to the top confidence anyway
+                    OCR_CLASSIFICATION_ACCURACY.set(classification_results[0][1])
+                else:
+                    OCR_CLASSIFICATION_ACCURACY.set(0.0)
+            except Exception as classify_error:
+                logger.warning("[OCR] Classification failed, using generic prompt: %s", classify_error)
+        elif doc_type_hint:
+            try:
+                model_type_prompt = _build_type_specific_prompt_for_claude(doc_type_hint, None)
                 if model_type_prompt:
-                    logger.info("[OCR] Using type-specific prompt for %s", classified_type)
-            elif classification_results:
-                # Classification below threshold - set accuracy to the top confidence anyway
-                OCR_CLASSIFICATION_ACCURACY.set(classification_results[0][1])
-            else:
-                OCR_CLASSIFICATION_ACCURACY.set(0.0)
-        except Exception as classify_error:
-            logger.warning("[OCR] Classification failed, using generic prompt: %s", classify_error)
-    elif doc_type_hint:
-        model_type_prompt = _build_type_specific_prompt_for_claude(doc_type_hint, None)
-        if model_type_prompt:
-            logger.info("[OCR] Using type-specific prompt for provided doc_type_hint=%s", doc_type_hint)
-    extracted_json = _call_table_excel_anthropic(
-        image_base64,
-        image_mime_type="image/jpeg", # preprocess_image_bytes always returns JPEG
-        selected_model=selected_model,
-        model_type_prompt=model_type_prompt,
-        requested_model=requested_model or force_model,
-        system_prompt=None,
-        user_message=None,
-        needs_correction_pass=needs_correction,
-    )
+                    logger.info("[OCR] Using type-specific prompt for provided doc_type_hint=%s", doc_type_hint)
+            except Exception as prompt_build_error:
+                logger.warning("[OCR] Failed to build type-specific prompt for %s: %s", doc_type_hint, prompt_build_error)
+                model_type_prompt = None
+    except Exception as prompt_error:
+        logger.warning("[OCR] Prompt selection failed: %s", prompt_error)
+        model_type_prompt = None
+    extracted_json = None
+    try:
+        extracted_json = _call_table_excel_anthropic(
+            image_base64,
+            image_mime_type="image/jpeg", # preprocess_image_bytes always returns JPEG
+            selected_model=selected_model,
+            model_type_prompt=model_type_prompt,
+            requested_model=requested_model or force_model,
+            system_prompt=None,
+            user_message=None,
+            needs_correction_pass=needs_correction,
+        )
+    except Exception as ai_error:
+        logger.error("[OCR] AI extraction failed: %s", ai_error, exc_info=True)
+        # Return a structured error response that indicates AI failure
+        raise HTTPException(
+            status_code=500,
+            detail=f"OCR processing failed: AI extraction error: {str(ai_error)}"
+        ) from ai_error
+
+    if not extracted_json:
+        logger.error("[OCR] AI extraction returned empty response")
+        raise HTTPException(
+            status_code=500,
+            detail="OCR processing failed: Empty response from AI service"
+        )
+
     used_model = str(extracted_json.get("_provider_model") or selected_model)
-    structured = _build_table_preview_payload(
-        extracted_json,
-        template=template,
-        doc_type_hint=doc_type_hint,
-    )
+    structured = None
+    try:
+        structured = _build_table_preview_payload(
+            extracted_json,
+            template=template,
+            doc_type_hint=doc_type_hint,
+        )
+    except Exception as build_error:
+        logger.error("[OCR] Failed to build table preview payload: %s", build_error, exc_info=True)
+        # Create a minimal structured response from the raw JSON
+        structured = {
+            "type": extracted_json.get("type", "table"),
+            "title": extracted_json.get("title", "OCR Result"),
+            "headers": extracted_json.get("headers", []),
+            "rows": extracted_json.get("rows", []),
+            "raw_text": extracted_json.get("raw_text", ""),
+            "warnings": [f"Payload construction failed: {str(build_error)}"]
+        }
 
     elapsed_ms = int((time.perf_counter() - started_at) * 1000)
     usage_summary = extracted_json.get("_usage_summary") or {}
@@ -1648,12 +1710,16 @@ def _run_table_preview_pipeline(
     cost_saved_usd = round(max(0.0, float(opus_cost["estimated_cost"]) - estimated_cost), 6)
     headers = structured.get("headers") or []
     rows = structured.get("rows") or []
-    confidence_payload = calculate_structural_confidence(
-        {
-            "headers": headers,
-            "rows": rows,
-        }
-    )
+    try:
+        confidence_payload = calculate_structural_confidence(
+            {
+                "headers": headers,
+                "rows": rows,
+            }
+        )
+    except Exception as conf_error:
+        logger.warning("[OCR] Failed to calculate structural confidence: %s", conf_error)
+        confidence_payload = {"score": 0.0}
     confidence_score = float(confidence_payload.get("score") or 0.0)
     logger.info(
         "Structured table preview completed requested_model=%s model=%s quality_score=%s elapsed_ms=%s rows=%s columns=%s total_tokens=%s estimated_cost=%s",
@@ -1667,10 +1733,13 @@ def _run_table_preview_pipeline(
         estimated_cost,
     )
     # Record cost and latency metrics
-    OCR_EXTRACTION_LATENCY.labels(tier=model_tier).observe(elapsed_ms / 1000.0)
-    if cost_saved_usd > 0:
-        OCR_COST_SAVED.inc(cost_saved_usd)
-    OCR_TIER_COST.labels(tier=model_tier).inc(estimated_cost)
+    try:
+        OCR_EXTRACTION_LATENCY.labels(tier=model_tier).observe(elapsed_ms / 1000.0)
+        if cost_saved_usd > 0:
+            OCR_COST_SAVED.inc(cost_saved_usd)
+        OCR_TIER_COST.labels(tier=model_tier).inc(estimated_cost)
+    except Exception as metrics_error:
+        logger.warning("[OCR] Failed to record metrics: %s", metrics_error)
     debug_payload = {
         "requested_model": explicit_model or None,
         "selected_model": selected_model,
@@ -1716,11 +1785,25 @@ def _run_table_preview_pipeline(
         "used_language": language,
         "fallback_used": False,
         "raw_column_added": False,
-        "validation": OcrValidationPipeline().validate(
-            headers=headers,
-            rows=rows,
-            doc_type=doc_type_hint,
-        ).to_dict() if headers else None,
+    }
+
+    # Add validation result with error handling
+    validation_result = None
+    if headers:
+        try:
+            validation_result = OcrValidationPipeline().validate(
+                headers=headers,
+                rows=rows,
+                doc_type=doc_type_hint,
+            ).to_dict()
+        except Exception as validation_error:
+            logger.warning("[OCR] Validation pipeline failed: %s", validation_error)
+            # Don't fail the whole OCR process for validation errors
+            pass
+
+    return {
+        **base_result,
+        "validation": validation_result,
         "reused": False,
         "reused_verification_id": None,
     }

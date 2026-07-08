@@ -943,19 +943,39 @@ def build_structured_ocr_result(
     # ==================================================================
     
     raw_text = normalized.get("raw_text") or _flatten_rows(normalized_rows)
-    confidence_payload = calculate_structural_confidence(
-        {
-            "headers": normalized_headers,
-            "rows": normalized_rows,
-        }
-    )
-    avg_confidence = float(confidence_payload.get("score") or 0.0)
+    try:
+        confidence_payload = calculate_structural_confidence(
+            {
+                "headers": normalized_headers,
+                "rows": normalized_rows,
+            }
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Calculate structural confidence failed: %s", error, exc_info=True)
+        confidence_payload = {"score": 0.0}
+
+    try:
+        avg_confidence = float(confidence_payload.get("score") or 0.0)
+    except (ValueError, TypeError):
+        logger.warning("Failed to convert confidence score to float: %s", confidence_payload.get("score"))
+        avg_confidence = 0.0
     
     # Get layout confidence from analysis
     layout_confidence = layout_analysis_result.get("layout_confidence", 0.5)
-    
-    heuristic_confidence_matrix = build_cell_confidence_matrix(normalized_headers, normalized_rows)
-    final_rows = build_confidence_enriched_rows(normalized_headers, normalized_rows)
+
+    try:
+        heuristic_confidence_matrix = build_cell_confidence_matrix(normalized_headers, normalized_rows)
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Build cell confidence matrix failed: %s", error, exc_info=True)
+        # Provide empty matrix as fallback
+        heuristic_confidence_matrix = []
+
+    try:
+        final_rows = build_confidence_enriched_rows(normalized_headers, normalized_rows)
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Build confidence enriched rows failed: %s", error, exc_info=True)
+        # Provide empty rows as fallback
+        final_rows = []
 
     # ==================================================================
     # CROSS-VALIDATION: Compare AI-enhanced rows against Tesseract base
