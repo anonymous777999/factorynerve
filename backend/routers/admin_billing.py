@@ -18,6 +18,8 @@ from backend.security import get_current_user
 from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.services.billing_logger import log_billing_event
 from backend.services.billing_manager import get_effective_subscription_status
+from backend.plans import normalize_plan, plan_limit
+from backend.routers.billing import _reset_org_ocr_quota_period
 
 
 router = APIRouter(prefix="/admin/billing", tags=["Admin Billing"])
@@ -175,3 +177,105 @@ def reset_org_quota(
         APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
 
     return {"org_id": org_id, "request_count": 0, "reset_by_user_id": admin_user.id}
+
+
+@router.post("/repair-trial-quotas")
+def repair_trial_ocr_quotas(
+    request: Request,
+    dry_run: bool = Query(default=True, description="When true, report what would be done without making changes."),
+    admin_user: User = Depends(require_superadmin),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Find trial subscriptions that are missing an org_ocr_usage row and create one.
+
+    During trial signup, _ensure_trial() previously did not initialise the
+    OCR quota row, causing all OCR requests for trial orgs to immediately
+    return 429 QUOTA_EXHAUSTED.  This endpoint repairs existing trial orgs
+    by inserting the missing rows with the plan's built-in OCR limit.
+
+    Set dry_run=false to apply the fixes.
+    """
+    pdp = PDP(db=db)
+    request_context = build_request_context(request)
+    pdp.require_permission(
+        actor=admin_user,
+        permission_key="admin.billing.quota.reset",
+        resource=ResourceContext(org_id=None),
+        request_context=request_context,
+    )
+
+    period = datetime.now(timezone.utc).strftime("%Y-%m")
+    now = datetime.now(timezone.utc)
+
+    # Fetch all trial subscriptions that are still within their trial window.
+    trials = (
+        db.query(Subscription)
+        .filter(
+            Subscription.status == "trialing",
+            Subscription.org_id.isnot(None),
+        )
+        .all()
+    )
+
+    results: list[dict] = []
+    for sub in trials:
+        org_id: str | None = sub.org_id
+        if not org_id:
+            continue
+
+        # Check if an org_ocr_usage row already exists for this period.
+        existing = db.execute(
+            text(
+                "SELECT id FROM org_ocr_usage WHERE org_id = :org_id AND period = :period"
+            ),
+            {"org_id": org_id, "period": period},
+        ).first()
+
+        if existing:
+            continue
+
+        # Determine the OCR limit from the plan.
+        plan_key = normalize_plan(sub.plan)
+        ocr_limit = int(plan_limit(plan_key, "ocr") or 0)
+        if ocr_limit <= 0:
+            results.append(
+                {
+                    "org_id": org_id,
+                    "plan": plan_key,
+                    "action": "skipped",
+                    "reason": "Plan has no built-in OCR limit (ocr_limit=0). Requires an OCR pack addon.",
+                }
+            )
+            continue
+
+        period_end = sub.trial_end_at or (now)
+
+        if not dry_run:
+            _reset_org_ocr_quota_period(
+                db,
+                org_id=org_id,
+                ocr_limit=ocr_limit,
+                period_start=now,
+                period_end=period_end,
+            )
+
+        results.append(
+            {
+                "org_id": org_id,
+                "plan": plan_key,
+                "ocr_limit": ocr_limit,
+                "period": period,
+                "period_end": period_end.isoformat(),
+                "action": "would_create" if dry_run else "created",
+            }
+        )
+
+    if not dry_run:
+        db.commit()
+
+    return {
+        "dry_run": dry_run,
+        "total_trials_found": len(trials),
+        "fixed": len(results),
+        "results": results,
+    }
