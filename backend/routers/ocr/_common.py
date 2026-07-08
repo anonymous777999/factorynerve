@@ -2159,8 +2159,9 @@ def _verification_export_plain_rows(rows: list[list[str | dict[str, Any]]]) -> l
 
 
 # ── Feature flag: OCR_CROSS_VALIDATION_ENFORCED ─────────────────────────────
-# When enabled, cross-validation "blocked" status prevents trusted export.
-# Set to "false" for safe rollout — cross-validation runs but only warns.
+# When enabled (the default), cross-validation "blocked" status prevents
+# trusted export. Set env OCR_CROSS_VALIDATION_ENFORCED=false to soften the
+# rollout — cross-validation still runs but only warns instead of blocking.
 _OCR_CROSS_VALIDATION_ENFORCED = os.getenv("OCR_CROSS_VALIDATION_ENFORCED", "true").lower() in ("1", "true", "yes", "on")
 
 

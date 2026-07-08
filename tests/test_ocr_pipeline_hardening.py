@@ -47,6 +47,9 @@ def test_table_scan_defaults_to_tesseract_without_ai_keys(monkeypatch):
     monkeypatch.delenv("LEDGER_SCAN_PROVIDER", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     monkeypatch.delenv("BYTEZ_API_KEY", raising=False)
+    # Module-level config captures keys from .env at import time; clear it too
+    # so the test isn't affected by locally configured API keys.
+    monkeypatch.setattr(table_scan.config, "anthropic_api_key", "", raising=False)
 
     assert table_scan._table_scan_provider() == "tesseract"
     assert table_scan._table_scan_provider_chain(None)[0] == "tesseract"

@@ -49,7 +49,7 @@ from backend.utils import normalize_confidence
 from backend.services.ocr_cross_validator import OcrCrossValidator, CrossValidationResult
 from backend.services.pipeline_metadata import PipelineMetadata
 from backend.services.ocr_image_preprocessing import preprocess_image, preprocess_image_metadata
-from backend.validators import OcrValidationPipeline
+from backend.validators import OcrValidationPipeline, ValidationResult
 from backend.metrics import (
     OCR_CACHE_HIT_RATIO,
     OCR_EXTRACTION_SUCCESS_RATE,
@@ -265,7 +265,26 @@ def _apply_document_understanding(payload: dict[str, Any]) -> dict[str, Any]:
         rows = payload.get("rows") or []
         text = str(payload.get("raw_text") or _flatten_rows(rows) or "")
         classified = classify_document(text)
-        parsed = parse_document(str(classified.get("doc_type") or "generic"), rows)
+        # classify() returns [(doc_type, confidence), ...] sorted by confidence;
+        # normalize into an understanding dict (older versions returned a dict).
+        if isinstance(classified, dict):
+            understanding = dict(classified)
+            doc_type = str(understanding.get("doc_type") or "generic")
+        else:
+            candidates = [
+                (str(item[0]), float(item[1]))
+                for item in (classified or [])
+                if isinstance(item, (list, tuple)) and len(item) >= 2
+            ]
+            doc_type = candidates[0][0] if candidates else "generic"
+            understanding = {
+                "doc_type": doc_type,
+                "confidence": candidates[0][1] if candidates else 0.0,
+                "candidates": [
+                    {"doc_type": dt, "confidence": conf} for dt, conf in candidates
+                ],
+            }
+        parsed = parse_document(doc_type, rows)
         normalized = normalize_understanding(parsed)
         sheets = normalized.get("sheets") if isinstance(normalized, dict) else []
         if not sheets or not isinstance(sheets[0], dict):
@@ -276,7 +295,7 @@ def _apply_document_understanding(payload: dict[str, Any]) -> dict[str, Any]:
             "headers": [str(value) for value in first_sheet.get("columns") or []],
             "rows": [[str(cell) for cell in row] for row in first_sheet.get("rows") or []],
             "sheets": sheets,
-            "understanding": classified,
+            "understanding": understanding,
         }
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("Document understanding failed; using original OCR rows: %s", error, exc_info=True)
@@ -694,15 +713,15 @@ def build_structured_ocr_result(
         legacy ``fallback_used`` parameter. New code should prefer passing
         ``pipeline_metadata`` instead of the individual bool.
     """
-    # Merge legacy fallback_used into PipelineMetadata for backward compatibility
+    # Merge legacy fallback_used into PipelineMetadata for backward compatibility.
+    # A caller-supplied PipelineMetadata takes precedence and is preserved;
+    # only create a fresh one when the caller didn't pass any.
     if pipeline_metadata is not None:
         if fallback_used:
             pipeline_metadata.tesseract_fallback_used = True
         fallback_used = pipeline_metadata.tesseract_fallback_used
     else:
-        pass
-
-    pipeline_metadata = PipelineMetadata(tesseract_fallback_used=fallback_used)
+        pipeline_metadata = PipelineMetadata(tesseract_fallback_used=fallback_used)
 
     # Preprocess image for better OCR on factory documents (P0-1)
     try:
@@ -924,6 +943,7 @@ def build_structured_ocr_result(
             cross_validation_result = validator.validate(
                 image_bytes=image_bytes,
                 ai_extracted_rows=normalized_rows,
+                tesseract_rows=base_rows_for_validation,
             )
             
             # Adjust confidence based on cross-validation
@@ -941,7 +961,9 @@ def build_structured_ocr_result(
     
     # ==================================================================
     # END CROSS-VALIDATION
-    # ==================================================================        # NEW (P0-2): Surface factual confidence alongside structural confidence
+    # ==================================================================
+
+    # NEW (P0-2): Surface factual confidence alongside structural confidence
     # Factual confidence measures truth-against-image via cross-validation.
     # When cross-validation didn't run (no Tesseract rows), factual is capped
     # at 50% of structural to indicate lack of verification.
@@ -962,14 +984,15 @@ def build_structured_ocr_result(
             }
 
     # Phase 4: Run multi-stage validation pipeline
-    validation_result: dict | None = None
+    validation_result: ValidationResult | None = None
     try:
         pipeline = OcrValidationPipeline()
         validation_result = pipeline.validate(
             headers=normalized_headers,
             rows=normalized_rows,
             doc_type=doc_type_hint,
-            data={"headers": normalized_headers, "rows": normalized_rows},                cross_validation=cross_validation_result.to_dict() if cross_validation_result else None,
+            data={"headers": normalized_headers, "rows": normalized_rows},
+            cross_validation=cross_validation_result.to_dict() if cross_validation_result else None,
         )
         for issue in validation_result.all_issues:
             if issue.severity == "error":
