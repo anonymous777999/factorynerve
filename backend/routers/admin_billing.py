@@ -179,7 +179,7 @@ def reset_org_quota(
     return {"org_id": org_id, "request_count": 0, "reset_by_user_id": admin_user.id}
 
 
-@router.post("/repair-trial-quotas")
+@router.api_route("/repair-trial-quotas", methods=["GET", "POST"])
 def repair_trial_ocr_quotas(
     request: Request,
     dry_run: bool = Query(default=True, description="When true, report what would be done without making changes."),
