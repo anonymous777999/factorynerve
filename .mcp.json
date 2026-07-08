@@ -6,6 +6,13 @@
         "serve"
       ],
       "type": "stdio"
+    },
+    "render": {
+      "command": "npx",
+      "args": ["-y", "@renderinc/mcp-server"],
+      "env": {
+        "RENDER_API_KEY": "rnd_kayjBcL1ja29B3gzckbLKLxCAXXa"
+      }
     }
   }
 }

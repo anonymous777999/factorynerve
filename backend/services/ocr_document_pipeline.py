@@ -861,10 +861,10 @@ def build_structured_ocr_result(
     # ==================================================================
     # PHASE 1-5: NEW LAYOUT & STRUCTURAL ANALYSIS PIPELINE
     # ==================================================================
-    
+
     # Phase 1: Safe immediate fixes
     phase1_warnings = []
-    
+
     # 1. Repeated header suppression
     try:
         normalized_rows, suppression_warnings = suppress_repeated_headers(
@@ -874,7 +874,7 @@ def build_structured_ocr_result(
         phase1_warnings.extend(suppression_warnings)
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("Repeated header suppression failed: %s", error, exc_info=True)
-    
+
     # 2. Empty column pruning
     try:
         normalized_headers, normalized_rows, pruning_warnings = prune_empty_columns(
@@ -885,29 +885,54 @@ def build_structured_ocr_result(
         phase1_warnings.extend(pruning_warnings)
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("Empty column pruning failed: %s", error, exc_info=True)
-    
+
     # Phase 2-3: Layout analysis (with bounding box canonicalization built-in)
-    layout_analysis_result = analyze_layout(
-        normalized_headers,
-        normalized_rows,
-        base_result.cell_boxes
-    )
-    
+    try:
+        layout_analysis_result = analyze_layout(
+            normalized_headers,
+            normalized_rows,
+            base_result.cell_boxes
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Layout analysis failed: %s", error, exc_info=True)
+        # Provide fallback values to allow pipeline to continue
+        layout_analysis_result = {
+            "layout_confidence": 0.5,
+            "layout_type": "unknown",
+            "processing_time_ms": 0.0,
+            "heuristics_applied": [],
+            "warnings": [f"Layout analysis skipped due to error: {str(error)}"]
+        }
+
     # Phase 4-5: Structural grouping and selector bridge
-    structural_grouping = analyze_and_group(
-        normalized_headers,
-        normalized_rows,
-        layout_analysis_result,
-        title=normalized.get("title") or _title_from_hint(doc_type_hint, template)
-    )
-    
+    try:
+        structural_grouping = analyze_and_group(
+            normalized_headers,
+            normalized_rows,
+            layout_analysis_result,
+            title=normalized.get("title") or _title_from_hint(doc_type_hint, template)
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Structural grouping failed: %s", error, exc_info=True)
+        # Provide fallback values
+        structural_grouping = {
+            "primary_group": None,
+            "grouping_strategy": "unknown",
+            "warnings": [f"Structural grouping skipped due to error: {str(error)}"]
+        }
+
     # Apply selector bridge to get generic contract
-    if structural_grouping["primary_group"]:
-        bridge_output = apply_selector_bridge(structural_grouping["primary_group"])
-        # Update normalized data with bridge output
-        normalized_headers = bridge_output.get("headers", normalized_headers)
-        normalized_rows = bridge_output.get("rows", normalized_rows)
-    
+    if structural_grouping.get("primary_group"):
+        try:
+            bridge_output = apply_selector_bridge(structural_grouping["primary_group"])
+            # Update normalized data with bridge output
+            normalized_headers = bridge_output.get("headers", normalized_headers)
+            normalized_rows = bridge_output.get("rows", normalized_rows)
+        except Exception as error:  # pylint: disable=broad-except
+            logger.warning("Selector bridge failed: %s", error, exc_info=True)
+            warnings.append(f"Selector bridge skipped due to error: {str(error)}")
+            # Continue with unmodified normalized data
+
     # Collect all warnings
     warnings.extend(phase1_warnings)
     warnings.extend(layout_analysis_result.get("warnings", []))
