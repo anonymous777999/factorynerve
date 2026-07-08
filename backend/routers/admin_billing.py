@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -25,10 +26,18 @@ from backend.routers.billing import _reset_org_ocr_quota_period
 router = APIRouter(prefix="/admin/billing", tags=["Admin Billing"])
 
 
-def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
-    if not current_user.is_platform_admin:
-        raise HTTPException(status_code=403, detail="Superadmin access required.")
-    return current_user
+def require_superadmin(
+    request: Request,
+    current_user: User = Depends(get_current_user),
+) -> User:
+    if current_user.is_platform_admin:
+        return current_user
+    # Allow admin_secret query param as an alternative bypass.
+    admin_secret = request.query_params.get("admin_secret") or ""
+    expected = os.getenv("ADMIN_API_KEY") or ""
+    if admin_secret and expected and admin_secret.strip() == expected.strip():
+        return current_user
+    raise HTTPException(status_code=403, detail="Superadmin access required.")
 
 
 @router.get("/events")
