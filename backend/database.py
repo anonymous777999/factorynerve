@@ -293,35 +293,35 @@ def init_db() -> None:
                 create_error,
             )
 
-        # Stamp the current Alembic head so future migrations can be applied
-        # incrementally via ``alembic upgrade head`` at deployment time.
-        # We use a raw SQL insert instead of alembic command.stamp to avoid
-        # Alembic's runtime migration context creating indexes on stamp.
+        # ── Apply pending Alembic migrations ────────────────────────────
+        # Run alembic upgrade head to apply any pending migrations (e.g.
+        # adding the user_id column to auth_password_resets). This ensures
+        # the database schema stays in sync with the code without requiring
+        # shell access to run alembic manually on the production server.
         try:
             from alembic.config import Config
-            from alembic.script import ScriptDirectory
+            from alembic import command
+
             alembic_cfg = Config(str(Path(__file__).resolve().parents[1] / "alembic.ini"))
-            script = ScriptDirectory.from_config(alembic_cfg)
-            heads = script.get_heads()
-            if heads:
-                with engine.begin() as conn:
-                    conn.execute(
-                        text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
-                    )
-                    # FIX (DB-02): Only stamp if no version row exists yet —
-                    # prevents overwriting a previously-applied migration chain
-                    # (e.g. when init_db runs after alembic upgrade head).
-                    existing = conn.execute(text("SELECT version_num FROM alembic_version")).scalar()
-                    if existing is None:
-                        conn.execute(
-                            text("INSERT INTO alembic_version (version_num) VALUES (:rev)"),
-                            {"rev": heads[0]},
-                        )
-                logger.info("Database initialized and stamped at Alembic head (%s).", heads[0])
-        except Exception as stamp_error:
+
+            # Ensure alembic_version table exists before running upgrade.
+            # SQLAlchemy's create_all above takes care of table creation,
+            # but the version table may not exist if init_db is called on
+            # a fresh database without Alembic history.
+            with engine.begin() as conn:
+                conn.execute(
+                    text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL PRIMARY KEY)")
+                )
+
+            # Run all pending migrations up to the current head.
+            # ``alembic.command.upgrade`` is safe to call when already at
+            # head — it's a no-op (no pending migrations to apply).
+            command.upgrade(alembic_cfg, "head")
+            logger.info("Alembic migrations applied up to head.")
+        except Exception as migration_error:
             logger.warning(
-                "Could not stamp Alembic head (non-fatal): %s",
-                stamp_error,
+                "Could not apply Alembic migrations (non-fatal): %s",
+                migration_error,
             )
 
         logger.info("Database initialization complete.")
