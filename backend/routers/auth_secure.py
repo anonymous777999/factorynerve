@@ -413,16 +413,36 @@ def password_forgot(payload: PasswordForgotRequest, request: Request, db: Sessio
         signed = build_reset_token({"uid": str(user.id), "token": raw})
         reset_link = f"{RESET_BASE_URL}?token={signed}"
 
-        try:
-            queue_and_send_email(
-                subject="Reset your password",
-                to_emails=[user.email],
-                body=f"Use this link to reset your password (valid {RESET_TTL_MINUTES} minutes):\n{reset_link}",
-                user_id=user.id,
-                factory_name="FactoryNerve",
+        result = queue_and_send_email(
+            subject="Reset your password",
+            to_emails=[user.email],
+            body=f"Use this link to reset your password (valid {RESET_TTL_MINUTES} minutes):\n{reset_link}",
+            user_id=user.id,
+            factory_name="FactoryNerve",
+        )
+        # queue_and_send_email catches all exceptions internally and returns
+        # a result dict. It NEVER raises, so the old try/except was dead code.
+        # Check the return value to detect silent delivery failures.
+        sent = result.get("sent", False)
+        dry_run = result.get("dry_run", False)
+        error_msg = result.get("error")
+        queue_id = result.get("queue_id")
+        if not sent and not dry_run:
+            logger.error(
+                "Password reset email delivery failed for %s (queue_id=%s, error=%s). "
+                "Check SMTP/RESEND_API_KEY configuration in Render dashboard.",
+                user.email,
+                queue_id,
+                error_msg or "unknown",
             )
-        except Exception as error:  # pylint: disable=broad-except
-            raise HTTPException(status_code=502, detail="Could not deliver the password reset email.") from error
+            # Still return 200 for security (don't reveal if email exists),
+            # but log the failure so it's visible in production logs.
+        elif sent:
+            logger.debug(
+                "Password reset email sent to %s (queue_id=%s).",
+                user.email,
+                queue_id,
+            )
         _log_event(db, action="AUTH_PASSWORD_RESET_REQUESTED", user_id=user.id, request=request)
         db.commit()
     return {"message": "If an account exists for this email, you will receive a reset link."}
