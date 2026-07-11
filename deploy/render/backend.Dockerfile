@@ -38,4 +38,4 @@ COPY README.md ./README.md
 
 RUN mkdir -p /app/logs /app/exports/failed_payloads
 
-CMD ["python", "scripts/render_start.py"]
+CMD ["python3", "scripts/render_start.py"]
