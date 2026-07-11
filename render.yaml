@@ -18,8 +18,7 @@ services:
     runtime: python
     plan: starter
     buildCommand: |
-      pip install -r requirements.txt
-      PY3=$(command -v python3) && ln -sf "$PY3" "$(dirname "$PY3")/python"
+      python3 -m pip install -r requirements.txt --quiet
     startCommand: python3 scripts/render_start.py
     minInstances: 1
     autoDeploy: true
