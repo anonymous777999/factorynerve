@@ -238,7 +238,7 @@ def _send_auth_email(
             user_id=user_id or 0,
             factory_name=factory_name or "FactoryNerve",
         )
-        return result.get("sent", False) or result.get("queue_id") is not None
+        return result.get("sent", False)
     except Exception:  # pylint: disable=broad-except
         logger.exception("Auth email delivery failed for %s.", context)
         return False
