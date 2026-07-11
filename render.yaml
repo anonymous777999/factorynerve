@@ -20,7 +20,6 @@ services:
     dockerfilePath: ./deploy/render/backend.Dockerfile
     dockerContext: .
     startCommand: python3 scripts/render_start.py
-    minInstances: 1
     autoDeploy: true
     healthCheckPath: /observability/ready
 
