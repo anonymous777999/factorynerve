@@ -489,12 +489,12 @@ def me(request: Request, response: Response, db: Session = Depends(get_db)) -> d
 
 
 @router.get("/debug/email-config")
-def debug_email_config() -> dict:
+def debug_email_config(request: Request, db: Session = Depends(get_db)) -> dict:
     """Return email config status (without exposing secrets).
+    Requires a valid session to prevent information leaking.
     Useful for diagnosing email delivery issues.
     """
     from backend.email_service import _resolve_resend_api_key, _to_bool
-    import logging
 
     host = os.getenv("SMTP_HOST", "")
     resend_api_key = _resolve_resend_api_key(
@@ -506,10 +506,10 @@ def debug_email_config() -> dict:
 
     info = {
         "smtp_host": host or "MISSING",
-        "smtp_port": os.getenv("SMTP_PORT", "587"),
+        "smtp_port": int(os.getenv("SMTP_PORT", "587")),
         "smtp_from": os.getenv("SMTP_FROM", "MISSING"),
         "resend_api_key_present": bool(resend_api_key),
-        "resend_api_key_prefix": (resend_api_key[:6] + "***") if resend_api_key else "N/A",
+        "resend_api_key_prefix": (resend_api_key[:4] + "***") if resend_api_key else "N/A",
         "smtp_password_present": bool(os.getenv("SMTP_PASSWORD", "")),
         "smtp_dry_run": dry_run,
         "resend_api_base_url": os.getenv("RESEND_API_BASE_URL", "https://api.resend.com"),
@@ -519,11 +519,35 @@ def debug_email_config() -> dict:
 
 
 @router.post("/debug/send-test-email")
-def debug_send_test_email(payload: PasswordForgotRequest) -> dict:
+def debug_send_test_email(
+    payload: PasswordForgotRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> dict:
     """Send a test email to verify email delivery is working.
+    Requires a valid session (must be logged in).
+    Rate limited to prevent abuse.
     Returns the full result from queue_and_send_email.
     """
+    from backend.auth_security.rate_limit import check_rate_limit, RateLimitError
     from backend.email_utils import queue_and_send_email
+
+    # Require a valid session
+    session = get_current_session(db, request)
+    user = get_current_user(db, session)
+
+    # Rate limit: 3 test emails per hour per user
+    try:
+        check_rate_limit(
+            key=f"debug:test-email:user:{user.id}",
+            max_requests=3,
+            window_seconds=3600,
+        )
+    except RateLimitError as error:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many test emails. Try again later.",
+        ) from error
 
     email = payload.email.lower().strip()
     result = queue_and_send_email(
@@ -532,7 +556,7 @@ def debug_send_test_email(payload: PasswordForgotRequest) -> dict:
         body=f"This is a test email from FactoryNerve.\n\n"
              f"If you received this, email delivery is working correctly.\n"
              f"Timestamp: {datetime.now(timezone.utc).isoformat()}",
-        user_id=0,
+        user_id=user.id,
         factory_name="FactoryNerve",
     )
     return {
