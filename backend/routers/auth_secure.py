@@ -488,6 +488,61 @@ def me(request: Request, response: Response, db: Session = Depends(get_db)) -> d
     }
 
 
+@router.get("/debug/email-config")
+def debug_email_config() -> dict:
+    """Return email config status (without exposing secrets).
+    Useful for diagnosing email delivery issues.
+    """
+    from backend.email_service import _resolve_resend_api_key, _to_bool
+    import logging
+
+    host = os.getenv("SMTP_HOST", "")
+    resend_api_key = _resolve_resend_api_key(
+        host=host,
+        user=os.getenv("SMTP_USER"),
+        password=os.getenv("SMTP_PASSWORD"),
+    )
+    dry_run = _to_bool(os.getenv("SMTP_DRY_RUN"), False)
+
+    info = {
+        "smtp_host": host or "MISSING",
+        "smtp_port": os.getenv("SMTP_PORT", "587"),
+        "smtp_from": os.getenv("SMTP_FROM", "MISSING"),
+        "resend_api_key_present": bool(resend_api_key),
+        "resend_api_key_prefix": (resend_api_key[:6] + "***") if resend_api_key else "N/A",
+        "smtp_password_present": bool(os.getenv("SMTP_PASSWORD", "")),
+        "smtp_dry_run": dry_run,
+        "resend_api_base_url": os.getenv("RESEND_API_BASE_URL", "https://api.resend.com"),
+        "smtp_user": os.getenv("SMTP_USER", "MISSING"),
+    }
+    return {"email_config": info}
+
+
+@router.post("/debug/send-test-email")
+def debug_send_test_email(payload: PasswordForgotRequest) -> dict:
+    """Send a test email to verify email delivery is working.
+    Returns the full result from queue_and_send_email.
+    """
+    from backend.email_utils import queue_and_send_email
+
+    email = payload.email.lower().strip()
+    result = queue_and_send_email(
+        subject="Test email from FactoryNerve",
+        to_emails=[email],
+        body=f"This is a test email from FactoryNerve.\n\n"
+             f"If you received this, email delivery is working correctly.\n"
+             f"Timestamp: {datetime.now(timezone.utc).isoformat()}",
+        user_id=0,
+        factory_name="FactoryNerve",
+    )
+    return {
+        "sent": result.get("sent"),
+        "dry_run": result.get("dry_run"),
+        "error": result.get("error"),
+        "queue_id": result.get("queue_id"),
+    }
+
+
 @router.post("/password/forgot")
 def password_forgot(payload: PasswordForgotRequest, request: Request, db: Session = Depends(get_db)) -> dict:
     email = payload.email.lower().strip()
