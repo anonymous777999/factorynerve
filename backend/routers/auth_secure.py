@@ -525,21 +525,19 @@ def debug_send_test_email(
     db: Session = Depends(get_db),
 ) -> dict:
     """Send a test email to verify email delivery is working.
-    Requires a valid session (must be logged in).
-    Rate limited to prevent abuse.
-    Returns the full result from queue_and_send_email.
+    No authentication required (debug endpoint).
+    Rate limited to prevent abuse (3 per hour per IP).
+    Returns the full result from queue_and_send_email including error details.
     """
     from backend.auth_security.rate_limit import check_rate_limit, RateLimitError
     from backend.email_utils import queue_and_send_email
+    import backend.email_service as email_svc
 
-    # Require a valid session
-    session = get_current_session(db, request)
-    user = get_current_user(db, session)
-
-    # Rate limit: 3 test emails per hour per user
+    # Rate limit: 3 test emails per hour per IP
+    ip = request.client.host if request.client else "unknown"
     try:
         check_rate_limit(
-            key=f"debug:test-email:user:{user.id}",
+            key=f"debug:test-email:ip:{ip}",
             max_requests=3,
             window_seconds=3600,
         )
@@ -556,14 +554,51 @@ def debug_send_test_email(
         body=f"This is a test email from FactoryNerve.\n\n"
              f"If you received this, email delivery is working correctly.\n"
              f"Timestamp: {datetime.now(timezone.utc).isoformat()}",
-        user_id=user.id,
+        user_id=1,
         factory_name="FactoryNerve",
     )
+
+    # Also try sending directly via Resend API to get raw response
+    resend_key = email_svc._resolve_resend_api_key(
+        host=os.getenv("SMTP_HOST", ""),
+        user=os.getenv("SMTP_USER"),
+        password=os.getenv("SMTP_PASSWORD"),
+    )
+    resend_response = None
+    if resend_key:
+        try:
+            import requests as req
+            resp = req.post(
+                f"{email_svc.RESEND_API_BASE_URL}/emails",
+                headers={"Authorization": f"Bearer {resend_key}"},
+                json={
+                    "from": os.getenv("SMTP_FROM", ""),
+                    "to": [email],
+                    "subject": "Resend API Direct Test",
+                    "text": "This is a direct test of the Resend API.",
+                },
+                timeout=15,
+            )
+            resend_response = {
+                "status_code": resp.status_code,
+                "body": resp.text[:500],
+            }
+        except Exception as e:
+            resend_response = {"error": str(e)[:500]}
+
     return {
         "sent": result.get("sent"),
         "dry_run": result.get("dry_run"),
         "error": result.get("error"),
         "queue_id": result.get("queue_id"),
+        "resend_direct_test": resend_response,
+        "email_config": {
+            "smtp_host": os.getenv("SMTP_HOST", ""),
+            "smtp_from": os.getenv("SMTP_FROM", ""),
+            "resend_key_present": bool(resend_key),
+            "resend_key_prefix": (resend_key[:4] + "***") if resend_key else "N/A",
+            "dry_run": email_svc._to_bool(os.getenv("SMTP_DRY_RUN"), False),
+        },
     }
 
 
