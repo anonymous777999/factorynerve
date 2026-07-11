@@ -15,10 +15,10 @@ databases:
 services:
   - type: web
     name: factorynerve-api
-    runtime: python
+    runtime: docker
     plan: starter
-    buildCommand: |
-      python3 -m pip install -r requirements.txt --quiet
+    dockerfilePath: ./deploy/render/backend.Dockerfile
+    dockerContext: .
     startCommand: python3 scripts/render_start.py
     minInstances: 1
     autoDeploy: true
