@@ -17,8 +17,10 @@ services:
     name: factorynerve-api
     runtime: python
     plan: starter
-    buildCommand: pip install -r requirements.txt
-    startCommand: bash render.sh
+    buildCommand: |
+      pip install -r requirements.txt
+      PY3=$(command -v python3) && ln -sf "$PY3" "$(dirname "$PY3")/python"
+    startCommand: python scripts/render_start.py
     minInstances: 1
     autoDeploy: true
     healthCheckPath: /observability/ready
