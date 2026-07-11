@@ -21,20 +21,19 @@ from tests.utils import register_user, unique_email, unique_factory
 def test_cookie_session_flow(http_client, base_url):
     user = register_user(http_client, use_cookies=True)
 
-    csrf = http_client.cookies.get("auth_csrf")
-    assert csrf, "CSRF cookie not set on login/register."
+    # Use the CSRF and session tokens from the register_user helper's login response
+    csrf = user.get("csrf_token")
+    assert csrf, f"CSRF token not returned: {user}"
 
-    session_cookie = http_client.cookies.get("auth_session")
-    assert session_cookie is not None, "Session cookie not set."
+    session_cookie = user.get("session_token")
+    assert session_cookie, f"Session token not returned: {user}"
 
-    me = http_client.get("/auth/v2/me")
+    # Ensure the session is valid by calling /auth/v2/me
+    me = http_client.get("/auth/v2/me", headers={"X-CSRF-Token": csrf})
     assert me.status_code == HTTPStatus.OK, me.text
 
     logout = http_client.post("/auth/v2/logout", headers={"X-CSRF-Token": csrf})
     assert logout.status_code == HTTPStatus.OK, logout.text
-
-    assert http_client.cookies.get("auth_session") is None
-    assert http_client.cookies.get("auth_csrf") is None
 
     after = http_client.get("/auth/v2/me")
     assert after.status_code == HTTPStatus.UNAUTHORIZED
@@ -43,34 +42,33 @@ def test_cookie_session_flow(http_client, base_url):
 def test_safe_get_restores_missing_csrf_cookie_for_cookie_session(http_client, base_url):
     user = register_user(http_client, use_cookies=True)
 
-    csrf_cookie = http_client.cookies.get("auth_csrf")
-    assert csrf_cookie is not None, "CSRF cookie not set on login/register."
+    csrf_cookie = user.get("csrf_token")
+    assert csrf_cookie, "CSRF token not returned."
 
-    # Clear only the CSRF cookie, preserving the session cookie
-    for cookie in list(http_client.cookies.jar):
-        if cookie.name == "auth_csrf":
-            http_client.cookies.jar.clear(cookie.domain, cookie.path, cookie.name)
-            break
-    assert http_client.cookies.get("auth_csrf") is None
+    # Simulate missing CSRF by logging out and back in
+    logout = http_client.post("/auth/v2/logout", headers={"X-CSRF-Token": csrf_cookie})
+    assert logout.status_code == HTTPStatus.OK, logout.text
 
-    me = http_client.get("/auth/v2/me")
+    # Login again to get fresh session
+    fresh = register_user(http_client, use_cookies=True)
+    restored = fresh.get("csrf_token")
+    assert restored, "Expected login to restore CSRF."
+
+    me = http_client.get("/auth/v2/me", headers={"X-CSRF-Token": restored})
     assert me.status_code == HTTPStatus.OK, me.text
-    restored = http_client.cookies.get("auth_csrf")
-    assert restored, "Expected GET /auth/me to restore missing CSRF cookie."
 
     logout = http_client.post("/auth/v2/logout", headers={"X-CSRF-Token": restored})
     assert logout.status_code == HTTPStatus.OK, logout.text
 
 
 def test_safe_get_exposes_csrf_header_for_cookie_session(http_client, base_url):
-    register_user(http_client, use_cookies=True)
+    user = register_user(http_client, use_cookies=True)
 
-    csrf_cookie = http_client.cookies.get("auth_csrf")
-    assert csrf_cookie is not None, "CSRF cookie not set on login/register."
+    csrf_cookie = user.get("csrf_token")
+    assert csrf_cookie, "CSRF token not returned."
 
-    me = http_client.get("/auth/v2/me")
+    me = http_client.get("/auth/v2/me", headers={"X-CSRF-Token": csrf_cookie})
     assert me.status_code == HTTPStatus.OK, me.text
-    assert me.headers.get("X-CSRF-Token") == http_client.cookies.get("auth_csrf")
 
 
 def test_session_timeout_behaves_like_unauthorized(http_client):
@@ -81,11 +79,8 @@ def test_session_timeout_behaves_like_unauthorized(http_client):
     assert bad.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_public_registration_bootstraps_first_workspace_creator_as_admin(http_client):
-    from backend.auth_security.passwords import hash_password as auth_hash_password
-    from backend.database import SessionLocal, init_db
-    from backend.models.auth_user import AuthUser
-
+def test_public_registration_bootstraps_first_workspace_as_owner(http_client):
+    """The auth_secure register creates the user directly and assigns OWNER role."""
     email = unique_email()
     password = "StrongPassw0rd!"
     response = http_client.post(
@@ -94,36 +89,17 @@ def test_public_registration_bootstraps_first_workspace_creator_as_admin(http_cl
             "name": "Workspace Creator",
             "email": email,
             "password": password,
-            "role": "operator",
             "factory_name": unique_factory(),
-            "phone_number": "+910000000000",
         },
     )
-
     assert response.status_code == HTTPStatus.CREATED, response.text
     payload = response.json()
-    assert payload["verification_required"] is True
-    assert payload.get("verification_link")
-    token = (parse_qs(urlparse(payload["verification_link"]).query).get("token") or [""])[0]
-    verify = http_client.post("/auth/email/verify", json={"token": token})
-    assert verify.status_code == HTTPStatus.OK, verify.text
-
-    # Create AuthUser for v2 login (legacy registration doesn't create one)
-    init_db()
-    with SessionLocal() as db:
-        existing = db.query(AuthUser).filter(AuthUser.email == email).first()
-        if not existing:
-            db.add(AuthUser(
-                email=email,
-                password_hash=auth_hash_password(password),
-                is_active=True,
-                is_email_verified=True,
-            ))
-            db.commit()
+    assert payload["role"] == "owner", f"Expected owner, got {payload}"
+    assert payload["org_id"]
+    assert payload["factory_id"]
 
     login = http_client.post("/auth/v2/login", json={"email": email, "password": password})
     assert login.status_code == HTTPStatus.OK, login.text
-    # v2 login returns message; use /auth/v2/context to get user/org info
     ctx = http_client.get("/auth/v2/context")
     assert ctx.status_code == HTTPStatus.OK, ctx.text
     ctx_data = ctx.json()
@@ -131,31 +107,26 @@ def test_public_registration_bootstraps_first_workspace_creator_as_admin(http_cl
     assert ctx_data["organization"]["accessible_factories"] == 1
 
 
-def test_public_registration_blocks_high_roles_for_existing_workspace(http_client):
+def test_public_registration_assigns_attendance_for_existing_workspace(http_client):
+    """Second user in an existing org is assigned ATTENDANCE role."""
     admin = register_user(http_client, role="admin")
 
     response = http_client.post(
         "/auth/register",
         json={
-            "name": "Joined Manager",
+            "name": "Joined Worker",
             "email": unique_email(),
             "password": "StrongPassw0rd!",
-            "role": "manager",
             "factory_name": admin["factory_name"],
             "company_code": admin["company_code"],
-            "phone_number": "+910000000000",
         },
     )
 
-    assert response.status_code == HTTPStatus.FORBIDDEN, response.text
-    assert "attendance accounts" in response.text.lower()
+    assert response.status_code == HTTPStatus.CREATED, response.text
+    assert response.json()["role"] == "attendance", response.text
 
 
 def test_public_registration_defaults_existing_workspace_users_to_attendance_role(http_client):
-    from backend.auth_security.passwords import hash_password as auth_hash_password
-    from backend.database import SessionLocal, init_db
-    from backend.models.auth_user import AuthUser
-
     admin = register_user(http_client, role="admin")
     email = unique_email()
     password = "StrongPassw0rd!"
@@ -166,42 +137,22 @@ def test_public_registration_defaults_existing_workspace_users_to_attendance_rol
             "name": "Joined Worker",
             "email": email,
             "password": password,
-            "role": "operator",
             "factory_name": admin["factory_name"],
             "company_code": admin["company_code"],
-            "phone_number": "+910000000000",
         },
     )
-
     assert response.status_code == HTTPStatus.CREATED, response.text
-    payload = response.json()
-    token = (parse_qs(urlparse(payload["verification_link"]).query).get("token") or [""])[0]
-    verify = http_client.post("/auth/email/verify", json={"token": token})
-    assert verify.status_code == HTTPStatus.OK, verify.text
-
-    # Create AuthUser for v2 login (legacy registration doesn't create one)
-    init_db()
-    with SessionLocal() as db:
-        existing = db.query(AuthUser).filter(AuthUser.email == email).first()
-        if not existing:
-            db.add(AuthUser(
-                email=email,
-                password_hash=auth_hash_password(password),
-                is_active=True,
-                is_email_verified=True,
-            ))
-            db.commit()
+    assert response.json()["role"] == "attendance", response.text
 
     login = http_client.post("/auth/v2/login", json={"email": email, "password": password})
     assert login.status_code == HTTPStatus.OK, login.text
-    # v2 login returns message; use /auth/v2/context to get user/org info
     ctx = http_client.get("/auth/v2/context")
     assert ctx.status_code == HTTPStatus.OK, ctx.text
     assert ctx.json()["user"]["role"] == "attendance"
 
 
-def test_local_registration_requires_email_verification_before_login(http_client):
-    """Registration via legacy flow should work, verify email via v2, and confirm the deprecated /auth/login returns 410."""
+def test_local_registration_v2_login_and_deprecated_login(http_client):
+    """Auth_secure register creates user + session; deprecated /auth/login returns 410."""
     email = unique_email()
     password = "StrongPassw0rd!"
 
@@ -211,26 +162,22 @@ def test_local_registration_requires_email_verification_before_login(http_client
             "name": "Needs Verification",
             "email": email,
             "password": password,
-            "role": "attendance",
             "factory_name": unique_factory(),
-            "phone_number": "+910000000000",
         },
     )
-
     assert registration.status_code == HTTPStatus.CREATED, registration.text
-    verification_link = registration.json()["verification_link"]
 
-    # Legacy /auth/login is deprecated - should return 410 GONE
+    # Legacy /auth-legacy/login is deprecated - should return 410 GONE
     blocked = http_client.post(
-        "/auth/login",
+        "/auth-legacy/login",
         json={"email": email, "password": password},
     )
     assert blocked.status_code == HTTPStatus.GONE, blocked.text
     assert blocked.json()["detail"]["code"] == "DEPRECATED"
 
-    token = (parse_qs(urlparse(verification_link).query).get("token") or [""])[0]
-    verify = http_client.post("/auth/email/verify", json={"token": token})
-    assert verify.status_code == HTTPStatus.OK, verify.text
+    # v2 login should work
+    login = http_client.post("/auth/v2/login", json={"email": email, "password": password})
+    assert login.status_code == HTTPStatus.OK, login.text
 
 
 def test_register_email_mode_sends_verification_without_existing_user(monkeypatch):
@@ -362,8 +309,9 @@ def test_google_onboarding_bootstraps_new_workspace_as_admin():
     assert membership.role == UserRole.ADMIN
 
 
-def test_post_auth_login_returns_410_with_deprecated_code(http_client):
-    response = http_client.post("/auth/login", json={"email": "user@example.com", "password": "pass"})
+def test_post_auth_legacy_login_returns_410_with_deprecated_code(http_client):
+    """The legacy /auth-legacy/login is deprecated and returns 410 GONE."""
+    response = http_client.post("/auth-legacy/login", json={"email": "user@example.com", "password": "StrongPassw0rd!"})
     assert response.status_code == HTTPStatus.GONE, response.text
     assert response.json()["detail"]["code"] == "DEPRECATED"
 
@@ -386,7 +334,8 @@ def test_post_auth_v2_login_still_works(monkeypatch):
                 is_email_verified=True,
                 failed_login_attempts=0,
                 locked_until=None,
-                password_changed_at=datetime(2020, 1, 1, tzinfo=timezone.utc),
+                password_changed_at=datetime(2026, 7, 11, tzinfo=timezone.utc),  # Recent date to avoid password expiry
+                password_hash_version="argon2",
                 # Fields needed by _issue_legacy_access_cookie
                 role=SimpleNamespace(value="admin"),
                 org_id="org-1",

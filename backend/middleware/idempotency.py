@@ -58,8 +58,8 @@ def _should_bypass(path: str) -> bool:
     return path.startswith(BYPASS_PREFIXES)
 
 
-def _extract_key_hash(request: Request) -> str | None:
-    """Extract or generate an idempotency key hash.
+async def _extract_key_hash(request: Request) -> str | None:
+    """Extract or generate an idempotency key hash. (async — awaits request.body())
 
     Priority:
     1. ``Idempotency-Key`` header (SHA-256 hashed before storage)
@@ -73,10 +73,11 @@ def _extract_key_hash(request: Request) -> str | None:
         return hashlib.sha256(header_key.encode("utf-8")).hexdigest()
 
     # Priority 2: auto-generate from body
+    # NOTE: request.body() is an async coroutine in Starlette — MUST be awaited.
+    # Starlette caches the result in request._body after the first read, so
+    # downstream handlers can still access it via await request.body().
     try:
-        body: bytes | None = getattr(request, "_body", None)
-        if body is None and hasattr(request, "body"):
-            body = request.body() if callable(request.body) else None
+        body = await request.body()
     except Exception:
         body = None
 
@@ -123,7 +124,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         # ── Extract or generate idempotency key ──────────────────────
-        key_hash = _extract_key_hash(request)
+        key_hash = await _extract_key_hash(request)
         if key_hash is None:
             # No key available — proceed normally without idempotency
             return await call_next(request)

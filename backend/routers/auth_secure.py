@@ -4,24 +4,31 @@ from __future__ import annotations
 
 import logging
 import os
-from datetime import datetime, timezone
+import secrets
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.email_utils import queue_and_send_email
 from backend.models.report import AuditLog
 from backend.models.auth_password_reset import AuthPasswordReset
+from backend.models.auth_user import AuthUser
 from backend.models.auth_session import AuthSession
-from backend.models.factory import Factory
-from backend.models.organization import Organization
 from backend.models.user import User, UserReadSchema, UserRole
 from backend.models.user_factory_role import UserFactoryRole
-from backend.utils import ensure_utc
+from backend.utils import ensure_utc, sanitize_text
 from backend.schemas.auth import PermissionsSchema
+from backend.services.registration_service import resolve_registration_context
+from backend.services.user_code_service import next_user_code, MAX_USER_CODE_ATTEMPTS, is_user_code_collision
+from backend.models.subscription import Subscription
+from backend.plans import DEFAULT_PLAN
+from backend.models.factory import Factory
+from backend.models.organization import Organization
 from backend.auth_security.mfa import generate_secret, provisioning_uri, verify_totp
 from backend.auth_security.passwords import hash_password, validate_password_strength, verify_password
 from backend.auth_security.rate_limit import RateLimitError, check_rate_limit
@@ -63,8 +70,11 @@ RESET_BASE_URL = os.getenv("AUTH_RESET_BASE_URL", "http://127.0.0.1:8765/auth-se
 
 
 class RegisterRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
     email: EmailStr
     password: str = Field(min_length=12, max_length=128)
+    company_code: str | None = Field(default=None, max_length=32)
+    factory_name: str = Field(min_length=2, max_length=255)
 
 
 class LoginRequest(BaseModel):
@@ -147,25 +157,105 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
         check_rate_limit(key=f"register:email:{email}", max_requests=AUTH_RATE_LIMIT_MAX, window_seconds=AUTH_RATE_LIMIT_WINDOW)
     except RateLimitError as error:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
+
     validate_password_strength(payload.password)
+
     existing = db.query(User).filter(User.email == email).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account already exists.")
+
+    # Resolve or create organization and factory
+    requested_factory = (
+        sanitize_text(payload.factory_name, max_length=255, preserve_newlines=False)
+        or payload.factory_name.strip()
+    )
+    organization, factory, factory_code, resolved_factory_name = resolve_registration_context(
+        db,
+        requested_factory=requested_factory,
+        provided_code=payload.company_code,
+    )
+
+    # Determine role: OWNER if first user in org, otherwise ATTENDANCE
+    has_existing_org_user = (
+        db.query(User.id)
+        .filter(User.org_id == organization.org_id, User.is_active.is_(True))
+        .first()
+        is not None
+    )
+    assigned_role = UserRole.OWNER if not has_existing_org_user else UserRole.ATTENDANCE
+
     now = datetime.now(timezone.utc)
     user = User(
+        name=sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name.strip(),
         email=email,
         password_hash=hash_password(payload.password),
         password_hash_version="argon2",
         password_changed_at=now,
-        is_email_verified=False,
+        role=assigned_role,
+        factory_name=resolved_factory_name,
+        factory_code=factory_code,
+        org_id=organization.org_id,
+        is_email_verified=True,
         is_active=True,
+        created_at=now,
+        updated_at=now,
     )
-    db.add(user)
-    db.flush()
-    _log_event(db, action="AUTH_REGISTER", user_id=user.id, request=request)
-    create_session(db, user=user, request=request, response=response)
+
+    # Generate unique user_code with retry on collision
+    last_error: Exception | None = None
+    for _ in range(MAX_USER_CODE_ATTEMPTS):
+        user.user_code = next_user_code(db, org_id=organization.org_id)
+        try:
+            with db.begin_nested():
+                db.add(user)
+                db.flush()
+            break
+        except IntegrityError as error:
+            last_error = error
+            if not is_user_code_collision(error):
+                raise
+    else:
+        raise HTTPException(
+            status_code=500,
+            detail="Could not generate a unique user ID. Please try again.",
+        ) from last_error
+
+    # Assign factory role
+    db.add(
+        UserFactoryRole(
+            user_id=user.id,
+            factory_id=factory.factory_id,
+            org_id=organization.org_id,
+            role=assigned_role,
+        )
+    )
+
+    # Create trial subscription if this is the first subscription for the org
+    if not db.query(Subscription).filter(Subscription.org_id == organization.org_id).first():
+        trial_days = int(os.getenv("TRIAL_DAYS", "7"))
+        db.add(
+            Subscription(
+                org_id=organization.org_id,
+                user_id=user.id,
+                plan=DEFAULT_PLAN,
+                status="trialing",
+                trial_start_at=now,
+                trial_end_at=now + timedelta(days=trial_days),
+            )
+        )
+
+    _log_event(db, action="AUTH_REGISTER", user_id=user.id, request=request, org_id=organization.org_id, factory_id=factory.factory_id)
+
+    # Create session so the user is logged in immediately after registration
+    create_session(db, user=user, request=request, response=response, factory_id=factory.factory_id)
+
     db.commit()
-    return {"message": "Registration successful."}
+    return {
+        "message": "Registration successful.",
+        "org_id": organization.org_id,
+        "factory_id": factory.factory_id,
+        "role": assigned_role.value,
+    }
 
 
 @router.post("/login")
@@ -205,8 +295,11 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     # The argon2 verify_password handles both formats via the password_hash prefix.
     password_matches = verify_password(payload.password, user.password_hash)
 
-    # Fall back to bcrypt for legacy hashes (pre-auth-consolidation)
-    if not password_matches and user.password_hash_version == "bcrypt":
+    # Fall back to bcrypt for legacy hashes (pre-auth-consolidation).
+    # Treat NULL password_hash_version as "bcrypt" for backward compatibility
+    # with migrated databases where the column was added without server_default.
+    _hash_version = (user.password_hash_version or "bcrypt")
+    if not password_matches and _hash_version == "bcrypt":
         password_matches = legacy_verify_password(payload.password, user.password_hash)
         if password_matches:
             # Upgrade to argon2 on successful login
@@ -400,51 +493,82 @@ def password_forgot(payload: PasswordForgotRequest, request: Request, db: Sessio
     email = payload.email.lower().strip()
     user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
     if user:
-        raw = generate_token(32)
-        token_hash = hash_token(raw)
-        reset = AuthPasswordReset(
-            auth_user_id=str(user.id),
-            user_id=user.id,
-            token_hash=token_hash,
-            expires_at=expires_at(RESET_TTL_MINUTES),
-        )
-        db.add(reset)
-        db.flush()
-        signed = build_reset_token({"uid": str(user.id), "token": raw})
-        reset_link = f"{RESET_BASE_URL}?token={signed}"
+        try:
+            raw = generate_token(32)
+            token_hash = hash_token(raw)
+            # Resolve the auth_user_id UUID from the AuthUser record.
+            # auth_user_id is a FK to auth_users.id (UUID), while user.id
+            # is an integer — str(user.id) would cause a FK mismatch.
+            auth_user_record = db.query(AuthUser).filter(AuthUser.email == user.email).first()
+            if not auth_user_record:
+                # Auto-create AuthUser record (matching create_session behavior in sessions.py)
+                # so that password_forgot can proceed even when auth_users table is empty
+                # (e.g., freshly-migrated database where init_db + stamp head skipped
+                # the AuthUser population migration).
+                logger.warning(
+                    "No AuthUser record found for %s — auto-creating one to satisfy FK.",
+                    email,
+                )
+                now = datetime.now(timezone.utc)
+                auth_user_record = AuthUser(
+                    id=str(user.id),
+                    email=user.email,
+                    password_hash=hash_password(secrets.token_urlsafe(32)),
+                    is_active=True,
+                    is_email_verified=True,
+                    password_changed_at=user.password_changed_at or now,
+                    created_at=now,
+                    updated_at=now,
+                )
+                db.add(auth_user_record)
+                db.flush()
+            reset = AuthPasswordReset(
+                auth_user_id=auth_user_record.id,
+                user_id=user.id,
+                token_hash=token_hash,
+                expires_at=expires_at(RESET_TTL_MINUTES),
+            )
+            db.add(reset)
+            db.flush()
+            signed = build_reset_token({"uid": str(user.id), "token": raw})
+            reset_link = f"{RESET_BASE_URL}?token={signed}"
 
-        result = queue_and_send_email(
-            subject="Reset your password",
-            to_emails=[user.email],
-            body=f"Use this link to reset your password (valid {RESET_TTL_MINUTES} minutes):\n{reset_link}",
-            user_id=user.id,
-            factory_name="FactoryNerve",
-        )
-        # queue_and_send_email catches all exceptions internally and returns
-        # a result dict. It NEVER raises, so the old try/except was dead code.
-        # Check the return value to detect silent delivery failures.
-        sent = result.get("sent", False)
-        dry_run = result.get("dry_run", False)
-        error_msg = result.get("error")
-        queue_id = result.get("queue_id")
-        if not sent and not dry_run:
-            logger.error(
-                "Password reset email delivery failed for %s (queue_id=%s, error=%s). "
-                "Check SMTP/RESEND_API_KEY configuration in Render dashboard.",
-                user.email,
-                queue_id,
-                error_msg or "unknown",
+            result = queue_and_send_email(
+                subject="Reset your password",
+                to_emails=[user.email],
+                body=f"Use this link to reset your password (valid {RESET_TTL_MINUTES} minutes):\n{reset_link}",
+                user_id=user.id,
+                factory_name="FactoryNerve",
             )
-            # Still return 200 for security (don't reveal if email exists),
-            # but log the failure so it's visible in production logs.
-        elif sent:
-            logger.debug(
-                "Password reset email sent to %s (queue_id=%s).",
-                user.email,
-                queue_id,
+            # queue_and_send_email catches all exceptions internally and returns
+            # a result dict. It NEVER raises, so the old try/except was dead code.
+            # Check the return value to detect silent delivery failures.
+            sent = result.get("sent", False)
+            dry_run = result.get("dry_run", False)
+            error_msg = result.get("error")
+            queue_id = result.get("queue_id")
+            if not sent and not dry_run:
+                logger.error(
+                    "Password reset email delivery failed for %s (queue_id=%s, error=%s). "
+                    "Check SMTP/RESEND_API_KEY configuration in Render dashboard.",
+                    user.email,
+                    queue_id,
+                    error_msg or "unknown",
+                )
+            elif sent:
+                logger.debug(
+                    "Password reset email sent to %s (queue_id=%s).",
+                    user.email,
+                    queue_id,
+                )
+            _log_event(db, action="AUTH_PASSWORD_RESET_REQUESTED", user_id=user.id, request=request)
+            db.commit()
+        except Exception:
+            logger.exception(
+                "Password reset token/email flow failed for %s — returning generic response.",
+                email,
             )
-        _log_event(db, action="AUTH_PASSWORD_RESET_REQUESTED", user_id=user.id, request=request)
-        db.commit()
+            db.rollback()
     return {"message": "If an account exists for this email, you will receive a reset link."}
 
 

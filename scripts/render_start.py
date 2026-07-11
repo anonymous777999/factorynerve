@@ -120,6 +120,62 @@ def _run_alembic(runtime_env: dict[str, str], command: list[str]) -> None:
     )
 
 
+def _print_env_status(env: dict[str, str]) -> None:
+    """Print presence/absence of critical env vars to stdout (visible on Render)."""
+    critical = ["DATABASE_URL", "DATA_ENCRYPTION_KEY", "JWT_SECRET_KEY",
+                "JWT_EXPIRE_HOURS", "APP_NAME", "LOG_LEVEL", "AI_PROVIDER"]
+    ai_keys = ["GROQ_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"]
+    print("[render-start] === DIAGNOSTIC: Env var status ===", flush=True)
+    for key in critical:
+        val = env.get(key, "") or ""
+        if val and key != "DATABASE_URL":
+            print(f"[render-start]   {key}: PRESENT", flush=True)
+        elif key == "DATABASE_URL":
+            if "@" in val:
+                print(f"[render-start]   {key}: ***@{val.split('@')[1][:30]}...", flush=True)
+            else:
+                print(f"[render-start]   {key}: {'PRESENT' if val else 'MISSING'}", flush=True)
+        else:
+            print(f"[render-start]   {key}: {'MISSING' if not val else 'PRESENT'}", flush=True)
+    any_ai_key = any(env.get(k, "") for k in ai_keys)
+    print(f"[render-start]   AI provider keys: {'PRESENT' if any_ai_key else 'MISSING'}", flush=True)
+    print("[render-start] === END DIAGNOSTIC ===", flush=True)
+
+
+def _try_validate_runtime_settings(env: dict[str, str]) -> None:
+    """Validate env vars that WILL crash the app at import time if missing/bad.
+
+    Validates exactly what Pydantic's ``model_validator`` checks at module
+    import time: Fernet key validity and AI provider key presence.
+    Does NOT check vars with defaults (JWT_SECRET_KEY="", etc.) since those
+    only fail at request time, not import time.
+
+    Operates directly on the env dict WITHOUT importing backend.config
+    (which may have cached Settings from Alembic's placeholder-laden env).
+    """
+    errors: list[str] = []
+    # Fernet key validation — this crashes at import time in Pydantic model_validator
+    dek = env.get("DATA_ENCRYPTION_KEY", "")
+    if not dek:
+        errors.append("DATA_ENCRYPTION_KEY is MISSING (will crash at import!)")
+    else:
+        try:
+            from cryptography.fernet import Fernet
+            Fernet(dek.encode("utf-8"))
+        except Exception as e:
+            errors.append(f"DATA_ENCRYPTION_KEY is INVALID: {e}")
+    # AI provider key — Pydantic model_validator requires at least one
+    ai_keys = [env.get(k, "") for k in ("GROQ_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY")]
+    if not any(ai_keys):
+        errors.append("No AI provider key set (require at least one of: GROQ_API_KEY, ANTHROPIC_API_KEY, etc.)")
+    if errors:
+        for err in errors:
+            print(f"[render-start] *** CRITICAL IMPORT-TIME ERROR: {err}", flush=True)
+        print("[render-start] *** The app WILL crash at import when Pydantic Settings validates.", flush=True)
+    else:
+        print("[render-start] Import-time env validation: PASSED (all crash-causing vars are valid)", flush=True)
+
+
 def main() -> None:
     env = _build_runtime_env()
     port = env.get("PORT", "10000")
@@ -187,6 +243,18 @@ def main() -> None:
                         "[render-start] Alembic stamp after compatibility bootstrap failed. "
                         f"Exit status: {stamp_error.returncode}"
                     )
+
+    # ── PRE-FLIGHT DIAGNOSTIC: Validate env vars BEFORE starting uvicorn ──
+    # This runs in the render_start.py process (NOT the uvicorn subprocess).
+    # It prints critical env var status and tries to validate Pydantic Settings
+    # with the ACTUAL runtime env (no placeholders) to catch config errors
+    # before they cause silent 500s.
+    _print_env_status(env)
+    _try_validate_runtime_settings(env)
+
+    print(f"[render-start] Starting uvicorn on port {port}...", flush=True)
+    sys.stdout.flush()
+    sys.stderr.flush()
 
     os.execvpe(
         sys.executable,

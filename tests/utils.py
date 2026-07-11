@@ -70,25 +70,16 @@ def register_user(
         "name": "QA User",
         "email": normalized_email,
         "password": "StrongPassw0rd!",
-        "role": "attendance",
         "factory_name": factory_name or unique_factory(),
         "company_code": company_code,
-        "phone_number": "+910000000000",
     }
+    # The auth_secure register endpoint creates the user directly with
+    # is_email_verified=True and logs them in immediately via session cookie.
     resp = client.post("/auth/register", json=payload)
     assert resp.status_code in (200, 201), resp.text
     data = _unwrap_response(resp.json())
-    verification_link = data.get("verification_link")
-    assert verification_link, f"Expected verification link in test mode: {data}"
 
-    parsed = urlparse(verification_link)
-    token_values = parse_qs(parsed.query).get("token") or parse_qs(parsed.query).get("verification_token")
-    assert token_values, f"Verification link did not contain token: {verification_link}"
-    verify = client.post("/auth/email/verify", json={"token": token_values[0]})
-    assert verify.status_code == 200, verify.text
-
-    # Look up the user from DB and create an access token directly.
-    # /auth/login is deprecated (returns 410), so we bypass it in tests.
+    # Look up the user from DB
     user = _lookup_user(normalized_email)
 
     # Override role if requested role differs from the assigned role
@@ -107,8 +98,8 @@ def register_user(
         finally:
             db.close()
 
-    # Ensure an AuthUser record exists for v2 auth endpoints.
-    # Note: AuthUser uses passlib/argon2id hashing, NOT bcrypt (used by legacy User model).
+    # Ensure an AuthUser record exists for v2 auth endpoints (may have been created
+    # by create_session during register).
     init_db()
     auth_db = SessionLocal()
     try:
@@ -142,21 +133,34 @@ def register_user(
     finally:
         db.close()
 
-    # Log in via v2 to set session cookies on the test client
+    # Login via v2 to get session cookies. httpx's cookie jar may not track
+    # Set-Cookie headers automatically, so we extract them manually from the
+    # response headers and set them on the client's cookie jar.
     login_resp = client.post(
         "/auth/v2/login",
         json={"email": normalized_email, "password": payload["password"]},
     )
     assert login_resp.status_code == 200, login_resp.text
 
-    # Extract the session cookie for tests that need to switch between users
-    session_token = login_resp.cookies.get("auth_session", "")
+    # Manually extract cookies from response Set-Cookie headers
+    from http.cookies import SimpleCookie
+    session_token = ""
+    csrf_token = ""
+    for header_val in login_resp.headers.get_list("set-cookie"):
+        cookie = SimpleCookie(header_val)
+        for key, morsel in cookie.items():
+            client.cookies.set(key, morsel.value, domain=client.base_url.host, path=morsel.get("path", "/") or "/")
+            if key == "auth_session":
+                session_token = morsel.value
+            if key == "auth_csrf" or key == "dpr_csrf":
+                csrf_token = morsel.value
 
     return {
         "email": user.email,
         "password": payload["password"],
         "access_token": "",  # JWT removed — use v2 session cookies
         "session_token": session_token,
+        "csrf_token": csrf_token,
         "user_id": user.id,
         "user_code": user.user_code,
         "company_code": user.factory_code,

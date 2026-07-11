@@ -7,12 +7,51 @@
       ],
       "type": "stdio"
     },
-    "render": {
+    "playwright": {
+      "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@renderinc/mcp-server"],
-      "env": {
-        "RENDER_API_KEY": "rnd_kayjBcL1ja29B3gzckbLKLxCAXXa"
-      }
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "env": {}
+    },
+    "chrome-devtools": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "chrome-devtools-mcp@latest",
+        "--no-usage-statistics"
+      ],
+      "env": {}
+    },
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "./frontend",
+        "./backend",
+        "./logs",
+        "./config",
+        "./screenshots",
+        "./reports",
+        "./artifacts",
+        "C:/Users/shubh/AppData/Local/Temp/qa-workspace"
+      ],
+      "env": {}
+    },
+    "git": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "mcp-server-git",
+        "--repository",
+        "."
+      ],
+      "env": {}
     }
   }
 }

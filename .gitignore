@@ -54,6 +54,15 @@ backend/uvicorn.out
 .mcp.json
 CLAUDE.md
 
+# QA & test artifacts
+screenshots/
+reports/
+artifacts/
+playwright-report/
+qa-workspace/
+videos/
+downloads/
+
 # Build artifacts & temp files
 web/storybook-static/
 stitch_iteration_tracker/
