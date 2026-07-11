@@ -18,7 +18,7 @@ services:
     runtime: python
     plan: starter
     buildCommand: pip install -r requirements.txt
-    startCommand: python3 scripts/render_start.py
+    startCommand: bash render.sh
     minInstances: 1
     autoDeploy: true
     healthCheckPath: /observability/ready
