@@ -125,6 +125,8 @@ def _print_env_status(env: dict[str, str]) -> None:
     critical = ["DATABASE_URL", "DATA_ENCRYPTION_KEY", "JWT_SECRET_KEY",
                 "JWT_EXPIRE_HOURS", "APP_NAME", "LOG_LEVEL", "AI_PROVIDER"]
     ai_keys = ["GROQ_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"]
+    email_keys = ["SMTP_HOST", "SMTP_PORT", "SMTP_USER", "SMTP_FROM", "SMTP_DRY_RUN",
+                  "RESEND_API_KEY", "SMTP_PASSWORD"]
     print("[render-start] === DIAGNOSTIC: Env var status ===", flush=True)
     for key in critical:
         val = env.get(key, "") or ""
@@ -139,6 +141,19 @@ def _print_env_status(env: dict[str, str]) -> None:
             print(f"[render-start]   {key}: {'MISSING' if not val else 'PRESENT'}", flush=True)
     any_ai_key = any(env.get(k, "") for k in ai_keys)
     print(f"[render-start]   AI provider keys: {'PRESENT' if any_ai_key else 'MISSING'}", flush=True)
+    print(f"[render-start]   --- Email / SMTP ---", flush=True)
+    for key in email_keys:
+        val = env.get(key, "") or ""
+        if key in ("RESEND_API_KEY", "SMTP_PASSWORD"):
+            if val:
+                prefix = val[:6] if len(val) > 6 else val
+                print(f"[render-start]   {key}: PRESENT (prefix={prefix}***)", flush=True)
+            else:
+                print(f"[render-start]   {key}: MISSING (set in Render dashboard)", flush=True)
+        elif key == "SMTP_DRY_RUN":
+            print(f"[render-start]   {key}: {val or 'NOT SET (defaults to false)'}", flush=True)
+        else:
+            print(f"[render-start]   {key}: {val or 'MISSING'}", flush=True)
     print("[render-start] === END DIAGNOSTIC ===", flush=True)
 
 
