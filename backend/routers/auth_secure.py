@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, EmailStr, Field
+from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -19,12 +20,23 @@ from backend.models.report import AuditLog
 from backend.models.auth_password_reset import AuthPasswordReset
 from backend.models.auth_user import AuthUser
 from backend.models.auth_session import AuthSession
+from backend.models.email_verification_token import EmailVerificationToken
+from backend.models.pending_registration import PendingRegistration
 from backend.models.user import User, UserReadSchema, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.utils import ensure_utc, sanitize_text
 from backend.schemas.auth import PermissionsSchema
 from backend.services.registration_service import resolve_registration_context
 from backend.services.user_code_service import next_user_code, MAX_USER_CODE_ATTEMPTS, is_user_code_collision
+from backend.services.email_verification_service import (
+    build_verification_link,
+    create_verification_token,
+    verify_verification_token,
+)
+from backend.services.pending_registration_service import (
+    create_or_update_pending_registration,
+    verify_pending_registration_token,
+)
 from backend.models.subscription import Subscription
 from backend.plans import DEFAULT_PLAN
 from backend.models.factory import Factory
@@ -67,6 +79,84 @@ AUTH_RATE_LIMIT_WINDOW = int(os.getenv("AUTH_RATE_LIMIT_WINDOW_SECONDS", "60"))
 AUTH_RATE_LIMIT_MAX = int(os.getenv("AUTH_RATE_LIMIT_MAX_ATTEMPTS", "5"))
 RESET_TTL_MINUTES = int(os.getenv("AUTH_PASSWORD_RESET_TTL_MINUTES", "30"))
 RESET_BASE_URL = os.getenv("AUTH_RESET_BASE_URL", "http://127.0.0.1:8765/auth-secure/password/reset")
+EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
+EMAIL_VERIFICATION_EMAIL_SUBJECT = os.getenv(
+    "EMAIL_VERIFICATION_EMAIL_SUBJECT",
+    "Verify your DPR.ai email",
+)
+
+
+def _to_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _should_expose_verification_link() -> bool:
+    explicit = os.getenv("EMAIL_VERIFICATION_EXPOSE_LINK")
+    if explicit is not None:
+        return _to_bool(explicit, False)
+    return os.getenv("APP_ENV", "development") != "production"
+
+
+def _frontend_verification_link_from_request(request: Request, token: str) -> str | None:
+    origin = (request.headers.get("origin") or "").strip()
+    referer = (request.headers.get("referer") or "").strip()
+
+    if origin.startswith(("http://", "https://")):
+        return f"{origin.rstrip('/')}/verify-email?token={token}"
+
+    if referer.startswith(("http://", "https://")):
+        from urllib.parse import urlparse
+
+        parsed = urlparse(referer)
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}/verify-email?token={token}"
+
+    return None
+
+
+def _send_auth_email(
+    *,
+    subject: str,
+    to_email: str,
+    body: str,
+    context: str,
+    user_id: int | None = None,
+    factory_name: str | None = None,
+) -> bool:
+    try:
+        result = queue_and_send_email(
+            to_emails=[to_email],
+            subject=subject,
+            body=body,
+            user_id=user_id or 0,
+            factory_name=factory_name or "FactoryNerve",
+        )
+        return result.get("sent", False)
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Auth email delivery failed for %s.", context)
+        return False
+
+
+class EmailVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class EmailVerificationTokenRequest(BaseModel):
+    token: str
+
+
+class EmailVerificationResponse(BaseModel):
+    message: str
+    verification_link: str | None = None
+    delivery_mode: str = "email"
+
+
+class EmailVerificationValidateResponse(BaseModel):
+    valid: bool
+    message: str
+    email: EmailStr | None = None
 
 
 class RegisterRequest(BaseModel):
@@ -75,6 +165,16 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=12, max_length=128)
     company_code: str | None = Field(default=None, max_length=32)
     factory_name: str = Field(min_length=2, max_length=255)
+    phone_number: str | None = Field(default=None, max_length=32)
+
+
+class RegisterResponse(BaseModel):
+    message: str
+    email: EmailStr
+    pending_factory_name: str
+    verification_required: bool = True
+    verification_link: str | None = None
+    delivery_mode: str = "email"
 
 
 class LoginRequest(BaseModel):
@@ -90,6 +190,11 @@ class PasswordForgotRequest(BaseModel):
 class PasswordResetRequest(BaseModel):
     token: str
     new_password: str = Field(min_length=12, max_length=128)
+
+
+class PasswordResetValidateResponse(BaseModel):
+    valid: bool
+    message: str
 
 
 class MfaVerifyRequest(BaseModel):
@@ -148,34 +253,34 @@ def _generic_login_error() -> HTTPException:
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED)
-def register(payload: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
-    ip = request.client.host if request.client else "unknown"
-    email = payload.email.lower().strip()
-    try:
-        check_rate_limit(key=f"register:ip:{ip}", max_requests=AUTH_RATE_LIMIT_MAX, window_seconds=AUTH_RATE_LIMIT_WINDOW)
-        check_rate_limit(key=f"register:email:{email}", max_requests=AUTH_RATE_LIMIT_MAX, window_seconds=AUTH_RATE_LIMIT_WINDOW)
-    except RateLimitError as error:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
+def _activate_pending_registration(
+    db: Session,
+    *,
+    pending: PendingRegistration,
+    request: Request,
+) -> User | None:
+    # Constant-time behavior: never reveal whether the email is already
+    # registered. Silently no-op activation attempts that no longer apply
+    # (already verified, already used, already superseded).
+    email = pending.email.lower()
+    existing_user = db.query(User).filter(User.email == email).first()
+    if existing_user:
+        logger.info(
+            "Silently ignored activation for %s — email already registered.",
+            email,
+        )
+        return None
 
-    validate_password_strength(payload.password)
-
-    existing = db.query(User).filter(User.email == email).first()
-    if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Account already exists.")
-
-    # Resolve or create organization and factory
     requested_factory = (
-        sanitize_text(payload.factory_name, max_length=255, preserve_newlines=False)
-        or payload.factory_name.strip()
+        sanitize_text(pending.factory_name, max_length=255, preserve_newlines=False)
+        or pending.factory_name.strip()
     )
     organization, factory, factory_code, resolved_factory_name = resolve_registration_context(
         db,
         requested_factory=requested_factory,
-        provided_code=payload.company_code,
+        provided_code=pending.company_code,
     )
 
-    # Determine role: OWNER if first user in org, otherwise ATTENDANCE
     has_existing_org_user = (
         db.query(User.id)
         .filter(User.org_id == organization.org_id, User.is_active.is_(True))
@@ -186,22 +291,23 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
 
     now = datetime.now(timezone.utc)
     user = User(
-        name=sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name.strip(),
+        name=pending.name,
         email=email,
-        password_hash=hash_password(payload.password),
+        password_hash=pending.password_hash,
         password_hash_version="argon2",
         password_changed_at=now,
         role=assigned_role,
         factory_name=resolved_factory_name,
         factory_code=factory_code,
         org_id=organization.org_id,
+        phone_number=pending.phone_number,
         is_email_verified=True,
+        email_verified_at=now,
         is_active=True,
         created_at=now,
         updated_at=now,
     )
 
-    # Generate unique user_code with retry on collision
     last_error: Exception | None = None
     for _ in range(MAX_USER_CODE_ATTEMPTS):
         user.user_code = next_user_code(db, org_id=organization.org_id)
@@ -220,7 +326,6 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
             detail="Could not generate a unique user ID. Please try again.",
         ) from last_error
 
-    # Assign factory role
     db.add(
         UserFactoryRole(
             user_id=user.id,
@@ -230,7 +335,6 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
         )
     )
 
-    # Create trial subscription if this is the first subscription for the org
     if not db.query(Subscription).filter(Subscription.org_id == organization.org_id).first():
         trial_days = int(os.getenv("TRIAL_DAYS", "7"))
         db.add(
@@ -244,18 +348,288 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
             )
         )
 
-    _log_event(db, action="AUTH_REGISTER", user_id=user.id, request=request, org_id=organization.org_id, factory_id=factory.factory_id)
+    pending.used_at = now
+    pending.updated_at = now
+    db.add(pending)
 
-    # Create session so the user is logged in immediately after registration
-    create_session(db, user=user, request=request, response=response, factory_id=factory.factory_id)
+    _log_event(
+        db,
+        action="AUTH_REGISTER_VERIFIED",
+        user_id=user.id,
+        request=request,
+        org_id=organization.org_id,
+        factory_id=factory.factory_id,
+        details="Pending public registration activated after email verification.",
+    )
+    return user
 
+
+@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=RegisterResponse)
+def register(payload: RegisterRequest, request: Request, db: Session = Depends(get_db)) -> dict:
+    ip = request.client.host if request.client else "unknown"
+    email = payload.email.lower().strip()
+    try:
+        check_rate_limit(key=f"register:ip:{ip}", max_requests=AUTH_RATE_LIMIT_MAX, window_seconds=AUTH_RATE_LIMIT_WINDOW)
+        check_rate_limit(key=f"register:email:{email}", max_requests=AUTH_RATE_LIMIT_MAX, window_seconds=AUTH_RATE_LIMIT_WINDOW)
+    except RateLimitError as error:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
+
+    validate_password_strength(payload.password)
+
+    # P0-08: Constant-time response — always return the same shape regardless
+    # of whether the email already exists, to prevent account enumeration.
+    _ = db.query(User).filter(User.email == email).first()
+
+    requested_factory = (
+        sanitize_text(payload.factory_name, max_length=255, preserve_newlines=False)
+        or payload.factory_name.strip()
+    )
+
+    verification_token = create_or_update_pending_registration(
+        db,
+        name=sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name.strip(),
+        email=email,
+        password_hash=hash_password(payload.password),
+        requested_role=UserRole.ATTENDANCE,
+        factory_name=requested_factory,
+        company_code=payload.company_code,
+        phone_number=sanitize_text(payload.phone_number, max_length=32, preserve_newlines=False)
+        if payload.phone_number
+        else None,
+        ttl_hours=EMAIL_VERIFICATION_TTL_HOURS,
+    )
+    verification_link = (
+        _frontend_verification_link_from_request(request, verification_token)
+        or build_verification_link(verification_token)
+    )
+    delivery_mode = "preview" if _should_expose_verification_link() else "email"
+    message = "Signup submitted. Verify the email to create and activate this account."
+
+    if delivery_mode == "email":
+        sent = _send_auth_email(
+            subject=EMAIL_VERIFICATION_EMAIL_SUBJECT,
+            to_email=email,
+            body=(
+                "Welcome to DPR.ai.\n\n"
+                "Verify your email address to activate your account.\n\n"
+                f"Verification link (valid {EMAIL_VERIFICATION_TTL_HOURS} hours):\n{verification_link}\n\n"
+                "If you did not create this account, you can ignore this email."
+            ),
+            context="registration_verification",
+            user_id=None,
+            factory_name=requested_factory,
+        )
+        if not sent:
+            delivery_mode = "email_failed"
+            message = (
+                "Signup saved, but we could not send the verification email right now. "
+                "Please use resend verification in a moment."
+            )
+            _log_event(
+                db,
+                action="AUTH_REGISTER_PENDING_VERIFICATION_EMAIL_FAILED",
+                user_id=None,
+                request=request,
+                details="Pending signup saved, but the first verification email could not be delivered.",
+            )
+
+    if delivery_mode != "email_failed":
+        _log_event(
+            db,
+            action="AUTH_REGISTER_PENDING_VERIFICATION",
+            user_id=None,
+            request=request,
+            details="Public signup is waiting for email verification before account creation.",
+        )
     db.commit()
     return {
-        "message": "Registration successful.",
-        "org_id": organization.org_id,
-        "factory_id": factory.factory_id,
-        "role": assigned_role.value,
+        "message": message,
+        "email": email,
+        "pending_factory_name": requested_factory,
+        "verification_required": True,
+        "verification_link": verification_link if delivery_mode == "preview" else None,
+        "delivery_mode": delivery_mode,
     }
+
+
+@router.post("/email/verification/resend", response_model=EmailVerificationResponse)
+def resend_email_verification(
+    payload: EmailVerificationRequest, request: Request, db: Session = Depends(get_db)
+) -> EmailVerificationResponse:
+    email = payload.email.lower().strip()
+    pending = db.query(PendingRegistration).filter(PendingRegistration.email == email).first()
+    user = (
+        db.query(User)
+        .filter(User.email == email, User.is_active.is_(True))
+        .first()
+    )
+    delivery_mode = "preview" if _should_expose_verification_link() else "email"
+    verification_link: str | None = None
+
+    if pending and pending.used_at is None:
+        token = create_or_update_pending_registration(
+            db,
+            name=pending.name,
+            email=pending.email,
+            password_hash=pending.password_hash,
+            requested_role=pending.requested_role,
+            factory_name=pending.factory_name,
+            company_code=pending.company_code,
+            phone_number=pending.phone_number,
+            ttl_hours=EMAIL_VERIFICATION_TTL_HOURS,
+        )
+        verification_link = (
+            _frontend_verification_link_from_request(request, token)
+            or build_verification_link(token)
+        )
+        delivered = True
+        if delivery_mode == "email":
+            delivered = _send_auth_email(
+                subject=EMAIL_VERIFICATION_EMAIL_SUBJECT,
+                to_email=pending.email,
+                body=(
+                    "You requested a new DPR.ai verification link.\n\n"
+                    f"Verify your email within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verification_link}\n\n"
+                    "If you did not request this, you can ignore this email."
+                ),
+                context="resend_verification",
+                user_id=None,
+                factory_name=pending.factory_name,
+            )
+        if delivered:
+            _log_event(
+                db,
+                action="AUTH_REGISTER_VERIFICATION_RESENT",
+                user_id=None,
+                request=request,
+                details="Verification email resent for pending signup.",
+            )
+            db.commit()
+        else:
+            db.rollback()
+    elif user and not user.is_email_verified:
+        token = create_verification_token(db, user=user, ttl_hours=EMAIL_VERIFICATION_TTL_HOURS)
+        verification_link = (
+            _frontend_verification_link_from_request(request, token)
+            or build_verification_link(token)
+        )
+        user.verification_sent_at = datetime.now(timezone.utc)
+        delivered = True
+        if delivery_mode == "email":
+            delivered = _send_auth_email(
+                subject=EMAIL_VERIFICATION_EMAIL_SUBJECT,
+                to_email=user.email,
+                body=(
+                    "You requested a new DPR.ai verification link.\n\n"
+                    f"Verify your email within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verification_link}\n\n"
+                    "If you did not request this, you can ignore this email."
+                ),
+                context="resend_verification",
+                user_id=user.id,
+                factory_name=user.factory_name,
+            )
+        if delivered:
+            _log_event(
+                db,
+                action="AUTH_EMAIL_VERIFICATION_RESENT",
+                user_id=user.id,
+                request=request,
+                org_id=user.org_id,
+                details="Verification email resent.",
+            )
+            db.commit()
+        else:
+            db.rollback()
+
+    return EmailVerificationResponse(
+        message="If an account exists and still needs verification, we will send a new link.",
+        verification_link=verification_link if verification_link and delivery_mode == "preview" else None,
+        delivery_mode=delivery_mode,
+    )
+
+
+@router.get("/email/verify/validate", response_model=EmailVerificationValidateResponse)
+def validate_email_verification_token(
+    token: str, db: Session = Depends(get_db)
+) -> EmailVerificationValidateResponse:
+    pending = verify_pending_registration_token(db, token=token)
+    if pending:
+        return EmailVerificationValidateResponse(
+            valid=True,
+            message="Verification link verified. Confirm to create the account now.",
+            email=pending.email,
+        )
+
+    record = verify_verification_token(db, token=token)
+    if not record:
+        return EmailVerificationValidateResponse(
+            valid=False,
+            message="This verification link is invalid or has expired. Request a new one.",
+        )
+
+    user = db.query(User).filter(User.id == record.user_id, User.is_active.is_(True)).first()
+    if not user:
+        return EmailVerificationValidateResponse(
+            valid=False,
+            message="This verification link is invalid or has expired. Request a new one.",
+        )
+    if user.is_email_verified:
+        return EmailVerificationValidateResponse(
+            valid=True,
+            message="Email already verified. You can sign in now.",
+            email=user.email,
+        )
+    return EmailVerificationValidateResponse(
+        valid=True,
+        message="Verification link verified. Confirm your email to activate the account.",
+        email=user.email,
+    )
+
+
+@router.post("/email/verify", response_model=EmailVerificationResponse)
+def verify_email_address(
+    payload: EmailVerificationTokenRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> EmailVerificationResponse:
+    pending = verify_pending_registration_token(db, token=payload.token)
+    if pending:
+        _activate_pending_registration(db, pending=pending, request=request)
+        db.commit()
+        return EmailVerificationResponse(
+            message="Email verified successfully. Your account is now created and ready to sign in.",
+            delivery_mode="email",
+        )
+
+    record = verify_verification_token(db, token=payload.token)
+    if not record:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token.")
+
+    user = db.query(User).filter(User.id == record.user_id, User.is_active.is_(True)).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Invalid or expired verification token.")
+
+    now = datetime.now(timezone.utc)
+    if not user.is_email_verified:
+        user.is_email_verified = True
+        user.email_verified_at = now
+    db.query(EmailVerificationToken).filter(
+        EmailVerificationToken.user_id == user.id,
+        EmailVerificationToken.used_at.is_(None),
+    ).update({"used_at": now}, synchronize_session=False)
+    _log_event(
+        db,
+        action="AUTH_EMAIL_VERIFIED",
+        user_id=user.id,
+        request=request,
+        org_id=user.org_id,
+        details="Email verification completed.",
+    )
+    db.commit()
+    return EmailVerificationResponse(
+        message="Email verified successfully. You can sign in now.",
+        delivery_mode="email",
+    )
 
 
 @router.post("/login")
@@ -686,10 +1060,64 @@ def password_forgot(payload: PasswordForgotRequest, request: Request, db: Sessio
     return {"message": "If an account exists for this email, you will receive a reset link."}
 
 
+@router.get("/password/reset/validate", response_model=PasswordResetValidateResponse)
+def validate_password_reset_token(token: str, db: Session = Depends(get_db)) -> PasswordResetValidateResponse:
+    try:
+        token_payload = verify_reset_token(token, max_age_minutes=RESET_TTL_MINUTES)
+    except Exception:  # pylint: disable=broad-except
+        return PasswordResetValidateResponse(
+            valid=False,
+            message="This password reset link is invalid or has expired. Request a new one.",
+        )
+
+    raw = str(token_payload.get("token") or "")
+    user_id_str = str(token_payload.get("uid") or "")
+    if not raw or not user_id_str:
+        return PasswordResetValidateResponse(
+            valid=False,
+            message="This password reset link is invalid or has expired. Request a new one.",
+        )
+    try:
+        uid = int(user_id_str)
+    except (ValueError, TypeError):
+        return PasswordResetValidateResponse(
+            valid=False,
+            message="This password reset link is invalid or has expired. Request a new one.",
+        )
+    token_hash = hash_token(raw)
+    reset = (
+        db.query(AuthPasswordReset)
+        .filter(
+            or_(
+                AuthPasswordReset.user_id == uid,
+                AuthPasswordReset.auth_user_id == user_id_str,
+            ),
+            AuthPasswordReset.token_hash == token_hash,
+            AuthPasswordReset.used_at.is_(None),
+        )
+        .first()
+    )
+    if not reset or ensure_utc(reset.expires_at) <= datetime.now(timezone.utc):
+        return PasswordResetValidateResponse(
+            valid=False,
+            message="This password reset link is invalid or has expired. Request a new one.",
+        )
+    user = db.query(User).filter(User.id == uid, User.is_active.is_(True)).first()
+    if not user:
+        return PasswordResetValidateResponse(
+            valid=False,
+            message="This password reset link is invalid or has expired. Request a new one.",
+        )
+    return PasswordResetValidateResponse(valid=True, message="Reset link verified. Choose a new password.")
+
+
 @router.post("/password/reset")
 def password_reset(payload: PasswordResetRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
     validate_password_strength(payload.new_password)
-    token_payload = verify_reset_token(payload.token, max_age_minutes=RESET_TTL_MINUTES)
+    try:
+        token_payload = verify_reset_token(payload.token, max_age_minutes=RESET_TTL_MINUTES)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token.") from error
     raw = str(token_payload.get("token") or "")
     user_id_str = str(token_payload.get("uid") or "")
     if not raw or not user_id_str:
@@ -704,7 +1132,7 @@ def password_reset(payload: PasswordResetRequest, request: Request, response: Re
     reset = (
         db.query(AuthPasswordReset)
         .filter(
-            db.or_(
+            or_(
                 AuthPasswordReset.user_id == uid,
                 AuthPasswordReset.auth_user_id == user_id_str,
             ),
@@ -724,10 +1152,9 @@ def password_reset(payload: PasswordResetRequest, request: Request, response: Re
     user.updated_at = datetime.now(timezone.utc)
     reset.used_at = datetime.now(timezone.utc)
     # Invalidate all other pending reset tokens for this user
-    from backend.models.auth_password_reset import AuthPasswordReset
     now = datetime.now(timezone.utc)
     db.query(AuthPasswordReset).filter(
-        db.or_(
+        or_(
             AuthPasswordReset.user_id == user.id,
             AuthPasswordReset.auth_user_id == user_id_str,
         ),
