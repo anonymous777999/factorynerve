@@ -26,7 +26,7 @@ def queue_and_send_email(
     to_emails: Iterable[str],
     subject: str,
     body: str,
-    user_id: int,
+    user_id: int | None,
     factory_name: str = "FactoryNerve",
     from_email: str | None = None,
     reply_to: str | None = None,

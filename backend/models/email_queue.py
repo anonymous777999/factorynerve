@@ -19,7 +19,10 @@ class EmailQueue(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    # Nullable: pre-account emails (registration/verification) are sent
+    # before a User row exists, so there is no valid user_id to attach.
+    # See alembic/versions/20260712_02_make_email_queue_user_id_nullable.py.
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     factory_name: Mapped[str] = mapped_column(String(255), nullable=False)
     subject: Mapped[str] = mapped_column(Text, nullable=False)
     body: Mapped[str] = mapped_column(EncryptedString(), nullable=False)

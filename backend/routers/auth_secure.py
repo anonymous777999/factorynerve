@@ -130,7 +130,10 @@ def _send_auth_email(
             to_emails=[to_email],
             subject=subject,
             body=body,
-            user_id=user_id or 0,
+            # user_id is None for pre-account emails (registration,
+            # verification) where no User row exists yet. email_queue.user_id
+            # is nullable to support this — see backend/models/email_queue.py.
+            user_id=user_id,
             factory_name=factory_name or "FactoryNerve",
         )
         return result.get("sent", False)
