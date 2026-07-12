@@ -224,17 +224,20 @@ def detect_handwriting(image_bytes: bytes) -> dict:
         if line_angle_variance > 0.08:
             signals.append("irregular_row_spacing")
 
-        has_handwriting = handwriting_score > 0.35
+        has_handwriting = bool(handwriting_score > 0.35)
         confidence = min(1.0, handwriting_score * 1.5)  # Scale up for clearer signal
 
+        # numpy scalars (np.float32/64, np.bool_) aren't JSON-serializable —
+        # round()/min() on them stays a numpy type, so cast to native Python
+        # floats here rather than let it blow up jsonable_encoder downstream.
         return {
             "has_handwriting": has_handwriting,
-            "confidence": round(confidence, 3),
-            "score": round(handwriting_score, 3),
+            "confidence": round(float(confidence), 3),
+            "score": round(float(handwriting_score), 3),
             "signals": signals,
-            "component_irregularity": round(component_irregularity, 3),
-            "stroke_width_variance": round(stroke_width_variance, 3),
-            "line_angle_variance": round(line_angle_variance, 3),
+            "component_irregularity": round(float(component_irregularity), 3),
+            "stroke_width_variance": round(float(stroke_width_variance), 3),
+            "line_angle_variance": round(float(line_angle_variance), 3),
         }
 
     except Exception as exc:
