@@ -38,7 +38,8 @@ from backend.services.pending_registration_service import (
     verify_pending_registration_token,
 )
 from backend.models.subscription import Subscription
-from backend.plans import DEFAULT_PLAN
+from backend.plans import DEFAULT_PLAN, normalize_plan, plan_limit
+from backend.routers.billing import _reset_org_ocr_quota_period
 from backend.models.factory import Factory
 from backend.models.organization import Organization
 from backend.auth_security.mfa import generate_secret, provisioning_uri, verify_totp
@@ -356,6 +357,7 @@ def _activate_pending_registration(
 
     if not db.query(Subscription).filter(Subscription.org_id == organization.org_id).first():
         trial_days = int(os.getenv("TRIAL_DAYS", "7"))
+        trial_end = now + timedelta(days=trial_days)
         db.add(
             Subscription(
                 org_id=organization.org_id,
@@ -363,9 +365,28 @@ def _activate_pending_registration(
                 plan=DEFAULT_PLAN,
                 status="trialing",
                 trial_start_at=now,
-                trial_end_at=now + timedelta(days=trial_days),
+                trial_end_at=trial_end,
             )
         )
+        # Initialize OCR quota for the trial period here too — this
+        # registration path bypasses billing.py's _ensure_trial(), which is
+        # otherwise the only place that provisions the org_ocr_usage row.
+        # Without this, every new signup's org has no quota row at all, and
+        # require_ocr_quota's UPDATE ... WHERE org_id=... matches zero rows,
+        # which is indistinguishable from "quota exhausted" — so the very
+        # first OCR upload always fails with 429 QUOTA_EXHAUSTED. See also
+        # admin_billing.py's repair-trial-quotas endpoint, which backfills
+        # orgs that were created before this fix.
+        plan_key = normalize_plan(DEFAULT_PLAN)
+        ocr_limit = int(plan_limit(plan_key, "ocr") or 0)
+        if ocr_limit > 0:
+            _reset_org_ocr_quota_period(
+                db,
+                org_id=organization.org_id,
+                ocr_limit=ocr_limit,
+                period_start=now,
+                period_end=trial_end,
+            )
 
     pending.used_at = now
     pending.updated_at = now
