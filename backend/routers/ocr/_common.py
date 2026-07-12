@@ -684,6 +684,153 @@ def _extract_json_candidate(raw: str) -> object:
     raise _table_excel_error(502, "Anthropic API returned invalid JSON.")
 
 
+def _coerce_unstructured_document_json(data: object) -> object:
+    """Translate the specialized "unstructured document" prompt schemas
+    (ledger sheet, handwritten form, chat transcript — see
+    backend/ai/prompts/unstructured_documents.py) into the canonical
+    {type, headers, rows} / {type, fields} envelope the rest of the OCR
+    pipeline (_validate_table_excel_json, _normalize_table_excel_extracted_json,
+    Excel/PDF export, preview UI) understands.
+
+    Those prompts are selected via doc_nature auto-classification and
+    intentionally omit the top-level "type" field, which otherwise makes
+    _normalize_table_excel_extracted_json() raise a 502 and the caller fall
+    back to an empty headers/rows payload. Returns ``data`` unchanged if it
+    already has a recognized type or doesn't match a known shape.
+    """
+    if not isinstance(data, dict) or data.get("type"):
+        return data
+
+    warnings: list[str] = []
+
+    entries = data.get("entries")
+    if isinstance(entries, list) and entries:
+        headers = ["Date", "Description", "Debit", "Credit", "Balance", "Voucher Ref"]
+        rows: list[list[str]] = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            rows.append(
+                [
+                    _normalize_table_excel_value(entry.get("date")),
+                    _normalize_table_excel_value(entry.get("description")),
+                    _normalize_table_excel_value(entry.get("debit")),
+                    _normalize_table_excel_value(entry.get("credit")),
+                    _normalize_table_excel_value(entry.get("balance")),
+                    _normalize_table_excel_value(entry.get("voucher_ref")),
+                ]
+            )
+
+        account_header = data.get("account_header")
+        if isinstance(account_header, dict):
+            header_bits = [
+                f"{label}: {value}"
+                for label, value in (
+                    ("Account", account_header.get("account_name")),
+                    ("Account No.", account_header.get("account_number")),
+                    ("Period", account_header.get("period")),
+                    ("Opening Balance", account_header.get("opening_balance")),
+                )
+                if value not in (None, "")
+            ]
+            if header_bits:
+                warnings.append("Account header: " + "; ".join(header_bits))
+
+        totals = data.get("totals")
+        if isinstance(totals, dict) and any(v not in (None, "") for v in totals.values()):
+            rows.append(
+                [
+                    "",
+                    "Totals",
+                    _normalize_table_excel_value(totals.get("total_debit")),
+                    _normalize_table_excel_value(totals.get("total_credit")),
+                    _normalize_table_excel_value(totals.get("closing_balance")),
+                    "",
+                ]
+            )
+
+        quality = data.get("quality")
+        if isinstance(quality, dict):
+            if quality.get("complete") is False:
+                warnings.append("Extraction may be incomplete — not all ledger entries could be read.")
+            estimated = quality.get("estimated_total_entries")
+            extracted_count = quality.get("entries_extracted")
+            if (
+                isinstance(estimated, (int, float))
+                and isinstance(extracted_count, (int, float))
+                and estimated > extracted_count
+            ):
+                warnings.append(f"Only {extracted_count} of an estimated {estimated} entries were extracted.")
+
+        result: dict[str, object] = {"type": "table", "headers": headers, "rows": rows}
+        if warnings:
+            result["warnings"] = warnings
+        return result
+
+    fields = data.get("fields")
+    if (
+        isinstance(fields, list)
+        and fields
+        and all(isinstance(field, dict) for field in fields)
+        and any("label" in field or "value" in field for field in fields)
+    ):
+        normalized_fields = [
+            {
+                "label": _normalize_table_excel_value(field.get("label")),
+                "value": _normalize_table_excel_value(field.get("value")),
+            }
+            for field in fields
+        ]
+
+        notes = data.get("notes")
+        if isinstance(notes, list):
+            warnings.extend(str(note).strip() for note in notes if str(note).strip())
+
+        quality = data.get("quality")
+        if isinstance(quality, dict):
+            challenging_areas = quality.get("challenging_areas")
+            if isinstance(challenging_areas, list):
+                warnings.extend(str(area).strip() for area in challenging_areas if str(area).strip())
+
+        result = {"type": "form", "fields": normalized_fields}
+        if warnings:
+            result["warnings"] = warnings
+        return result
+
+    messages = data.get("messages")
+    if isinstance(messages, list) and messages and ("participants" in data or "platform" in data):
+        headers = ["Sender", "Timestamp", "Message"]
+        rows = []
+        for message in messages:
+            if not isinstance(message, dict):
+                continue
+            content = message.get("content")
+            message_type = message.get("message_type")
+            if message_type and message_type != "text":
+                content = f"[{message_type}] {content}" if content else f"[{message_type}]"
+            rows.append(
+                [
+                    _normalize_table_excel_value(message.get("sender")),
+                    _normalize_table_excel_value(message.get("timestamp")),
+                    _normalize_table_excel_value(content),
+                ]
+            )
+
+        platform = data.get("platform")
+        if platform:
+            warnings.append(f"Platform: {platform}")
+        quality = data.get("quality")
+        if isinstance(quality, dict) and quality.get("missing_messages_suspected"):
+            warnings.append("Some messages may be missing from this transcript.")
+
+        result = {"type": "table", "headers": headers, "rows": rows}
+        if warnings:
+            result["warnings"] = warnings
+        return result
+
+    return data
+
+
 def _call_table_excel_anthropic(
     image_base64: str | bytes,
     *,
@@ -838,7 +985,7 @@ def _call_table_excel_anthropic(
                 usage_summary["estimated_cost"],
             )
             raw_text = _extract_table_excel_json_text(ai_data)
-            extraction_json = _extract_json_candidate(raw_text)
+            extraction_json = _coerce_unstructured_document_json(_extract_json_candidate(raw_text))
             first_model_used = actual_model
             break
         except (ValueError, TableExcelRouteError) as error:
@@ -986,7 +1133,7 @@ def _run_anthropic_correction_pass(
                 usage_summary["estimated_cost"],
             )
             raw_text = _extract_table_excel_json_text(ai_data)
-            corrected_json = _extract_json_candidate(raw_text)
+            corrected_json = _coerce_unstructured_document_json(_extract_json_candidate(raw_text))
             if isinstance(corrected_json, dict):
                 logger.info(
                     "[OCR] Correction pass successful model=%s proactive=%s",
