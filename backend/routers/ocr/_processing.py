@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from fastapi import Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 from anthropic import AuthenticationError, BadRequestError
 
 from backend.database import get_db
@@ -202,7 +203,15 @@ async def ocr_logbook(
     if requested_doc_type in {"table", "sheet", "spreadsheet", "logbook", "ledger", "register"}:
         fallback_used = False
         try:
-            structured = _run_table_preview_pipeline(
+            # _run_table_preview_pipeline makes a blocking requests.post() call
+            # to the Anthropic API (can take 45-120s). Running it inline on
+            # this async handler would freeze the single uvicorn event loop
+            # for the whole call, starving the health-check endpoint and
+            # causing Render to kill the instance mid-request (502 to the
+            # user). Offload to a worker thread instead, same as the
+            # /ocr/logbook-async job path already does via start_job().
+            structured = await run_in_threadpool(
+                _run_table_preview_pipeline,
                 image_bytes,
                 content_type=file.content_type,
                 filename=file.filename,
@@ -219,7 +228,9 @@ async def ocr_logbook(
             raise HTTPException(status_code=500, detail=f"Structured OCR failed: {error}") from error
     else:
         try:
-            result, used_language, fallback_used = _run_ocr_with_fallback(
+            # Same rationale as above: offload the blocking OCR/fallback call.
+            result, used_language, fallback_used = await run_in_threadpool(
+                _run_ocr_with_fallback,
                 image_bytes,
                 columns=template.columns if template else columns,
                 language=requested_language,
@@ -236,7 +247,10 @@ async def ocr_logbook(
             raise HTTPException(status_code=500, detail=f"OCR failed: {error}") from error
 
         try:
-            structured = build_structured_ocr_result(
+            # CPU-bound Tesseract/routing work; offload for the same reason
+            # as the calls above.
+            structured = await run_in_threadpool(
+                build_structured_ocr_result,
                 image_bytes,
                 base_result=result,
                 used_language=used_language,
@@ -747,7 +761,11 @@ async def ocr_table_excel(
         return JSONResponse(status_code=error.status_code, content=error.payload)
 
     try:
-        excel_bytes, metadata = _run_table_excel_pipeline(
+        # See ocr_logbook() above for why this must be offloaded: it makes a
+        # blocking requests.post() call to the Anthropic API which would
+        # otherwise freeze the event loop and starve the health check.
+        excel_bytes, metadata = await run_in_threadpool(
+            _run_table_excel_pipeline,
             image_bytes,
             content_type=upload.content_type,
             filename=upload.filename,
