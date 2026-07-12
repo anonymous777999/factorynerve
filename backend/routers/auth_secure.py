@@ -78,7 +78,11 @@ logger = logging.getLogger(__name__)
 AUTH_RATE_LIMIT_WINDOW = int(os.getenv("AUTH_RATE_LIMIT_WINDOW_SECONDS", "60"))
 AUTH_RATE_LIMIT_MAX = int(os.getenv("AUTH_RATE_LIMIT_MAX_ATTEMPTS", "5"))
 RESET_TTL_MINUTES = int(os.getenv("AUTH_PASSWORD_RESET_TTL_MINUTES", "30"))
-RESET_BASE_URL = os.getenv("AUTH_RESET_BASE_URL", "http://127.0.0.1:8765/auth-secure/password/reset")
+# Fallback only — the reset link is normally derived from the requesting
+# frontend's Origin/Referer header (see _frontend_reset_link_from_request),
+# so this only matters for server-to-server calls with no browser context.
+# Points at the frontend's /reset-password page, NOT a backend route.
+RESET_BASE_URL = os.getenv("AUTH_RESET_BASE_URL", "http://127.0.0.1:3000/reset-password")
 EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
 EMAIL_VERIFICATION_EMAIL_SUBJECT = os.getenv(
     "EMAIL_VERIFICATION_EMAIL_SUBJECT",
@@ -99,21 +103,33 @@ def _should_expose_verification_link() -> bool:
     return os.getenv("APP_ENV", "development") != "production"
 
 
-def _frontend_verification_link_from_request(request: Request, token: str) -> str | None:
+def _frontend_link_from_request(request: Request, path: str, token: str) -> str | None:
+    """Build a frontend link (e.g. /verify-email or /reset-password) using the
+    caller's Origin/Referer header, so links work regardless of which frontend
+    domain issued the request. Falls back to None if neither header is a usable
+    absolute URL (e.g. server-to-server calls with no browser context)."""
     origin = (request.headers.get("origin") or "").strip()
     referer = (request.headers.get("referer") or "").strip()
 
     if origin.startswith(("http://", "https://")):
-        return f"{origin.rstrip('/')}/verify-email?token={token}"
+        return f"{origin.rstrip('/')}{path}?token={token}"
 
     if referer.startswith(("http://", "https://")):
         from urllib.parse import urlparse
 
         parsed = urlparse(referer)
         if parsed.scheme and parsed.netloc:
-            return f"{parsed.scheme}://{parsed.netloc}/verify-email?token={token}"
+            return f"{parsed.scheme}://{parsed.netloc}{path}?token={token}"
 
     return None
+
+
+def _frontend_verification_link_from_request(request: Request, token: str) -> str | None:
+    return _frontend_link_from_request(request, "/verify-email", token)
+
+
+def _frontend_reset_link_from_request(request: Request, token: str) -> str | None:
+    return _frontend_link_from_request(request, "/reset-password", token)
 
 
 def _send_auth_email(
@@ -1022,7 +1038,10 @@ def password_forgot(payload: PasswordForgotRequest, request: Request, db: Sessio
             db.add(reset)
             db.flush()
             signed = build_reset_token({"uid": str(user.id), "token": raw})
-            reset_link = f"{RESET_BASE_URL}?token={signed}"
+            reset_link = (
+                _frontend_reset_link_from_request(request, signed)
+                or f"{RESET_BASE_URL}?token={signed}"
+            )
 
             result = queue_and_send_email(
                 subject="Reset your password",
