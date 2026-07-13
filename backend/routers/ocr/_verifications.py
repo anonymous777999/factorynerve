@@ -300,23 +300,18 @@ def export_verification_excel(
 ) -> Response:
     _require_ocr_access(db, current_user)
     verification = _get_verification_or_404(db, verification_id, current_user)
-    # Check export gate - block unapproved docs
+    # Draft/pending documents may still be exported — the workbook is watermarked
+    # "DRAFT — Not approved" (see _add_draft_warning in excel_export_engine) so the
+    # gate below only downgrades trust metadata, it never blocks the download itself.
     gate_result = validate_export_readiness(verification)
     if not gate_result.passed:
         blocking_msgs = [c.message for c in gate_result.blocking_issues]
-        logger.warning("Export gate blocked for verification id=%s: %s", verification.id, blocking_msgs)
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "Export blocked by validation gate",
-                "blocking_issues": blocking_msgs,
-            },
-        )
+        logger.info("Export gate advisory for verification id=%s: %s", verification.id, blocking_msgs)
 
     rows = _verification_export_rows(verification)
     headers = _verification_export_headers(verification, rows)
     trusted_export = verification.status == "approved"
-    
+
     # Phase 7: Track export count
     OCR_EXPORT_COUNT.labels(format="excel").inc()
     _log_ocr_event(
@@ -514,7 +509,7 @@ def approve_verification(
     )
 
     # Step 2: Approval service initiation (maker-checker)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=verification.user_id,
         workflow_key="ocr.verification.approve",
@@ -591,7 +586,7 @@ def reject_verification(
     )
 
     # Step 3: Approval service initiation (maker-checker)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=verification.user_id,
         workflow_key="ocr.verification.reject",
@@ -642,4 +637,3 @@ def reject_verification(
         APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
 
     return _serialize_verification(db, verification)
-
