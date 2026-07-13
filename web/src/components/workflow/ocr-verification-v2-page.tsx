@@ -358,6 +358,37 @@ export default function OcrVerificationV2Page() {
     ));
   }, [reviewIssues]);
 
+  // `activeRecord` is the raw API record — it carries `reviewed_rows`/
+  // `original_rows`, not the `rows` field that `OcrPreviewResult` (and every
+  // DocumentTypeAdapter view) expects. Passing `activeRecord` straight
+  // through silently rendered an empty table for every document. `draftRows`
+  // + `headers` are the already-hydrated, already-edited source of truth
+  // used everywhere else on this page, so build the adapter's data from
+  // those instead and keep cell-level confidence/source metadata alongside.
+  const previewData = useMemo<OcrPreviewResult>(() => {
+    const rows = draftRows.map((row, rowIndex) =>
+      row.map((value, colIndex) => {
+        const confidence = activeRecord?.cell_confidence?.[rowIndex]?.[colIndex] ?? null;
+        const source = activeRecord?.cell_sources?.[rowIndex]?.[colIndex] ?? null;
+        if (confidence == null && !source) return value;
+        return { value, confidence, source: source as never };
+      }),
+    );
+    return {
+      type: "table",
+      title: activeRecord?.source_filename || "OCR Result",
+      headers,
+      rows,
+      columns: columnCount,
+      avg_confidence: activeRecord?.avg_confidence ?? 0,
+      warnings: activeRecord?.warnings ?? [],
+      used_language: activeRecord?.language ?? "eng",
+      fallback_used: false,
+      raw_column_added: activeRecord?.raw_column_added ?? false,
+      doc_type_hint: activeRecord?.doc_type_hint ?? null,
+    };
+  }, [draftRows, headers, columnCount, activeRecord]);
+
   // Auto-select first unresolved issue
   useEffect(() => {
     if (!reviewIssues.length) {
@@ -1752,7 +1783,7 @@ if (loading) {
 
 {/* Editable issues in focus */}
                                  <DocumentTypeAdapter
-                                   data={activeRecord as unknown as OcrPreviewResult}
+                                   data={previewData}
                                    onCellChange={(rowIndex, colIndex, value) => {
                                      setDraftRows((current) => {
                                        const newRows = [...current];

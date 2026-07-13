@@ -116,6 +116,14 @@ export function GenericTableReviewView({
                         if (rawCell && typeof rawCell === "object" && "confidence" in rawCell) {
                           confidence = (rawCell as { confidence?: number | null }).confidence ?? undefined;
                         }
+                        // Tinting and badging every cell — including the
+                        // ones the OCR got right — buried the handful of
+                        // cells that actually need a second look under a
+                        // wall of identical green "Verified" pills. Only
+                        // surface the indicator once a cell's tier is
+                        // below "high".
+                        const needsAttention =
+                          confidence !== undefined && getOcrConfidenceTier(confidence) !== "high";
 
                         return (
                           <td key={colIndex} className="px-3 py-2">
@@ -134,11 +142,11 @@ export function GenericTableReviewView({
                                 className={cn(
                                   "w-full rounded border bg-[var(--card-strong)] px-2 py-1.5 text-sm transition-colors",
                                   "focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]",
-                                  confidence ? confidenceBadgeClass(confidence) : "",
-                                  cellInputClass(value, confidence)
+                                  needsAttention ? confidenceBadgeClass(confidence) : "",
+                                  cellInputClass(value, needsAttention ? confidence : undefined)
                                 )}
                               />
-                              {confidence !== undefined && (
+                              {needsAttention && (
                                 <span
                                   className={cn(
                                     "pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]",
