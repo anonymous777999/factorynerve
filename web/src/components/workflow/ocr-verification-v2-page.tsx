@@ -386,6 +386,11 @@ export default function OcrVerificationV2Page() {
       fallback_used: false,
       raw_column_added: activeRecord?.raw_column_added ?? false,
       doc_type_hint: activeRecord?.doc_type_hint ?? null,
+      // Backend resolves doc_type_hint against the document-type registry
+      // (see backend/services/ocr_document_registry.py) so
+      // DocumentTypeAdapter can route to a type-specific review layout
+      // instead of always falling back to the generic table view.
+      document_type_config: activeRecord?.document_type_config ?? null,
     };
   }, [draftRows, headers, columnCount, activeRecord]);
 

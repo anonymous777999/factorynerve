@@ -15,6 +15,8 @@ from backend.ocr_utils import OcrResult
 from backend.understanding.classifier import classify as classify_document
 from backend.understanding.normalizer import normalize as normalize_understanding
 from backend.understanding.parser_registry import parse_document
+from backend.services.ocr_document_registry import serialize_document_type_config
+import backend.services.ocr_document_types  # noqa: F401 -- side effect: registers document types
 from backend.services.anthropic_usage import normalize_anthropic_model_name
 from backend.services.ocr_confidence import calculate_structural_confidence
 from backend.services.ocr_confidence import calculate_factual_confidence
@@ -105,16 +107,16 @@ def _upgrade_rows_to_cell_objects(
 ) -> list[list[dict[str, Any]]]:
     """
     Phase 1 & 3: Minimal cell object upgrade with numeric normalization.
-    
+
     Converts string rows to structured cell objects with:
     - value: str (display value - preserved)
     - confidence: float (0.0-1.0)
     - normalized: float | None (Phase 3: safe numeric value for calculations)
-    
+
     Args:
         rows: List of string rows
         cell_confidence_matrix: Optional OCR confidence matrix
-    
+
     Returns:
         List of rows with cell objects (including normalized where applicable)
     """
@@ -124,13 +126,13 @@ def _upgrade_rows_to_cell_objects(
         infer_column_types,
         estimate_confidence_simple,
     )
-    
+
     if not rows:
         return []
-    
+
     # Infer column types
     column_types = infer_column_types(rows)
-    
+
     # Upgrade each cell
     upgraded_rows = []
     for row_idx, row in enumerate(rows):
@@ -138,30 +140,30 @@ def _upgrade_rows_to_cell_objects(
         for col_idx, cell in enumerate(row):
             # Get column type
             column_type = column_types[col_idx] if col_idx < len(column_types) else "text"
-            
+
             # Get OCR confidence if available
             ocr_conf = None
             if cell_confidence_matrix and row_idx < len(cell_confidence_matrix):
                 if col_idx < len(cell_confidence_matrix[row_idx]):
                     ocr_conf = cell_confidence_matrix[row_idx][col_idx]
-            
+
             # Phase 3: Enable numeric normalization for numeric columns
             add_normalized = (column_type == "numeric")
-            
+
             # Normalize to cell object (with optional numeric normalization)
             cell_obj = normalize_cell(cell, confidence=ocr_conf, add_normalized=add_normalized)
-            
+
             # Enhance confidence with context
             cell_obj["confidence"] = estimate_confidence_simple(
                 cell_obj["value"],
                 column_type,
                 cell_obj["confidence"]
             )
-            
+
             upgraded_row.append(cell_obj)
-        
+
         upgraded_rows.append(upgraded_row)
-    
+
     return upgraded_rows
 
 
@@ -558,7 +560,7 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
     warnings = verification.warnings or []
     scan_quality = verification.scan_quality or {}
     review_required = scan_quality.get("confidence_band") == "low" or bool(warnings)
-    
+
     # Smart trust policy: lower trust only when document-level signals suggest a risky extraction.
     cache_trust = "high"
     # Tightened: single warning on medium confidence now triggers low trust (Bug #24)
@@ -574,7 +576,7 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
 
     routing = verification.routing_meta or {}
     reprocess_count = int(routing.get("reprocess_count", 0))
-    
+
     # Get layout confidence from scan_quality if available (NEW)
     layout_confidence = scan_quality.get("layout_confidence", 0.5)
 
@@ -857,7 +859,7 @@ def build_structured_ocr_result(
     )
     normalized_headers = normalized.get("headers") or []
     normalized_rows = normalized.get("rows") or []
-    
+
     # ==================================================================
     # PHASE 1-5: NEW LAYOUT & STRUCTURAL ANALYSIS PIPELINE
     # ==================================================================
@@ -937,11 +939,11 @@ def build_structured_ocr_result(
     warnings.extend(phase1_warnings)
     warnings.extend(layout_analysis_result.get("warnings", []))
     warnings.extend(structural_grouping.get("warnings", []))
-    
+
     # ==================================================================
     # END NEW PIPELINE - Continue with existing confidence calculation
     # ==================================================================
-    
+
     raw_text = normalized.get("raw_text") or _flatten_rows(normalized_rows)
     try:
         confidence_payload = calculate_structural_confidence(
@@ -959,7 +961,7 @@ def build_structured_ocr_result(
     except (ValueError, TypeError):
         logger.warning("Failed to convert confidence score to float: %s", confidence_payload.get("score"))
         avg_confidence = 0.0
-    
+
     # Get layout confidence from analysis
     layout_confidence = layout_analysis_result.get("layout_confidence", 0.5)
 
@@ -990,7 +992,7 @@ def build_structured_ocr_result(
                 ai_extracted_rows=normalized_rows,
                 tesseract_rows=base_rows_for_validation,
             )
-            
+
             # Adjust confidence based on cross-validation
             # We use the score from the result if we want to influence avg_confidence directly,
             # but here we'll follow the plan to use it to augment warnings and metadata.
@@ -1000,10 +1002,10 @@ def build_structured_ocr_result(
             elif cross_validation_result.status == "needs_review":
                 avg_confidence *= 0.8
                 warnings.append(f"WARNING: {cross_validation_result.explanation}")
-            
+
         except Exception as error:  # pylint: disable=broad-except
             logger.warning("Cross-validation failed: %s", error, exc_info=True)
-    
+
     # ==================================================================
     # END CROSS-VALIDATION
     # ==================================================================
@@ -1055,6 +1057,25 @@ def build_structured_ocr_result(
     pipeline_metadata.ai_degraded_to_base = route_meta.get("ai_degraded_to_base", False)
     pipeline_metadata.ai_failure_reason = route_meta.get("ai_failure_reason")
 
+    # Surface the classifier's guess (computed above via
+    # _apply_document_understanding) so DocumentTypeAdapter on the frontend
+    # can route to a type-specific review layout instead of always falling
+    # back to the generic table view. Only trust it above a confidence
+    # floor and only when it matches a registered document type.
+    _understanding = normalized.get("understanding") if isinstance(normalized.get("understanding"), dict) else None
+    _classified_type = str(_understanding.get("doc_type") or "") if _understanding else ""
+    _classified_confidence = float(_understanding.get("confidence") or 0.0) if _understanding else 0.0
+    _document_type_config = (
+        serialize_document_type_config(_classified_type)
+        if _understanding and _classified_confidence >= 0.35
+        else None
+    )
+    _classification = (
+        {"type_id": _classified_type, "confidence": _classified_confidence, "method": "auto"}
+        if _document_type_config
+        else None
+    )
+
     return {
         "type": normalized.get("type") or _doc_type(doc_type_hint),
         "title": normalized.get("title") or _title_from_hint(doc_type_hint, template),
@@ -1077,6 +1098,8 @@ def build_structured_ocr_result(
         "token_usage": route_meta.get("usage") if isinstance(route_meta.get("usage"), dict) else None,
         "sheets": normalized.get("sheets") if isinstance(normalized.get("sheets"), list) else None,
         "understanding": normalized.get("understanding") if isinstance(normalized.get("understanding"), dict) else None,
+        "classification": _classification,
+        "document_type_config": _document_type_config,
         "layout_analysis": {  # NEW: Layout analysis metadata
             "processing_time_ms": layout_analysis_result.get("processing_time_ms", 0.0),
             "heuristics_applied": layout_analysis_result.get("heuristics_applied", []),

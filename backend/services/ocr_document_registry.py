@@ -88,3 +88,44 @@ def list_document_types(category: DocumentCategory | None = None) -> list[Docume
     if category:
         types = [t for t in types if t.category == category]
     return sorted(types, key=lambda t: t.display_name)
+
+
+def serialize_document_type_config(type_id: str | None) -> dict | None:
+    """Turn a registered DocumentTypeConfig into the JSON shape the frontend's
+    DocumentTypeAdapter expects (see OcrPreviewResult.document_type_config in
+    web/src/lib/ocr.ts). Returns None when type_id is missing/unregistered so
+    callers can safely fall back to the generic table view."""
+    if not type_id:
+        return None
+    config = get_document_type(type_id)
+    if config is None:
+        return None
+    return {
+        "type_id": config.type_id,
+        "display_name": config.display_name,
+        "category": config.category.value,
+        "icon": config.icon,
+        "description": config.description,
+        "ui_component": config.ui_component,
+        "preview_fields": list(config.preview_fields),
+        "confidence_thresholds": {
+            "auto_approve": config.min_confidence_auto_approve,
+            "review": config.min_confidence_review,
+            "block": config.block_below_confidence,
+        },
+        "export_formats": [
+            {"name": fmt.name, "mime_type": fmt.mime_type} for fmt in config.export_formats
+        ],
+        "downstream_actions": [
+            {
+                "key": action.key,
+                "label": action.label,
+                "description": action.description,
+                "confirmation_required": action.confirmation_required,
+            }
+            for action in config.downstream_actions
+        ],
+        "validation_rules": [
+            {"name": rule.name, "severity": rule.severity} for rule in config.validation_rules
+        ],
+    }

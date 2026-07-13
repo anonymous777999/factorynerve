@@ -127,7 +127,7 @@ from backend.services.ocr_cost_router import (
     build_correction_request,
 )
 from backend.understanding.classifier import classify as classify_document
-from backend.services.ocr_document_registry import get_document_type
+from backend.services.ocr_document_registry import get_document_type, serialize_document_type_config
 from backend.services.ocr_document_types import _build_type_specific_prompt_for_claude
 from backend.services.export_gate import validate_export_readiness, ExportGateResult
 from backend.services.excel_export_engine import excel_export_engine
@@ -601,11 +601,11 @@ def _table_excel_prompt_text(system_prompt: str | None, user_message: str | None
 def _validate_table_excel_json(data: object | None) -> list[str]:
     if not isinstance(data, dict):
         return ["AI response is not a valid JSON object."]
-    
+
     extracted_type = data.get("type")
     if not extracted_type:
         return ["Missing 'type' field in AI response."]
-    
+
     errors = []
     if extracted_type == "table":
         headers = data.get("headers")
@@ -625,12 +625,12 @@ def _validate_table_excel_json(data: object | None) -> list[str]:
                         errors.append(f"Row {i+1} is not a list (expected {expected_len} columns).")
                     elif len(row) != expected_len:
                         errors.append(f"Row {i+1} length mismatch (expected {expected_len} columns, got {len(row)}).")
-    
+
     elif extracted_type == "form":
         fields = data.get("fields")
         if not isinstance(fields, list) or not fields:
             errors.append("Form 'fields' is missing or empty.")
-    
+
     return errors
 
 
@@ -2122,7 +2122,7 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
         "next_action": next_action,
         "notes": notes,
     }
-    
+
     # Only include these fields if they were explicitly provided in input
     if "review_required" in values:
         result["review_required"] = bool(values.get("review_required"))
@@ -2132,7 +2132,7 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
         result["cell_boxes"] = cell_boxes
     if cell_sources:
         result["cell_sources"] = cell_sources
-    
+
     return result
 
 
@@ -2144,6 +2144,52 @@ def _normalize_document_hash(value: str | None) -> str | None:
 def _normalize_doc_type_hint(value: str | None) -> str | None:
     normalized = sanitize_text(value, max_length=80, preserve_newlines=False)
     return normalized.lower() if normalized else None
+
+
+_DOC_TYPE_CLASSIFY_CONFIDENCE_FLOOR = 0.35
+
+
+def _resolve_doc_type_hint(
+    hint: str | None,
+    *,
+    raw_text: str | None = None,
+    headers: list[str] | None = None,
+    rows: list[list[Any]] | None = None,
+) -> str | None:
+    """Upgrade a generic/missing doc_type_hint (e.g. "table", "invoice", or
+    None -- the coarse extraction-shape label the scan pipeline/frontend
+    echoes back) to a specific, registry-backed type_id (e.g. "gst_invoice",
+    "weighbridge_slip") by running the keyword/structure classifier against
+    the extracted text. Without this, document_type_config never resolves
+    for saved verifications and DocumentTypeAdapter always falls back to the
+    generic table view, even for documents the registry has a dedicated
+    layout for. Never overrides a hint that's already a real registry type;
+    only fills in when the classifier is reasonably confident."""
+    if hint and get_document_type(hint) is not None:
+        return hint
+    try:
+        text = raw_text or ""
+        if not text and rows:
+            text = "\n".join(
+                "\t".join(str(cell) for cell in row if cell) for row in rows
+            )
+        if not text and headers:
+            text = " ".join(str(header) for header in headers)
+        if not text.strip():
+            return hint
+        candidates = classify_document(text)
+        if not candidates:
+            return hint
+        best_type, best_confidence = candidates[0]
+        if (
+            best_type
+            and best_confidence >= _DOC_TYPE_CLASSIFY_CONFIDENCE_FLOOR
+            and get_document_type(best_type) is not None
+        ):
+            return best_type
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("[OCR] Auto doc-type classification failed: %s", error, exc_info=True)
+    return hint
 
 
 def _normalize_routing_meta(values: dict | None, *, field_name: str) -> dict | None:
@@ -2296,7 +2342,7 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         }
     trusted_export = verification.status == "approved"
     export_source = "approved_review" if trusted_export else f"{verification.status}_review"
-    
+
     # REVIEW METADATA LAYER: Extract confidence/bbox/source matrices from rows
     # This preserves metadata through save/load cycles without modifying runtime row structure
     rows = verification.reviewed_rows or verification.original_rows or []
@@ -2306,7 +2352,7 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         cell_confidence = build_heuristic_confidence_matrix(verification.headers or [], rows)
     cell_boxes = build_bbox_matrix(rows)
     cell_sources = build_source_matrix(rows)
-    
+
     return {
         "id": verification.id,
         "org_id": verification.org_id,
@@ -2325,6 +2371,11 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         "scan_quality": verification.scan_quality or None,
         "document_hash": verification.document_hash,
         "doc_type_hint": verification.doc_type_hint,
+        # Resolves doc_type_hint against the document-type registry so
+        # DocumentTypeAdapter on /ocr/verify can route to a type-specific
+        # review layout instead of always falling back to the generic
+        # table view. None when the hint is missing/unregistered.
+        "document_type_config": serialize_document_type_config(verification.doc_type_hint),
         "routing_meta": verification.routing_meta or None,
         "raw_text": verification.raw_text,
         "headers": verification.headers or [],
@@ -2523,7 +2574,7 @@ def _verification_export_validation(
             cr_value = row[cr_index].strip() if cr_index is not None and cr_index < len(row) else ""
             if dr_value and cr_value:
                 blockers.append(f"Row {row_index} contains both debit and credit values.")
-            
+
             dr_parsed = parse_indian_number(dr_value)
             cr_parsed = parse_indian_number(cr_value)
             if dr_parsed is not None:
@@ -2537,13 +2588,13 @@ def _verification_export_validation(
             if any(token in {"total", "balance", "sum", "grand total"} for token in row_text_lower):
                 if not (dr_value or cr_value):
                     warnings.append(f"Summary row {row_index} ('{row[0] if row else ''}') is missing a numeric total.")
-        
+
         if has_numeric_values and abs(dr_total - cr_total) > 1.0:
             warnings.append(
                 f"Ledger does not balance: Dr total (INR {dr_total:,.0f}) vs Cr total (INR {cr_total:,.0f}), "
                 f"difference = INR {abs(dr_total - cr_total):,.0f}. Review required."
             )
-    
+
     # 5. Impossible totals check (basic)
     # If we have an amount column and a total row, check if the total is roughly the sum
     amount_indices = [i for i, h in enumerate(normalized_headers) if any(kw in h for kw in ("amount", "total", "value", "net", "gross"))]
@@ -2565,7 +2616,7 @@ def _verification_export_validation(
                         parsed = parse_indian_number(val_str)
                         if parsed is not None:
                             values.append(float(parsed))
-                
+
                 if has_total and values and abs(sum(values) - total_val) > 1.0:
                     warnings.append(f"Total in column '{headers[idx]}' ({total_val}) does not match the sum of individual rows ({sum(values):.2f}).")
             except Exception:

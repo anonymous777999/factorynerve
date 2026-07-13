@@ -35,6 +35,7 @@ from backend.routers.ocr._common import (
     _normalize_routing_meta,
     _normalize_document_hash,
     _normalize_doc_type_hint,
+    _resolve_doc_type_hint,
     _parse_json_value,
     _safe_file_name,
     _build_ocr_share_token,
@@ -204,6 +205,18 @@ async def create_verification(
     if not parsed_reviewed_rows and not parsed_original_rows:
         raise HTTPException(status_code=400, detail="Provide OCR rows before saving a verification draft.")
 
+    # The frontend's doc_type_hint is usually just the coarse extraction
+    # shape (e.g. "table"), not a registry type_id -- classify against the
+    # actual extracted text/rows so document_type_config can resolve to a
+    # type-specific review layout on /ocr/verify instead of always falling
+    # back to the generic table view.
+    resolved_doc_type_hint = _resolve_doc_type_hint(
+        _normalize_doc_type_hint(doc_type_hint),
+        raw_text=raw_text,
+        headers=parsed_headers,
+        rows=parsed_reviewed_rows or parsed_original_rows,
+    )
+
     verification = OcrVerification(
         org_id=resolve_org_id(current_user),
         factory_id=_active_factory_id(db, current_user),
@@ -217,7 +230,7 @@ async def create_verification(
         warnings=parsed_warnings,
         scan_quality=parsed_scan_quality,
         document_hash=_normalize_document_hash(document_hash),
-        doc_type_hint=_normalize_doc_type_hint(doc_type_hint),
+        doc_type_hint=resolved_doc_type_hint,
         routing_meta=parsed_routing_meta,
         raw_text=sanitize_text(raw_text, max_length=50000),
         headers=parsed_headers,
@@ -405,6 +418,15 @@ def update_verification(
     original_rows = _normalize_rows(payload.original_rows, field_name="original_rows")
     reviewed_rows = _normalize_rows(payload.reviewed_rows, field_name="reviewed_rows")
 
+    resolved_doc_type_hint = payload.doc_type_hint
+    if payload.doc_type_hint is not None:
+        resolved_doc_type_hint = _resolve_doc_type_hint(
+            _normalize_doc_type_hint(payload.doc_type_hint),
+            raw_text=payload.raw_text or verification.raw_text,
+            headers=headers or verification.headers,
+            rows=reviewed_rows or original_rows or verification.reviewed_rows or verification.original_rows,
+        )
+
     _apply_verification_payload(
         verification,
         template_id=template_id,
@@ -415,7 +437,7 @@ def update_verification(
         warnings=warnings,
         scan_quality=scan_quality,
         document_hash=payload.document_hash,
-        doc_type_hint=payload.doc_type_hint,
+        doc_type_hint=resolved_doc_type_hint,
         routing_meta=routing_meta,
         raw_text=payload.raw_text,
         headers=headers,

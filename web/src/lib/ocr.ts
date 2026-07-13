@@ -147,6 +147,29 @@ export type OcrCell =
     reviewRequired?: boolean;
   };
 
+export type OcrDocumentTypeConfig = {
+  type_id: string;
+  display_name: string;
+  category: string;
+  icon: string;
+  description: string;
+  ui_component: string;
+  preview_fields: string[];
+  confidence_thresholds: {
+    auto_approve: number;
+    review: number;
+    block: number;
+  };
+  export_formats: Array<{ name: string; mime_type: string }>;
+  downstream_actions: Array<{
+    key: string;
+    label: string;
+    description: string;
+    confirmation_required: boolean;
+  }>;
+  validation_rules: Array<{ name: string; severity: string }>;
+};
+
 export type OcrPreviewResult = {
   type: string;
   title: string;
@@ -200,28 +223,7 @@ export type OcrPreviewResult = {
     confidence: number;
     method: string;
   } | null;
-  document_type_config?: {
-    type_id: string;
-    display_name: string;
-    category: string;
-    icon: string;
-    description: string;
-    ui_component: string;
-    preview_fields: string[];
-    confidence_thresholds: {
-      auto_approve: number;
-      review: number;
-      block: number;
-    };
-    export_formats: Array<{name: string; mime_type: string}>;
-    downstream_actions: Array<{
-      key: string;
-      label: string;
-      description: string;
-      confirmation_required: boolean;
-    }>;
-    validation_rules: Array<{name: string; severity: string}>;
-  } | null;
+  document_type_config?: OcrDocumentTypeConfig | null;
 };
 
 export type OcrJobPayload = {
@@ -283,6 +285,7 @@ export type OcrVerificationRecord = {
   scan_quality?: OcrScanQuality | null;
   document_hash?: string | null;
   doc_type_hint?: string | null;
+  document_type_config?: OcrDocumentTypeConfig | null;
   routing_meta?: OcrRoutingMeta | null;
   raw_text?: string | null;
   headers: string[];
