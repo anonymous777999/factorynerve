@@ -347,6 +347,37 @@ function stringifySheetCell(value: unknown): string {
   return String(value);
 }
 
+// Strips currency symbols, commas, and trailing Dr/Cr markers so amount
+// cells like "45,231.00 Cr" or "₹1,200" still parse as numeric — headers on
+// flattened Field/Value documents (e.g. "Field"/"Value") give no textual
+// hint that a column holds money, so alignment has to look at the values.
+function sheetCellLooksNumeric(value: string): boolean {
+  const cleaned = value
+    .trim()
+    .replace(/^(?:rs\.?|inr|₹|\$)\s*/i, "")
+    .replace(/\s*(?:dr|cr)\.?$/i, "")
+    .replace(/%$/, "")
+    .replace(/^\((.+)\)$/, "-$1")
+    .replace(/,/g, "")
+    .trim();
+  return cleaned.length > 0 && /^-?\d+(?:\.\d+)?$/.test(cleaned);
+}
+
+function sheetColumnIsNumeric(rows: string[][], columnIndex: number): boolean {
+  const filled = rows.map((row) => (row[columnIndex] || "").trim()).filter(Boolean);
+  if (!filled.length) return false;
+  const numericCount = filled.filter(sheetCellLooksNumeric).length;
+  return numericCount / filled.length >= 0.6;
+}
+
+const SHEET_TOTAL_ROW_PATTERN = /(grand\s+)?(sub[- ]?)?total|balance\s*(b\/?f|c\/?f|forward|carried|brought)?|amount\s+due|net\s+(payable|amount)/i;
+
+function sheetRowIsTotal(row: string[]): boolean {
+  const firstFilled = row.find((value) => value && value.trim());
+  if (!firstFilled) return false;
+  return SHEET_TOTAL_ROW_PATTERN.test(firstFilled.trim());
+}
+
 function extractPreviewTable(result: OcrPreviewResult) {
   const sheet = (result as StructuredPreviewResult).sheets?.[0];
   const sheetHeaders = Array.isArray(sheet?.columns)
@@ -1956,36 +1987,47 @@ export default function OcrScanPage() {
                         >
                           <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
                             <div className="overflow-auto">
-                              <table className="min-w-full border-collapse">
-                                <thead>
-                                  <tr className="bg-[#f8fafc]">
-                                    {sheet.columns.map((column, columnIndex) => (
-                                      <th
-                                        key={`sheet-header-${columnIndex}`}
-                                        className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
-                                          }`}
-                                      >
-                                        {stringifySheetCell(column)}
-                                      </th>
-                                    ))}
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {sheet.rows.map((row, rowIndex) => (
-                                    <tr key={`sheet-row-${rowIndex}`}>
-                                      {row.map((cell, columnIndex) => (
-                                        <td
-                                          key={`sheet-cell-${rowIndex}-${columnIndex}`}
-                                          className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                              {(() => {
+                                const stringRows = sheet.rows.map((row) => row.map((cell) => stringifySheetCell(cell)));
+                                return (
+                                <table className="min-w-full border-collapse">
+                                  <thead>
+                                    <tr className="bg-[#f8fafc]">
+                                      {sheet.columns.map((column, columnIndex) => (
+                                        <th
+                                          key={`sheet-header-${columnIndex}`}
+                                          className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${sheetColumnIsNumeric(stringRows, columnIndex) ? "text-right" : "text-left"
                                             }`}
                                         >
-                                          {stringifySheetCell(cell)}
-                                        </td>
+                                          {stringifySheetCell(column)}
+                                        </th>
                                       ))}
                                     </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                                  </thead>
+                                  <tbody>
+                                    {stringRows.map((row, rowIndex) => {
+                                      const totalRow = sheetRowIsTotal(row);
+                                      return (
+                                      <tr
+                                        key={`sheet-row-${rowIndex}`}
+                                        className={totalRow ? "border-t-2 border-t-[#185FA5]/30 bg-[#f8fafc] font-semibold" : undefined}
+                                      >
+                                        {row.map((cell, columnIndex) => (
+                                          <td
+                                            key={`sheet-cell-${rowIndex}-${columnIndex}`}
+                                            className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${sheetColumnIsNumeric(stringRows, columnIndex) ? "text-right" : "text-left"
+                                              }`}
+                                          >
+                                            {cell}
+                                          </td>
+                                        ))}
+                                      </tr>
+                                      );
+                                    })}
+                                  </tbody>
+                                </table>
+                                );
+                              })()}
                             </div>
                           </div>
                         </OcrErrorBoundary>

@@ -43,16 +43,50 @@ function normalizeLength(row: OcrCell[], columns: number): OcrCell[] {
   return Array.from({ length: columns }, (_, index) => row[index] || "");
 }
 
+// Strips common accounting/currency decoration (₹, Rs., commas, trailing
+// Dr/Cr indicators, parenthesised negatives, % signs) so a column of real
+// amounts like "45,231.00 Cr" or "₹1,200" is still recognised as numeric
+// instead of falling back to plain text alignment.
+function cleanNumericToken(value: string): string {
+  return value
+    .trim()
+    .replace(/^(?:rs\.?|inr|₹|\$)\s*/i, "")
+    .replace(/\s*(?:dr|cr)\.?$/i, "")
+    .replace(/%$/, "")
+    .replace(/^\((.+)\)$/, "-$1")
+    .replace(/,/g, "")
+    .trim();
+}
+
+function isNumericToken(value: string): boolean {
+  const cleaned = cleanNumericToken(value);
+  return cleaned.length > 0 && /^-?\d+(?:\.\d+)?$/.test(cleaned);
+}
+
 function inferColumnType(values: OcrCell[]): OcrColumnType {
   const filled = values
     .map((cell) => normalizeCell(cell).value.trim())
     .filter(Boolean);
   if (!filled.length) return "text";
-  const numberLike = filled.every((value) => /^-?\d[\d,]*(?:\.\d+)?$/.test(value));
-  if (numberLike) return "number";
+  // Section headers, blank separators, and the occasional stray label mean
+  // a genuinely numeric ledger/amount column will rarely be 100% clean —
+  // treat it as numeric once a clear majority of the filled cells parse.
+  const numericCount = filled.filter((value) => isNumericToken(value)).length;
+  if (numericCount / filled.length >= 0.6) return "number";
   const dateLike = filled.every((value) => !Number.isNaN(Date.parse(value)));
   if (dateLike) return "date";
   return "text";
+}
+
+// A row is treated as a "total" row when its first meaningful cell reads
+// like a summary label. These rows should stand out from ordinary line
+// items instead of blending in as just another record.
+const TOTAL_ROW_PATTERN = /(grand\s+)?(sub[- ]?)?total|balance\s*(b\/?f|c\/?f|forward|carried|brought)?|amount\s+due|net\s+(payable|amount)/i;
+
+function isTotalRow(row: OcrCell[]): boolean {
+  const firstFilled = row.map((cell) => normalizeCell(cell).value.trim()).find(Boolean);
+  if (!firstFilled) return false;
+  return TOTAL_ROW_PATTERN.test(firstFilled);
 }
 
 function getConfidenceClass(tier: "high" | "medium" | "review_required"): string {
@@ -255,8 +289,13 @@ export function DataTableGrid({
             </tr>
           </thead>
           <tbody>
-            {normalizedRows.map((row, rowIndex) => (
-              <tr key={`row-${rowIndex}`}>
+            {normalizedRows.map((row, rowIndex) => {
+              const totalRow = isTotalRow(row);
+              return (
+              <tr
+                key={`row-${rowIndex}`}
+                className={cn(totalRow && "border-t-2 border-t-[#185FA5]/30 bg-[#f8fafc] font-semibold")}
+              >
                 {row.map((currentCell, columnIndex) => {
                   const cellData = normalizeCell(currentCell);
                   const isSelected =
@@ -269,6 +308,13 @@ export function DataTableGrid({
                     ? currentCell.confidence
                     : confidenceMatrix?.[rowIndex]?.[columnIndex];
                   const confidenceTier = getOcrConfidenceTier(confidenceRaw ?? undefined);
+                  const needsAttention = confidenceTier !== "high";
+                  // Only flag cells that actually need a second look. Tinting
+                  // and badging every single high-confidence cell (the
+                  // previous behaviour) buried real issues in a wall of
+                  // identical "Verified" pills instead of drawing the eye to
+                  // what matters.
+                  const showIndicator = showLowConfidence && needsAttention;
                   const title = `${getConfidenceLabel(confidenceTier)}${raw && raw !== cellData.value ? ` | Original: ${raw}` : ""}`;
 
                   return (
@@ -276,7 +322,7 @@ export function DataTableGrid({
                       key={`cell-${rowIndex}-${columnIndex}`}
                       className={cn(
                         "border-b border-[#f0f3f7] px-3 py-3 align-top",
-                        showLowConfidence || confidenceTier === "high" ? getConfidenceClass(confidenceTier) : "",
+                        showIndicator ? getConfidenceClass(confidenceTier) : "",
                       )}
                     >
                       {isEditing ? (
@@ -324,16 +370,19 @@ export function DataTableGrid({
                           onDoubleClick={() => beginEdit({ row: rowIndex, column: columnIndex })}
                         >
                           <span className="truncate">{cellData.value || "\u00A0"}</span>
-                          <span className={cn("ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]", getConfidenceBadgeClass(confidenceTier))}>
-                            {getConfidenceLabel(confidenceTier)}
-                          </span>
+                          {showIndicator ? (
+                            <span className={cn("ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]", getConfidenceBadgeClass(confidenceTier))}>
+                              {getConfidenceLabel(confidenceTier)}
+                            </span>
+                          ) : null}
                         </button>
                       )}
                     </td>
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

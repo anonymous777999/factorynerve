@@ -30,6 +30,14 @@ function getOcrConfidenceTier(confidence: number | null | undefined): "high" | "
   return "high";
 }
 
+const TOTAL_ROW_PATTERN = /(grand\s+)?(sub[- ]?)?total|balance\s*(b\/?f|c\/?f|forward|carried|brought)?|amount\s+due|net\s+(payable|amount)/i;
+
+function isTotalRow(row: string[]): boolean {
+  const firstFilled = row.find((value) => value && value.trim());
+  if (!firstFilled) return false;
+  return TOTAL_ROW_PATTERN.test(firstFilled.trim());
+}
+
 export function GenericTableReviewView({
   data,
   onCellChange,
@@ -55,7 +63,9 @@ export function GenericTableReviewView({
   return (
     <Card className={cn("border-[var(--border-strong)]", className)}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">Generic Table View</CardTitle>
+        <CardTitle className="text-sm font-medium">
+          {data.title && data.title !== "OCR Result" ? data.title : "Table view"}
+        </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
         {localHeaders.length > 0 ? (
@@ -89,7 +99,10 @@ export function GenericTableReviewView({
                   {localRows.map((row, rowIndex) => (
                     <tr
                       key={`row-${rowIndex}`}
-                      className="border-b border-[var(--border)]/60 last:border-0 hover:bg-[var(--card-strong)]/50"
+                      className={cn(
+                        "border-b border-[var(--border)]/60 last:border-0 hover:bg-[var(--card-strong)]/50",
+                        isTotalRow(row) && "border-t-2 border-t-[var(--accent)]/30 bg-[var(--card-strong)]/40 font-semibold",
+                      )}
                     >
                       {showRowNumbers && (
                         <td className="px-3 py-2 font-mono text-[var(--muted)] w-10">
