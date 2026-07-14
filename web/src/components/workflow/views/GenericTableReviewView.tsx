@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { type OcrPreviewResult, type OcrCell } from "@/lib/ocr";
-import { confidenceBadgeClass, confidenceLabel, shouldFlagConfidence, stringifyOcrCell } from "@/lib/ocr-review";
+import { type OcrPreviewResult } from "@/lib/ocr";
+import { confidenceBadgeClass, confidenceLabel, shouldFlagConfidence } from "@/lib/ocr-review";
 
 interface GenericTableReviewViewProps {
   data: OcrPreviewResult;

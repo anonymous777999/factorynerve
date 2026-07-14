@@ -42,7 +42,14 @@ export function DocumentTypeAdapter({
   forceLayout,
 }: DocumentTypeAdapterProps) {
   const docType = data.document_type_config?.type_id;
-  
+
+  // Computed unconditionally so the hook runs in the same order every render
+  // (React rules-of-hooks). Only consumed by the `default` branch below.
+  const layoutMode = useMemo(
+    () => forceLayout || determineLayout(data),
+    [data, forceLayout]
+  );
+
   // Route to specific views based on document type
   switch (docType) {
     case "gst_invoice":
@@ -152,12 +159,7 @@ export function DocumentTypeAdapter({
       );
     default:
       // For unknown document types or when no specific type is detected,
-      // fall back to the layout-based approach
-      const layoutMode = useMemo(
-        () => forceLayout || determineLayout(data),
-        [data, forceLayout]
-      );
-
+      // fall back to the layout-based approach (layoutMode computed above).
       // Map layout modes to appropriate generic views
       switch (layoutMode) {
         case "card":
