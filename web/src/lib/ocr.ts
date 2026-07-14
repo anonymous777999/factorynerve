@@ -147,6 +147,34 @@ export type OcrCell =
     reviewRequired?: boolean;
   };
 
+/**
+ * Server-side structural analysis of an OCR document (from
+ * backend/understanding/structure.py). Lets review views render the correct
+ * shape — key-value form vs table, which rows are totals, what each column
+ * semantically holds — without re-guessing structure in the browser.
+ */
+export type OcrColumnType =
+  | "label"
+  | "amount"
+  | "quantity"
+  | "date"
+  | "text";
+
+export type OcrStructure = {
+  /** "key_value" → render as a two-column form; "table" → grid. */
+  layout: "key_value" | "table";
+  has_header_row: boolean;
+  /** One semantic type per column, index-aligned to headers. */
+  column_types: OcrColumnType[];
+  /** Row indices that are totals/subtotals (grand total, balance c/f, …). */
+  total_row_indices: number[];
+  /** Per-row role, index-aligned to rows: "data" | "total". */
+  row_roles: Array<"data" | "total">;
+  /** Extracted key/value pairs when layout === "key_value". */
+  key_value_pairs: Array<{ key: string; value: string; row_index: number }>;
+  doc_type?: string | null;
+};
+
 export type OcrDocumentTypeConfig = {
   type_id: string;
   display_name: string;
@@ -224,6 +252,9 @@ export type OcrPreviewResult = {
     method: string;
   } | null;
   document_type_config?: OcrDocumentTypeConfig | null;
+  // Server-side structural understanding (header row, key-value vs table,
+  // per-column semantic types, total rows). Absent on older results.
+  structure?: OcrStructure | null;
 };
 
 export type OcrJobPayload = {
@@ -286,6 +317,9 @@ export type OcrVerificationRecord = {
   document_hash?: string | null;
   doc_type_hint?: string | null;
   document_type_config?: OcrDocumentTypeConfig | null;
+  // Server-side structural understanding, mirrored from the scan pipeline so
+  // /ocr/verify renders the same shape without re-detecting in the browser.
+  structure?: OcrStructure | null;
   routing_meta?: OcrRoutingMeta | null;
   raw_text?: string | null;
   headers: string[];

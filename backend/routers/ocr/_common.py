@@ -127,6 +127,7 @@ from backend.services.ocr_cost_router import (
     build_correction_request,
 )
 from backend.understanding.classifier import classify as classify_document
+from backend.understanding.structure import analyze_structure
 from backend.services.ocr_document_registry import get_document_type, serialize_document_type_config
 from backend.services.ocr_document_types import _build_type_specific_prompt_for_claude
 from backend.services.export_gate import validate_export_readiness, ExportGateResult
@@ -2353,6 +2354,29 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
     cell_boxes = build_bbox_matrix(rows)
     cell_sources = build_source_matrix(rows)
 
+    # STRUCTURAL UNDERSTANDING LAYER: analyze header/key-value/total-row shape
+    # here so the /ocr/verify page receives the same structural metadata the
+    # scan pipeline already produces, instead of re-guessing structure in the
+    # browser. Computed from stored headers + reviewed rows (best-effort; a
+    # failure must never break serialization of an otherwise-valid record).
+    structure = None
+    try:
+        plain_headers = [cell_display_value(cell) for cell in (verification.headers or [])]
+        plain_rows = [[cell_display_value(cell) for cell in row] for row in rows]
+        structure = analyze_structure(
+            plain_headers,
+            plain_rows,
+            doc_type=verification.doc_type_hint,
+        )
+    except Exception as struct_err:  # pragma: no cover - defensive
+        logger.warning(
+            "Structure analysis failed for verification %s: %s",
+            verification.id,
+            struct_err,
+            exc_info=True,
+        )
+        structure = None
+
     return {
         "id": verification.id,
         "org_id": verification.org_id,
@@ -2376,6 +2400,10 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         # review layout instead of always falling back to the generic
         # table view. None when the hint is missing/unregistered.
         "document_type_config": serialize_document_type_config(verification.doc_type_hint),
+        # Server-side structural analysis (header row, key-value vs table
+        # layout, per-column semantic types, total-row indices). Lets the
+        # review UI render the right shape without heuristic re-detection.
+        "structure": structure,
         "routing_meta": verification.routing_meta or None,
         "raw_text": verification.raw_text,
         "headers": verification.headers or [],

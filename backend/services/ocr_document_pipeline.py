@@ -15,6 +15,7 @@ from backend.ocr_utils import OcrResult
 from backend.understanding.classifier import classify as classify_document
 from backend.understanding.normalizer import normalize as normalize_understanding
 from backend.understanding.parser_registry import parse_document
+from backend.understanding.structure import analyze_structure
 from backend.services.ocr_document_registry import serialize_document_type_config
 import backend.services.ocr_document_types  # noqa: F401 -- side effect: registers document types
 from backend.services.anthropic_usage import normalize_anthropic_model_name
@@ -265,6 +266,7 @@ def _flatten_rows(rows: list[list[str]]) -> str | None:
 def _apply_document_understanding(payload: dict[str, Any]) -> dict[str, Any]:
     try:
         rows = payload.get("rows") or []
+        headers = payload.get("headers") or []
         text = str(payload.get("raw_text") or _flatten_rows(rows) or "")
         classified = classify_document(text)
         # classify() returns [(doc_type, confidence), ...] sorted by confidence;
@@ -286,11 +288,37 @@ def _apply_document_understanding(payload: dict[str, Any]) -> dict[str, Any]:
                     {"doc_type": dt, "confidence": conf} for dt, conf in candidates
                 ],
             }
+
+        # Compute structural metadata (header/key-value/total-row/column-type
+        # detection) once, server-side, from the REAL extracted headers+rows so
+        # every frontend view reads the same answer instead of re-guessing.
+        try:
+            structure = analyze_structure(
+                [str(h) for h in headers],
+                [[str(cell) for cell in row] for row in rows],
+                doc_type=doc_type,
+            )
+        except Exception as struct_err:  # pylint: disable=broad-except
+            logger.warning("Structure analysis failed: %s", struct_err, exc_info=True)
+            structure = None
+        understanding["structure"] = structure
+
+        # parse_document() only meaningfully reshapes ledger-style documents
+        # (splitting Dr/Cr sides into a normalized sheet). For every other type
+        # its generic path replaces the real OCR headers with "Column 1",
+        # "Column 2", ... -- which silently destroys the headers the extraction
+        # layer worked to produce. So only adopt the parser's reshaped
+        # headers/rows when it actually did that ledger work; otherwise keep the
+        # original headers/rows untouched.
         parsed = parse_document(doc_type, rows)
+        reshaped = getattr(parsed, "doc_type", "") == "ledger"
+        if not reshaped:
+            return {**payload, "understanding": understanding}
+
         normalized = normalize_understanding(parsed)
         sheets = normalized.get("sheets") if isinstance(normalized, dict) else []
         if not sheets or not isinstance(sheets[0], dict):
-            return payload
+            return {**payload, "understanding": understanding}
         first_sheet = sheets[0]
         return {
             **payload,
@@ -1098,6 +1126,11 @@ def build_structured_ocr_result(
         "token_usage": route_meta.get("usage") if isinstance(route_meta.get("usage"), dict) else None,
         "sheets": normalized.get("sheets") if isinstance(normalized.get("sheets"), list) else None,
         "understanding": normalized.get("understanding") if isinstance(normalized.get("understanding"), dict) else None,
+        "structure": (
+            normalized.get("understanding", {}).get("structure")
+            if isinstance(normalized.get("understanding"), dict)
+            else None
+        ),
         "classification": _classification,
         "document_type_config": _document_type_config,
         "layout_analysis": {  # NEW: Layout analysis metadata
