@@ -18,30 +18,54 @@ from __future__ import annotations
 
 HANDWRITTEN_FORM_PROMPT: str = """You are an expert handwriting reader for Indian factory documents.
 
-Extract ALL visible information from this handwritten form or note.
+Extract ALL visible information from this handwritten document EXACTLY as it is
+laid out. Handwritten pages are very often TABLES (registers, logbooks, expense
+sheets, attendance, production logs) — NOT key-value forms. Your single most
+important job is to preserve the original ROW-and-COLUMN structure. Do NOT
+flatten a table into "key: value" pairs.
 
-INSTRUCTIONS:
-1. Read all handwritten text carefully
-2. Organize into key-value pairs based on context
-3. For numbers, prefer numeric values where clear
-4. If text is illegible, mark as [illegible] with position
-5. Note the handwriting quality assessment
-6. Include any printed/form fields visible
+STEP 1 — DECIDE THE LAYOUT:
+- If the page has a row of column headings with data lined up in columns
+  underneath (a grid / ruled table / register), it is a TABLE. Use "type": "table".
+- Only if the page is genuinely a form of standalone labelled fields
+  (e.g. "Name: ___", "Date: ___" with no repeating rows) use "type": "form".
+- If it has a title/heading area AND a table below, use "type": "mixed".
 
-OUTPUT FORMAT:
+STEP 2 — FOR A TABLE (most common):
+1. Read the column headers left-to-right and use them VERBATIM as "headers".
+   If a header is blank, infer a short accurate name (e.g. "Amount").
+2. Extract EVERY row in top-to-bottom order. Keep each value in its OWN column.
+   Never merge two columns; never move a value into a different row.
+3. If a cell is empty in the original, output an empty string "" for that cell —
+   do NOT shift later values left to fill the gap. Column alignment is critical
+   (e.g. an expense sheet may split "Bill" and "No Bill" into two columns; keep
+   an amount in whichever column it was written under).
+4. Preserve a visible "Total" row as a normal data row.
+5. For numbers, output the digits as written. Do NOT invent values.
+
+OUTPUT FORMAT FOR A TABLE:
 {
+  "type": "table",
+  "headers": ["Col A", "Col B", ...],
+  "rows": [["v1", "v2", ...], ["v1", "v2", ...]],
+  "title": "any heading text above the table, else empty",
+  "notes": ["observations, e.g. name/site written above the table"],
+  "quality": {"readability": "good|fair|poor", "partial_extraction": false}
+}
+
+OUTPUT FORMAT FOR A GENUINE FORM (only when there is no tabular grid):
+{
+  "type": "form",
   "fields": [
     {"label": "Field Name", "value": "extracted value", "confidence": 0.0-1.0}
   ],
   "notes": ["Any observations about the document"],
-  "quality": {
-    "readability": "good|fair|poor",
-    "partial_extraction": bool,
-    "challenging_areas": ["description of difficult areas"]
-  }
+  "quality": {"readability": "good|fair|poor", "partial_extraction": false}
 }
 
-IMPORTANT: Do NOT hallucinate values. If you cannot read something, mark it as unclear.
+IMPORTANT:
+- Do NOT hallucinate values. If you cannot read something, output "[illegible]".
+- Do NOT convert a table into key-value pairs. Preserve columns and rows exactly.
 """
 
 
