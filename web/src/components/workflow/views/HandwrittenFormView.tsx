@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Trash2, Edit2 } from "lucide-react";
 import { type OcrPreviewResult, type OcrCell } from "@/lib/ocr";
-import { confidenceBadgeClass, confidenceLabel, stringifyOcrCell } from "@/lib/ocr-review";
+import { confidenceBadgeClass, confidenceLabel, shouldFlagConfidence, stringifyOcrCell } from "@/lib/ocr-review";
 
 interface HandwrittenFormViewProps {
   data: OcrPreviewResult;
@@ -175,10 +175,10 @@ export function HandwrittenFormView({
                       className={cn(
                         "w-full rounded border bg-[var(--background)] px-2 py-1.5 text-sm pr-20 transition-colors",
                         "focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]",
-                        cellInputClass(field.value, field.confidence)
+                        cellInputClass(field.value, shouldFlagConfidence(field.confidence) ? field.confidence : undefined)
                       )}
                     />
-                    {field.confidence !== undefined && (
+                    {shouldFlagConfidence(field.confidence) && (
                       <span
                         className={cn(
                           "pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]",

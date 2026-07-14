@@ -62,6 +62,16 @@ export function confidenceBadgeClass(confidence?: number | null): string {
   return "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100";
 }
 
+// A cell only warrants a visible confidence badge when it is NOT high
+// confidence. Badging every cell — including the ones OCR got right — buries
+// the handful that need a second look under a wall of identical "Verified"
+// pills. Views should gate the badge/tint on this instead of merely checking
+// that a confidence value exists.
+export function shouldFlagConfidence(confidence?: number | null): boolean {
+  if (typeof confidence !== "number" || Number.isNaN(confidence)) return false;
+  return getOcrConfidenceTier(confidence) !== "high";
+}
+
 export function cellInputClass(
   value: string,
   confidence?: number | null,

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type OcrPreviewResult, type OcrCell } from "@/lib/ocr";
-import { confidenceBadgeClass, confidenceLabel, stringifyOcrCell } from "@/lib/ocr-review";
+import { confidenceBadgeClass, confidenceLabel, shouldFlagConfidence, stringifyOcrCell } from "@/lib/ocr-review";
 
 interface GenericTableReviewViewProps {
   data: OcrPreviewResult;
@@ -131,8 +131,7 @@ export function GenericTableReviewView({
                         // wall of identical green "Verified" pills. Only
                         // surface the indicator once a cell's tier is
                         // below "high".
-                        const needsAttention =
-                          confidence !== undefined && getOcrConfidenceTier(confidence) !== "high";
+                        const needsAttention = shouldFlagConfidence(confidence);
 
                         return (
                           <td key={colIndex} className="px-3 py-2">

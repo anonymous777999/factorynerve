@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import { CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type OcrPreviewResult, type OcrCell, type OcrColumnType } from "@/lib/ocr";
-import { confidenceBadgeClass, confidenceLabel, stringifyOcrCell } from "@/lib/ocr-review";
+import { confidenceBadgeClass, confidenceLabel, shouldFlagConfidence, stringifyOcrCell } from "@/lib/ocr-review";
 
 interface LedgerSheetViewProps {
   data: OcrPreviewResult;
@@ -46,6 +46,8 @@ function alignForType(type: OcrColumnType | undefined): "left" | "right" {
 
 // A single editable OCR cell with an optional confidence badge. Amounts are
 // right-aligned so columns of numbers line up the way a ledger should read.
+// The badge/tint only appears when the cell actually needs a second look, so
+// verified cells stay quiet instead of drowning the page in green pills.
 function CellInput({
   value,
   confidence,
@@ -57,6 +59,7 @@ function CellInput({
   align?: "left" | "right";
   onChange: (value: string) => void;
 }) {
+  const flag = shouldFlagConfidence(confidence);
   return (
     <div className="relative">
       <input
@@ -67,11 +70,11 @@ function CellInput({
           "w-full rounded border bg-[var(--card-strong)] px-2 py-1.5 text-sm transition-colors",
           "focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]",
           align === "right" ? "text-right font-mono" : "",
-          confidence ? confidenceBadgeClass(confidence) : "",
-          cellInputClass(value, confidence)
+          flag ? confidenceBadgeClass(confidence) : "",
+          cellInputClass(value, flag ? confidence : undefined)
         )}
       />
-      {confidence !== undefined && (
+      {flag && (
         <span
           className={cn(
             "pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]",

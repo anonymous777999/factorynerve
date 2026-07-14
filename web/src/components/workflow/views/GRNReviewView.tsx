@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type OcrPreviewResult, type OcrCell } from "@/lib/ocr";
-import { confidenceBadgeClass, confidenceLabel, stringifyOcrCell } from "@/lib/ocr-review";
+import { confidenceBadgeClass, confidenceLabel, shouldFlagConfidence, stringifyOcrCell } from "@/lib/ocr-review";
 
 interface GRNReviewViewProps {
   data: OcrPreviewResult;
@@ -96,6 +96,7 @@ function renderSectionTable(
                     const cell = row[localColIndex];
                     const value = stringifyOcrCell(cell);
                     const confidence = cell && typeof cell === "object" ? cell.confidence : undefined;
+                    const flagConfidence = shouldFlagConfidence(confidence);
                     const globalColIndex = globalColIndices[localColIndex];
 
                     return (
@@ -108,11 +109,11 @@ function renderSectionTable(
                             className={cn(
                               "w-full rounded border bg-[var(--card-strong)] px-2 py-1.5 text-sm transition-colors",
                               "focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]",
-                              confidence ? confidenceBadgeClass(confidence) : "",
-                              cellInputClass(value, confidence)
+                              flagConfidence ? confidenceBadgeClass(confidence) : "",
+                              cellInputClass(value, flagConfidence ? confidence : undefined)
                             )}
                           />
-                          {confidence !== undefined && (
+                          {flagConfidence && (
                             <span
                               className={cn(
                                 "pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]",

@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type OcrPreviewResult, type OcrCell } from "@/lib/ocr";
-import { stringifyOcrCell } from "@/lib/ocr-review";
+import { confidenceBadgeClass, confidenceLabel, shouldFlagConfidence, stringifyOcrCell } from "@/lib/ocr-review";
 
 interface ChatMessage {
   sender: string;
@@ -140,25 +140,15 @@ export function ChatTranscriptView({
                         {formatTimestamp(message.timestamp)}
                       </span>
                     )}
-                    {message.confidence !== undefined && (
+                    {shouldFlagConfidence(message.confidence) && (
                       <span
-                        className="px-1.5 py-0.5 text-[9px] font-medium uppercase rounded"
-                        style={{
-                          backgroundColor:
-                            message.confidence >= 0.85
-                              ? "rgba(34,197,94,0.2)"
-                              : message.confidence >= 0.5
-                              ? "rgba(245,158,11,0.2)"
-                              : "rgba(239,68,68,0.2)",
-                          color:
-                            message.confidence >= 0.85
-                              ? "#4ade80"
-                              : message.confidence >= 0.5
-                              ? "#fbbf24"
-                              : "#f87171",
-                        }}
+                        className={cn(
+                          "rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.08em]",
+                          confidenceBadgeClass(message.confidence)
+                        )}
+                        title={confidenceLabel(message.confidence)}
                       >
-                        {message.confidence >= 0.85 ? "High" : message.confidence >= 0.5 ? "Med" : "Low"}
+                        {confidenceLabel(message.confidence)}
                       </span>
                     )}
                   </div>

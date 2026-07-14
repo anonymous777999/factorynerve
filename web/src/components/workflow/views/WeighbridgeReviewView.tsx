@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { type OcrPreviewResult, type OcrCell } from "@/lib/ocr";
-import { confidenceBadgeClass, confidenceLabel, stringifyOcrCell } from "@/lib/ocr-review";
+import { confidenceBadgeClass, confidenceLabel, shouldFlagConfidence, stringifyOcrCell } from "@/lib/ocr-review";
 
 interface WeighbridgeReviewViewProps {
   data: OcrPreviewResult;
@@ -53,6 +53,7 @@ export function WeighbridgeReviewView({
           const header = headers[colIndex] || `Field ${colIndex + 1}`;
           const value = stringifyOcrCell(cell);
           const confidence = cell && typeof cell === "object" ? cell.confidence : undefined;
+          const flagConfidence = shouldFlagConfidence(confidence);
 
           return (
             <div key={colIndex} className="grid grid-cols-[auto_1fr] gap-4 items-center">
@@ -67,11 +68,11 @@ export function WeighbridgeReviewView({
                   className={cn(
                     "w-full rounded-lg border bg-[var(--card-strong)] px-3 py-2.5 text-base transition-colors",
                     "focus:border-[var(--accent)] focus:outline-none focus:ring-1 focus:ring-[var(--accent)]",
-                    confidence ? confidenceBadgeClass(confidence) : "",
-                    cellInputClass(value, confidence)
+                    flagConfidence ? confidenceBadgeClass(confidence) : "",
+                    cellInputClass(value, flagConfidence ? confidence : undefined)
                   )}
                 />
-                {confidence !== undefined && (
+                {flagConfidence && (
                   <span
                     className={cn(
                       "pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]",
