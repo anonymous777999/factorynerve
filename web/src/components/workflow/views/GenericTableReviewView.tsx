@@ -46,6 +46,15 @@ export function GenericTableReviewView({
   className,
 }: GenericTableReviewViewProps) {
   const { headers = [], rows = [] } = data;
+  // Prefer the server-computed total rows when present; fall back to the local
+  // regex heuristic only when structure is unavailable (older results).
+  const structureTotals = data.structure?.total_row_indices;
+  const totalRowSet = useMemo(
+    () => (structureTotals ? new Set(structureTotals) : null),
+    [structureTotals],
+  );
+  const rowIsTotal = (row: string[], rowIndex: number): boolean =>
+    totalRowSet ? totalRowSet.has(rowIndex) : isTotalRow(row);
   const [localHeaders, setLocalHeaders] = useState<string[]>(headers);
   const [localRows, setLocalRows] = useState<string[][]>(
     rows.map(row => row.map(cell => typeof cell === "object" ? (cell.value || "") : String(cell)))
@@ -101,7 +110,7 @@ export function GenericTableReviewView({
                       key={`row-${rowIndex}`}
                       className={cn(
                         "border-b border-[var(--border)]/60 last:border-0 hover:bg-[var(--card-strong)]/50",
-                        isTotalRow(row) && "border-t-2 border-t-[var(--accent)]/30 bg-[var(--card-strong)]/40 font-semibold",
+                        rowIsTotal(row, rowIndex) && "border-t-2 border-t-[var(--accent)]/30 bg-[var(--card-strong)]/40 font-semibold",
                       )}
                     >
                       {showRowNumbers && (
