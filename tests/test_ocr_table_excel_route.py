@@ -438,6 +438,21 @@ def test_build_table_preview_payload_keeps_ui_flat_for_mixed_sections():
     assert payload["totals"]["table_count"] == 2
 
 
+def test_build_table_preview_payload_unwraps_structured_cell_objects():
+    payload = ocr_router._build_table_preview_payload(
+        {
+            "type": "table",
+            "headers": [{"value": "Date"}, {"text": "Amount"}],
+            "rows": [[{"value": "2026-04-29", "confidence": 0.98}, {"content": "1250"}]],
+        },
+        template=None,
+        doc_type_hint="table",
+    )
+
+    assert payload["headers"] == ["Date", "Amount"]
+    assert payload["rows"] == [["2026-04-29", "1250"]]
+    assert not any(cell.startswith("{") for row in payload["rows"] for cell in row)
+
 def test_run_table_excel_pipeline_builds_excel_from_mixed_sections(monkeypatch):
     image_bytes = _make_image_bytes("PNG", (720, 720))
 
@@ -580,6 +595,9 @@ def test_run_table_preview_pipeline_returns_structured_rows_and_anthropic_routin
     assert payload["type"] == "table"
     assert payload["headers"] == ["Date", "Amount"]
     assert payload["rows"] == [["2026-04-29", "1250"]]
+    assert payload["sheets"] == [
+        {"name": "Table", "columns": ["Date", "Amount"], "rows": [["2026-04-29", "1250"]]}
+    ]
     assert payload["routing"]["provider_used"] == "anthropic"
     assert payload["routing"]["provider_model"] == ocr_router._TABLE_EXCEL_MODEL_OPUS
     assert payload["routing"]["model_tier"] == "best"

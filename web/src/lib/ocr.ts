@@ -175,6 +175,11 @@ export type OcrPreviewResult = {
   title: string;
   headers: string[];
   rows: OcrCell[][];
+  sheets?: Array<{
+    name?: string | null;
+    columns: unknown[];
+    rows: unknown[][];
+  }>;
   raw_text?: string | null;
   language?: string | null;
   confidence?: number | null;

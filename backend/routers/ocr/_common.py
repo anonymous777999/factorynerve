@@ -1896,11 +1896,21 @@ def _run_table_preview_pipeline(
         "model_attempts": extracted_json.get("_model_attempts") or [],
         "raw_api_response": extracted_json.get("_debug_response"),
     }
+    preview_sheets = structured.get("sheets") if isinstance(structured.get("sheets"), list) else None
+    if not preview_sheets:
+        preview_sheets = [
+            {
+                "name": structured.get("title") or _table_preview_title(doc_type_hint, template),
+                "columns": headers,
+                "rows": rows,
+            }
+        ]
     return {
         "type": structured.get("type") or _table_preview_doc_type(doc_type_hint),
         "title": structured.get("title") or _table_preview_title(doc_type_hint, template),
         "headers": headers,
         "rows": rows,
+        "sheets": preview_sheets,
         "raw_text": structured.get("raw_text"),
         "language": language,
         "confidence": confidence_score,
