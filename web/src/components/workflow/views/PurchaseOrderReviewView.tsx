@@ -38,14 +38,17 @@ function getPOSections(data: OcrPreviewResult) {
     header: {
       headers: headerIndices.map(i => headers[i]),
       rows: rows.map(row => headerIndices.map(i => row[i])),
+      colIndices: headerIndices,
     },
     items: {
       headers: itemIndices.map(i => headers[i]),
       rows: rows.map(row => itemIndices.map(i => row[i])),
+      colIndices: itemIndices,
     },
     terms: {
       headers: termsIndices.map(i => headers[i]),
       rows: rows.map(row => termsIndices.map(i => row[i])),
+      colIndices: termsIndices,
     },
   };
 }
@@ -182,7 +185,7 @@ export function PurchaseOrderReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.header.headers.map((_, i) => i),
+          sections.header.colIndices,
           true
         );
       case "items":
@@ -191,7 +194,7 @@ export function PurchaseOrderReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.items.headers.map((_, i) => i),
+          sections.items.colIndices,
           true
         );
       case "terms":
@@ -200,7 +203,7 @@ export function PurchaseOrderReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.terms.headers.map((_, i) => i),
+          sections.terms.colIndices,
           false
         );
       default:

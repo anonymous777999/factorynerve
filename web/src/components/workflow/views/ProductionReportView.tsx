@@ -44,22 +44,27 @@ function getProductionSections(data: OcrPreviewResult) {
     header: {
       headers: headerIndices.map(i => headers[i]),
       rows: rows.map(row => headerIndices.map(i => row[i])),
+      colIndices: headerIndices,
     },
     machine: {
       headers: machineIndices.map(i => headers[i]),
       rows: rows.map(row => machineIndices.map(i => row[i])),
+      colIndices: machineIndices,
     },
     output: {
       headers: outputIndices.map(i => headers[i]),
       rows: rows.map(row => outputIndices.map(i => row[i])),
+      colIndices: outputIndices,
     },
     quality: {
       headers: qualityIndices.map(i => headers[i]),
       rows: rows.map(row => qualityIndices.map(i => row[i])),
+      colIndices: qualityIndices,
     },
     downtime: {
       headers: downtimeIndices.map(i => headers[i]),
       rows: rows.map(row => downtimeIndices.map(i => row[i])),
+      colIndices: downtimeIndices,
     },
   };
 }
@@ -198,7 +203,7 @@ export function ProductionReportView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.header.headers.map((_, i) => i),
+          sections.header.colIndices,
           true
         );
       case "machine":
@@ -207,7 +212,7 @@ export function ProductionReportView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.machine.headers.map((_, i) => i),
+          sections.machine.colIndices,
           false
         );
       case "output":
@@ -216,7 +221,7 @@ export function ProductionReportView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.output.headers.map((_, i) => i),
+          sections.output.colIndices,
           false
         );
       case "quality":
@@ -225,7 +230,7 @@ export function ProductionReportView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.quality.headers.map((_, i) => i),
+          sections.quality.colIndices,
           false
         );
       case "downtime":
@@ -234,7 +239,7 @@ export function ProductionReportView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.downtime.headers.map((_, i) => i),
+          sections.downtime.colIndices,
           false
         );
       default:

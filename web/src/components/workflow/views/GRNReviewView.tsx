@@ -38,14 +38,17 @@ function getGRNSections(data: OcrPreviewResult) {
     header: {
       headers: headerIndices.map(i => headers[i]),
       rows: rows.map(row => headerIndices.map(i => row[i])),
+      colIndices: headerIndices,
     },
     items: {
       headers: itemIndices.map(i => headers[i]),
       rows: rows.map(row => itemIndices.map(i => row[i])),
+      colIndices: itemIndices,
     },
     qc: {
       headers: qcIndices.map(i => headers[i]),
       rows: rows.map(row => qcIndices.map(i => row[i])),
+      colIndices: qcIndices,
     },
   };
 }
@@ -182,7 +185,7 @@ export function GRNReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.header.headers.map((_, i) => i),
+          sections.header.colIndices,
           true
         );
       case "items":
@@ -191,7 +194,7 @@ export function GRNReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.items.headers.map((_, i) => i),
+          sections.items.colIndices,
           true
         );
       case "qc":
@@ -200,7 +203,7 @@ export function GRNReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.qc.headers.map((_, i) => i),
+          sections.qc.colIndices,
           false
         );
       default:

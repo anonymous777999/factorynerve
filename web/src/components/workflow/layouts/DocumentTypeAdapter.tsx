@@ -45,7 +45,7 @@ export function DocumentTypeAdapter({
   
   // Route to specific views based on document type
   switch (docType) {
-    case "invoice":
+    case "gst_invoice":
       return (
         <InvoiceReviewView
           data={data}

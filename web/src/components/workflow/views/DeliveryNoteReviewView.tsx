@@ -38,14 +38,17 @@ function getDeliveryNoteSections(data: OcrPreviewResult) {
     header: {
       headers: headerIndices.map(i => headers[i]),
       rows: rows.map(row => headerIndices.map(i => row[i])),
+      colIndices: headerIndices,
     },
     items: {
       headers: itemIndices.map(i => headers[i]),
       rows: rows.map(row => itemIndices.map(i => row[i])),
+      colIndices: itemIndices,
     },
     vehicle: {
       headers: vehicleIndices.map(i => headers[i]),
       rows: rows.map(row => vehicleIndices.map(i => row[i])),
+      colIndices: vehicleIndices,
     },
   };
 }
@@ -182,7 +185,7 @@ export function DeliveryNoteReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.header.headers.map((_, i) => i),
+          sections.header.colIndices,
           true
         );
       case "items":
@@ -191,7 +194,7 @@ export function DeliveryNoteReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.items.headers.map((_, i) => i),
+          sections.items.colIndices,
           true
         );
       case "vehicle":
@@ -200,7 +203,7 @@ export function DeliveryNoteReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.vehicle.headers.map((_, i) => i),
+          sections.vehicle.colIndices,
           false
         );
       default:

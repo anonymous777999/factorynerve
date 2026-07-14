@@ -42,18 +42,22 @@ function getInvoiceSections(data: OcrPreviewResult) {
     header: {
       headers: headerIndices.map(i => headers[i]),
       rows: rows.map(row => headerIndices.map(i => row[i])),
+      colIndices: headerIndices,
     },
     items: {
       headers: itemIndices.map(i => headers[i]),
       rows: rows.map(row => itemIndices.map(i => row[i])),
+      colIndices: itemIndices,
     },
     tax: {
       headers: taxIndices.map(i => headers[i]),
       rows: rows.map(row => taxIndices.map(i => row[i])),
+      colIndices: taxIndices,
     },
     totals: {
       headers: totalIndices.map(i => headers[i]),
       rows: rows.map(row => totalIndices.map(i => row[i])),
+      colIndices: totalIndices,
     },
   };
 }
@@ -191,7 +195,7 @@ export function InvoiceReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.header.headers.map((_, i) => i), // simplified
+          sections.header.colIndices,
           true
         );
       case "items":
@@ -200,7 +204,7 @@ export function InvoiceReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.items.headers.map((_, i) => i),
+          sections.items.colIndices,
           true
         );
       case "tax":
@@ -209,7 +213,7 @@ export function InvoiceReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.tax.headers.map((_, i) => i),
+          sections.tax.colIndices,
           false
         );
       case "totals":
@@ -218,7 +222,7 @@ export function InvoiceReviewView({
           0,
           onCellChange,
           onHeaderChange,
-          sections.totals.headers.map((_, i) => i),
+          sections.totals.colIndices,
           false
         );
       default:

@@ -15,7 +15,7 @@ export function determineLayout(data: OcrPreviewResult): LayoutMode {
   const totalCells = fieldCount * rowCount;
   const docType = data.document_type_config?.type_id;
 
-  if (docType === "handwritten_form" || docType === "unknown") {
+  if (docType === "handwritten_form" || docType === "unknown_document") {
     return "key-value";
   }
   if (docType === "chat_transcript") {
@@ -24,7 +24,7 @@ export function determineLayout(data: OcrPreviewResult): LayoutMode {
   if (docType === "weighbridge_slip") {
     return "card";
   }
-  if (docType === "invoice" || docType === "delivery_note") {
+  if (docType === "gst_invoice" || docType === "delivery_note") {
     return "split";
   }
 
