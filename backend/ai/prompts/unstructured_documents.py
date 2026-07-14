@@ -70,9 +70,48 @@ OUTPUT FORMAT FOR A GENUINE FORM (only when there is no tabular grid):
   "quality": {"readability": "good|fair|poor", "partial_extraction": false}
 }
 
+OUTPUT FORMAT FOR MIXED / MULTI-REGION DOCUMENTS (use this for anything that is
+NOT one single table or one simple form — e.g. a payslip, an invoice with a
+header block + line items + totals, a report with several distinct blocks). This
+is the "skeleton" format: split the page into its real regions, IN THE ORDER
+they appear, and give each its own section. NEVER cram several different regions
+into one flat table.
+{
+  "type": "mixed",
+  "title": "document title if visible, else empty",
+  "sections": [
+    // A labelled-fields region (e.g. the Employee/Invoice header block):
+    {"title": "Employee Details", "type": "form",
+     "fields": [{"label": "Employee ID", "value": "CCS038"},
+                {"label": "Employee Name", "value": "Sumit Thakur"}]},
+    // A real grid region (e.g. Earnings/Deductions, line items, attendance):
+    {"title": "Earnings & Deductions", "type": "table",
+     "headers": ["Earning", "Amount", "Deduction", "Amount"],
+     "rows": [["Basic", "12281", "Advance", "9000"],
+              ["Total", "17420", "Total", "10805"]]},
+    // A single-line summary or free text region:
+    {"title": "Net Salary", "type": "text",
+     "lines": ["Employee Net Salary (A-B): 6615.00"]}
+  ],
+  "notes": ["observations"],
+  "quality": {"readability": "good|fair|poor", "partial_extraction": false}
+}
+
+RULES FOR MIXED:
+- Each section keeps its OWN column structure. A "form" section is label/value
+  pairs; a "table" section keeps headers + aligned rows (all the TABLE rules
+  above apply per section); a "text" section is one or more plain lines.
+- Preserve every visible region — header identity block, each data grid, totals,
+  net/summary lines, and any remarks/adjustments block — as separate sections.
+- Do not fabricate. Copy numbers exactly; use "" for blank cells, "[illegible]"
+  for unreadable ones. Keep totals rows.
+
 IMPORTANT:
 - Do NOT hallucinate values. If you cannot read something, output "[illegible]".
 - Do NOT convert a table into key-value pairs. Preserve columns and rows exactly.
+- When in doubt between one flat table and mixed sections for a document that
+  clearly has more than one region, PREFER "mixed" — a correct skeleton beats a
+  flattened grid.
 """
 
 

@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # ── Cost calculation (imported here to avoid circular imports at module level) ──
 from backend.services.anthropic_usage import (
     ANTHROPIC_MODEL_OPUS,
+    ANTHROPIC_MODEL_SONNET,
     calculate_anthropic_cost,
 )
 
@@ -366,16 +367,19 @@ def select_cost_optimal_model(
         needs_correction_pass: bool
         reason: str
     """
-    # 1. Handwriting / ledger / screenshot — the hardest layouts. These are the
-    #    cases that mangle most often (misread digits, invented columns, flattened
-    #    tables), so they get Opus, our strongest-reasoning model, + correction pass.
+    # 1. Handwriting / ledger / screenshot — the hardest layouts. These mangle
+    #    most often (misread digits, invented columns, flattened tables). The
+    #    real fix is structural (skeleton/section extraction + prompt), not raw
+    #    model power — Opus here cost ~7x and still failed, so use Sonnet + a
+    #    correction pass: cheaper and equally correct now that the prompt emits
+    #    proper multi-region sections.
     if has_handwriting or doc_nature in ("handwritten", "ledger", "screenshot"):
         return {
-            "tier": MODEL_TIER_PREMIUM,
-            "model": ANTHROPIC_MODEL_OPUS,
-            "estimated_cost": COST_PER_PAGE[MODEL_TIER_PREMIUM],
+            "tier": MODEL_TIER_BEST,
+            "model": ANTHROPIC_MODEL_SONNET,
+            "estimated_cost": COST_PER_PAGE[MODEL_TIER_BEST],
             "needs_correction_pass": True,
-            "reason": f"Document nature={doc_nature}, handwriting={has_handwriting} — needs Opus + correction pass",
+            "reason": f"Document nature={doc_nature}, handwriting={has_handwriting} — Sonnet + correction pass (structural prompt handles layout)",
         }
 
     # 2. High quality printed docs → Haiku ($0.001)

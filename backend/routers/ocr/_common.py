@@ -1903,6 +1903,10 @@ def _run_table_preview_pipeline(
         "title": structured.get("title") or _table_preview_title(doc_type_hint, template),
         "headers": headers,
         "rows": rows,
+        # Multi-region "skeleton": present for mixed/multi-section documents
+        # (payslips, invoices with sub-tables). Preserved through save/export so
+        # the workbook keeps each region as its own block instead of flattening.
+        "sections": structured.get("tables") or structured.get("sections") or [],
         "raw_text": structured.get("raw_text"),
         "language": language,
         "confidence": confidence_score,
@@ -2135,7 +2139,61 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
     if cell_sources:
         result["cell_sources"] = cell_sources
 
+    # Multi-region "skeleton" for mixed documents (payslips, invoices with
+    # sub-tables). Carried inside scan_quality so it survives the scan -> save
+    # -> export round-trip without a schema migration; the verification export
+    # renders each section as its own block instead of one flattened table.
+    sections = _normalize_export_sections(values.get("sections"))
+    if sections:
+        result["sections"] = sections
+
     return result
+
+
+def _normalize_export_sections(raw: object, *, _depth: int = 0) -> list[dict]:
+    """Sanitize a list of export sections (the multi-region skeleton).
+
+    Each section keeps a title plus one of: table (headers+rows), form (fields),
+    or text (lines). Bounded in size to keep the JSON column sane. Best-effort:
+    anything malformed is skipped rather than raising.
+    """
+    if not isinstance(raw, list) or _depth > 1:
+        return []
+    sections: list[dict] = []
+    for item in raw[:40]:
+        if not isinstance(item, dict):
+            continue
+        title = sanitize_text(str(item.get("title") or ""), max_length=120, preserve_newlines=False) or ""
+        sec_type = str(item.get("type") or "").strip().lower()
+        section: dict = {"title": title, "type": sec_type or "table"}
+        if isinstance(item.get("fields"), list) and sec_type == "form":
+            fields = []
+            for field in item.get("fields", [])[:100]:
+                if not isinstance(field, dict):
+                    continue
+                fields.append({
+                    "label": _normalize_table_excel_value(field.get("label")),
+                    "value": _normalize_table_excel_value(field.get("value")),
+                })
+            section["fields"] = fields
+        elif isinstance(item.get("lines"), list) and sec_type == "text":
+            section["lines"] = [_normalize_table_excel_value(line) for line in item.get("lines", [])[:200]]
+        else:
+            raw_headers = item.get("headers")
+            raw_rows = item.get("rows")
+            section["type"] = sec_type or "table"
+            section["headers"] = [
+                _normalize_table_excel_value(h) for h in raw_headers[:60]
+            ] if isinstance(raw_headers, list) else []
+            rows: list[list[str]] = []
+            if isinstance(raw_rows, list):
+                for row in raw_rows[:1000]:
+                    if not isinstance(row, list):
+                        continue
+                    rows.append([_normalize_table_excel_value(cell) for cell in row[:60]])
+            section["rows"] = rows
+        sections.append(section)
+    return sections
 
 
 def _normalize_document_hash(value: str | None) -> str | None:
@@ -2705,6 +2763,39 @@ def _verification_export_response(verification: OcrVerification) -> Response:
 
     # Phase 6: Use ExcelExportEngine for type-specific exports, fall back to generic
     doc_type = (verification.doc_type_hint or "").strip().lower()
+
+    # Multi-region "skeleton" export: if this scan captured distinct regions
+    # (payslip header + earnings/deductions grid + net line, etc.), render each
+    # as its own block instead of one flattened table. Preferred whenever a
+    # skeleton exists because the flat headers/rows lose the structure.
+    stored_sections = (verification.scan_quality or {}).get("sections") if isinstance(verification.scan_quality, dict) else None
+    if isinstance(stored_sections, list) and len(stored_sections) > 1:
+        try:
+            excel_bytes, _report = generate_excel_from_sections(
+                {
+                    "title": _verification_export_source(verification) or "OCR Extraction",
+                    "metadata": {
+                        "Verification Id": verification.id,
+                        "Verification Status": verification.status,
+                        "Export Source": export_source,
+                        "Trusted Export": "Yes" if trusted_export else "No",
+                    },
+                    "sections": stored_sections,
+                },
+                sheet_name="Extracted Data",
+            )
+            if excel_bytes:
+                return Response(
+                    content=excel_bytes,
+                    media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{filename}"',
+                        "X-Ocr-Review-Required": str(bool(validation_warnings or (verification.scan_quality or {}).get("review_required"))).lower(),
+                    },
+                )
+        except Exception as sections_error:
+            logger.warning("[EXPORT] Section skeleton export failed, falling back to flat table: %s", sections_error)
+
     try:
         data = {"headers": headers, "rows": rows}
         if doc_type:

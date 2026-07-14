@@ -1338,7 +1338,9 @@ def build_table_excel_bytes(
                 )
         current_row += 1
 
-    totals_row = _build_totals_row(headers, rows) if include_totals else None
+    # A totals row only makes sense across multiple data rows. Summing a lone row
+    # just re-emits it under a fabricated "Total" label, so skip it there.
+    totals_row = _build_totals_row(headers, rows) if include_totals and len(rows) > 1 else None
     if totals_row:
         for col_index, value in enumerate(totals_row, start=1):
             cell = ws.cell(row=current_row, column=col_index, value=value if value != "" else None)
@@ -1434,7 +1436,11 @@ def build_report_excel_bytes(
                     max_width_by_column[col_index] = max(max_width_by_column.get(col_index, 10), len(str(value)) + 2)
             current_row += 1
 
-        totals_row = _build_totals_row(headers, rows)
+        # Only synthesize a totals row across genuinely multi-row tables. A single
+        # data row has nothing to total — summing it just duplicates the row under a
+        # fabricated "Total" label, which is exactly the kind of made-up content this
+        # pipeline must never emit.
+        totals_row = _build_totals_row(headers, rows) if len(rows) > 1 else None
         if totals_row:
             for col_index, value in enumerate(totals_row, start=1):
                 cell = ws.cell(row=current_row, column=col_index, value=value if value != "" else None)

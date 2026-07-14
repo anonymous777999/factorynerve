@@ -299,6 +299,12 @@ async def ocr_logbook(
             "cell_boxes": structured.get("cell_boxes"),
             "provider_trust": "verified" if (not correction_applied and avg_conf >= HIGH_CONFIDENCE_THRESHOLD) else "experimental",
         }
+        # Carry the multi-region skeleton (payslips, invoices with sub-tables)
+        # through scan -> save -> export inside scan_quality, so the workbook
+        # keeps each region as its own block instead of one flattened table.
+        _sections = structured.get("sections")
+        if isinstance(_sections, list) and _sections:
+            scan_quality_payload["sections"] = _sections
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("OCR scan quality analysis failed: %s", error, exc_info=True)
         scan_quality_payload = None
