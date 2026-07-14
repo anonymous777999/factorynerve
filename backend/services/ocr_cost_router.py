@@ -42,12 +42,14 @@ except ImportError:
 MODEL_TIER_FAST = "fast"       # claude-haiku-4-5-20251001
 MODEL_TIER_BALANCED = "balanced"  # claude-sonnet-4-6
 MODEL_TIER_BEST = "best"       # claude-sonnet-4-6 + correction pass
+MODEL_TIER_PREMIUM = "premium"  # claude-opus-4-7 (hardest: handwriting/ledger)
 
 # Estimated cost per page (based on ~2,000 tokens avg)
 COST_PER_PAGE = {
     MODEL_TIER_FAST: 0.001,
     MODEL_TIER_BALANCED: 0.003,
     MODEL_TIER_BEST: 0.006,  # Sonnet + 1 correction pass
+    MODEL_TIER_PREMIUM: 0.02,  # Opus — reserved for handwriting/ledger/screenshot
 }
 
 
@@ -349,14 +351,16 @@ def select_cost_optimal_model(
         needs_correction_pass: bool
         reason: str
     """
-    # 1. Handwriting / ledger / screenshot always needs Sonnet + correction pass
+    # 1. Handwriting / ledger / screenshot — the hardest layouts. These are the
+    #    cases that mangle most often (misread digits, invented columns, flattened
+    #    tables), so they get Opus, our strongest-reasoning model, + correction pass.
     if has_handwriting or doc_nature in ("handwritten", "ledger", "screenshot"):
         return {
-            "tier": MODEL_TIER_BEST,
-            "model": "claude-sonnet-4-6",
-            "estimated_cost": COST_PER_PAGE[MODEL_TIER_BEST],
+            "tier": MODEL_TIER_PREMIUM,
+            "model": ANTHROPIC_MODEL_OPUS,
+            "estimated_cost": COST_PER_PAGE[MODEL_TIER_PREMIUM],
             "needs_correction_pass": True,
-            "reason": f"Document nature={doc_nature}, handwriting={has_handwriting} — needs Sonnet + correction pass",
+            "reason": f"Document nature={doc_nature}, handwriting={has_handwriting} — needs Opus + correction pass",
         }
 
     # 2. High quality printed docs → Haiku ($0.001)

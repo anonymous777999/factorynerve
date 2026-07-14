@@ -47,6 +47,7 @@ import {
   type OcrDebugPayload,
   type OcrVerificationRecord,
   type CrossValidationResult,
+  type OcrDocumentTypeConfig,
 } from "@/lib/ocr";
 import {
   buildStructuredPdfBlob,
@@ -142,6 +143,8 @@ type ResultPreview = {
   userCorrected?: boolean | null;
   reviewRequired?: boolean | null;
   crossValidation?: CrossValidationResult | null;
+  classification?: { type_id: string; confidence: number; method: string } | null;
+  documentTypeConfig?: OcrDocumentTypeConfig | null;
 };
 
 type StructuredSheet = {
@@ -1194,6 +1197,8 @@ export default function OcrScanPage() {
         userCorrected: result.user_corrected ?? null,
         reviewRequired: result.review_required ?? null,
         crossValidation: result.cross_validation ?? null,
+        classification: result.classification ?? null,
+        documentTypeConfig: result.document_type_config ?? null,
       };
 
       setResultPreview(nextPreview);
@@ -1827,6 +1832,24 @@ export default function OcrScanPage() {
 
           {step === "preview" && resultPreview?.crossValidation && (
             <CrossValidationBanner data={resultPreview.crossValidation} />
+          )}
+
+          {step === "preview" && resultPreview?.documentTypeConfig && (
+            <div className="flex items-center gap-3 rounded-[22px] border-2 border-[#d9e1e8] bg-white px-5 py-3 text-sm shadow-sm">
+              <span className="text-xl" aria-hidden="true">
+                {resultPreview.documentTypeConfig.icon || "📄"}
+              </span>
+              <div>
+                <div className="font-semibold text-[#101828]">
+                  Detected as {resultPreview.documentTypeConfig.display_name}
+                </div>
+                {resultPreview.classification ? (
+                  <div className="mt-0.5 text-xs text-[#667085]">
+                    {Math.round(resultPreview.classification.confidence * 100)}% confidence
+                  </div>
+                ) : null}
+              </div>
+            </div>
           )}
 
           {(step === "preview" || step === "export") && resultPreview ? (

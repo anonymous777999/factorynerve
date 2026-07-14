@@ -86,8 +86,13 @@ Extract this ledger/account statement into structured tabular data.
 
 INSTRUCTIONS:
 1. Identify the account header (name, account number, period)
-2. Extract ALL rows in order (date, description, debit, credit, balance)
-3. Balance column is critical — ensure running balance is mathematically correct
+2. Extract ALL rows in order, transcribing ONLY the columns that are actually
+   printed on the page. Common columns are date, description, debit, credit,
+   balance — but use only the ones the document really shows.
+3. TRANSCRIBE, DO NOT CALCULATE. Copy each balance figure exactly as written.
+   If a row has no balance printed, set "balance": null. NEVER compute, infer,
+   or "fix" a balance — a wrong-but-real number is correct; an invented number
+   is a bug. If the document has no balance column at all, omit balance entirely.
 4. Note any strike-through or corrections
 5. Handle merged cells or multi-line descriptions
 
@@ -105,7 +110,7 @@ OUTPUT FORMAT:
       "description": "Transaction description",
       "debit": 0.00 or null,
       "credit": 0.00 or null,
-      "balance": 0.00,
+      "balance": 0.00 or null (copy exactly as printed; null if not shown),
       "voucher_ref": "reference if visible"
     }
   ],
@@ -122,9 +127,11 @@ OUTPUT FORMAT:
 }
 
 VALIDATION:
-- Verify: opening_balance + sum(debits) - sum(credits) = closing_balance
-- Running balance after each entry must be correct
-- Flag any mathematical inconsistencies
+- Report figures exactly as printed. Do NOT recompute or "correct" any balance.
+- You MAY note in a "balance_check" field whether opening_balance + sum(debits)
+  - sum(credits) equals the printed closing_balance, but never change the
+  transcribed numbers to make them agree.
+- Flag any mathematical inconsistencies you observe rather than silently fixing them.
 """
 
 
@@ -132,10 +139,16 @@ VALIDATION:
 # CHAT/SCREENSHOT TRANSCRIPT PROMPT (Section 5.3)
 # =============================================================================
 
-CHAT_TRANSCRIPT_PROMPT: str = """You are a chat transcript extraction expert.
+CHAT_TRANSCRIPT_PROMPT: str = """You are a screenshot extraction expert.
 
-Extract this screenshot of a conversation into structured message data.
+FIRST, decide what this screenshot actually is:
+- A conversation (WhatsApp / Telegram / SMS / chat app) → use CHAT FORMAT below.
+- A table, spreadsheet, list, form, or any other non-chat screenshot → use
+  TABLE FORMAT below instead. Do NOT force non-chat content into messages[].
 
+Never invent senders, timestamps, or messages for content that is not a chat.
+
+=== CHAT FORMAT (only for real conversations) ===
 INSTRUCTIONS:
 1. Identify different speakers (names, colors, positions — left/right)
 2. Extract each message in order
@@ -144,7 +157,7 @@ INSTRUCTIONS:
 5. Handle read receipts, delivery status
 6. Preserve emoji and formatting where meaningful
 
-OUTPUT FORMAT:
+OUTPUT:
 {
   "platform": "WhatsApp | Telegram | SMS | Other",
   "participants": ["name1", "name2"],
@@ -167,6 +180,21 @@ OUTPUT FORMAT:
     "complete_conversation": bool,
     "missing_messages_suspected": bool
   }
+}
+
+=== TABLE FORMAT (for non-chat screenshots) ===
+Transcribe exactly what is shown. Use visible column headers verbatim; if a
+header is blank, infer a short accurate name from the data. Preserve rows and
+columns; pad missing cells with "" (never left-shift). Do not fabricate data.
+
+OUTPUT:
+{
+  "type": "table",
+  "title": "short title if visible, else null",
+  "headers": ["Col1", "Col2", ...],
+  "rows": [["...", "..."], ...],
+  "notes": "anything notable (e.g. this is a form, list, etc.)",
+  "quality": { "clarity": "good|fair|poor", "complete": bool }
 }
 """
 
