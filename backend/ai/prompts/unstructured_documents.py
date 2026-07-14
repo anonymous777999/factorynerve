@@ -33,14 +33,21 @@ STEP 1 — DECIDE THE LAYOUT:
 
 STEP 2 — FOR A TABLE (most common):
 1. Read the column headers left-to-right and use them VERBATIM as "headers".
-   If a header is blank, infer a short accurate name (e.g. "Amount").
+   - If the page HAS a visible header row, copy those headings exactly.
+   - If a single header cell is blank but the column clearly holds one kind of
+     value, infer a short accurate name from the data (e.g. a column of money
+     amounts → "Amount"; dates → "Date"; names → "Name"; "Dr"/"Cr" → keep them).
+   - If the page has NO header row at all, INFER a complete, sensible header for
+     every column from what the data represents, so the table is self-describing.
 2. Extract EVERY row in top-to-bottom order. Keep each value in its OWN column.
    Never merge two columns; never move a value into a different row.
 3. If a cell is empty in the original, output an empty string "" for that cell —
    do NOT shift later values left to fill the gap. Column alignment is critical
    (e.g. an expense sheet may split "Bill" and "No Bill" into two columns; keep
    an amount in whichever column it was written under).
-4. Preserve a visible "Total" row as a normal data row.
+4. Preserve a visible "Total"/"Grand Total"/"Sum" row as a normal data row at the
+   end — put the word "Total" in the label column and the total figure in its
+   correct amount column, matching the original layout. Never drop the total row.
 5. For numbers, output the digits as written. Do NOT invent values.
 
 OUTPUT FORMAT FOR A TABLE:

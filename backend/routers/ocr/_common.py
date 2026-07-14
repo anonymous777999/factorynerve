@@ -263,6 +263,7 @@ OUTPUT STRUCTURE:
   - For merged cells: repeat the merged value in each row, OR use the first occurrence and leave subsequent cells empty
   - If rows have different column counts, use the widest row as the template and pad shorter rows with null
   - Identify header rows vs. data rows vs. totals/summary rows using context (totals rows should be included at the end)
+  - Use the document's visible column headings VERBATIM. If a header cell is blank or there is no header row, infer a short, accurate name for that column from the data it contains (e.g. money values -> "Amount", dates -> "Date", names -> "Name") so the table is self-describing
 - If the image contains a form/invoice header: return { "type": "form", "fields": [{ "label": "...", "value": "..." }] }
   - Extract all header fields: Invoice No, Date, Vendor Name, GSTIN, PO Number, etc.
 - If the image contains mixed content (e.g., invoice header + line items + totals): return { "type": "mixed", "sections": [...] }
