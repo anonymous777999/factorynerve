@@ -86,8 +86,19 @@ def _stringify_cell(value: Any) -> str:
         return value.strip()
     if isinstance(value, (int, float, bool)):
         return str(value)
-    if isinstance(value, (dict, list)):
+    if isinstance(value, dict):
+        label = value.get("label") or value.get("name") or value.get("title")
+        nested_value = value.get("value") or value.get("content") or value.get("amount")
+        if label is not None and nested_value is not None:
+            return f"{_stringify_cell(label)}: {_stringify_cell(nested_value)}".strip()
+        for key in ("value", "content", "text", "label", "title", "amount", "name"):
+            nested = value.get(key)
+            if nested is not None and not isinstance(nested, (dict, list)):
+                return _stringify_cell(nested)
         return json.dumps(value, ensure_ascii=True)
+    if isinstance(value, list):
+        parts = [_stringify_cell(item) for item in value]
+        return ", ".join(part for part in parts if part)
     return str(value).strip()
 
 
