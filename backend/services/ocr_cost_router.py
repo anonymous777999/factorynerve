@@ -304,9 +304,24 @@ def detect_document_nature(image_bytes: bytes, ocr_text: str | None = None) -> d
     # Heuristic 3: Handwriting detection via connected components
     # (Spec section 5.4: handwriting via connected components)
     if has_handwriting:
+        # Guard against false positives on dense printed documents (payslips,
+        # invoices, forms). Logos, watermarks and mixed font sizes inflate the
+        # visual handwriting score, but if the OCR text reads like clean printed
+        # content — lots of long dictionary-style words in a regular layout —
+        # trust the text over the noisy visual signal and treat it as printed.
+        printed_words = re.findall(r"[A-Za-z]{4,}", text_preview)
+        strong_printed_text = len(printed_words) >= 15 and _has_regular_layout(text_preview)
+        hw_confidence = handwriting_result.get("confidence", 0.6)
+        if strong_printed_text and hw_confidence < 0.8:
+            return {
+                "nature": "printed",
+                "confidence": 0.75,
+                "signals": signals + ["printed_text_override", "handwriting_signal_ignored"],
+                "handwriting": {**handwriting_result, "has_handwriting": False},
+            }
         return {
             "nature": "handwritten",
-            "confidence": handwriting_result.get("confidence", 0.6),
+            "confidence": hw_confidence,
             "signals": signals,
             "handwriting": handwriting_result,
         }

@@ -580,7 +580,24 @@ def _generate_ledger_excel(data: dict, verification_meta: dict | None = None) ->
 
 
 def _generate_kv_excel(data: dict, verification_meta: dict | None = None) -> bytes:
-    """Generate Handwritten Form / Key-Value Excel with Fields, Audit sheets (6.2)."""
+    """Generate Handwritten Form / Key-Value Excel with Fields, Audit sheets (6.2).
+
+    Handwritten/misclassified docs whose content is actually a table now arrive
+    as {type: table, headers, rows} (the model decides layout). A key-value sheet
+    would render those empty, so delegate table-shaped payloads to the generic
+    table generator instead of silently dropping every row.
+    """
+    has_table = (
+        str(data.get("type") or "").strip().lower() == "table"
+        or (isinstance(data.get("headers"), list) and isinstance(data.get("rows"), list)
+            and (data.get("headers") or data.get("rows")))
+    )
+    has_fields = bool(
+        data.get("fields") or data.get("key_value_pairs") or data.get("extracted_data")
+    )
+    if has_table and not has_fields:
+        return _generate_generic_excel(data, verification_meta)
+
     wb = Workbook()
     status = (verification_meta or {}).get("status", "approved")
 
