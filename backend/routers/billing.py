@@ -74,7 +74,7 @@ from fastapi.responses import Response
 router = APIRouter(tags=["Billing"])
 logger = logging.getLogger(__name__)
 
-TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
+TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "30"))
 BILLING_GRACE_DAYS = int(os.getenv("BILLING_GRACE_DAYS", "3"))
 SUPPORTED_CURRENCY = "INR"
 REUSABLE_ORDER_STATUSES = {"created", "attempted", "authorized"}

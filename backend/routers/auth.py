@@ -774,7 +774,7 @@ def _activate_pending_registration(
     )
 
     if not db.query(Subscription).filter(Subscription.org_id == organization.org_id).first():
-        trial_days = int(os.getenv("TRIAL_DAYS", "7"))
+        trial_days = int(os.getenv("TRIAL_DAYS", "30"))
         now = datetime.now(timezone.utc)
         db.add(
             Subscription(
