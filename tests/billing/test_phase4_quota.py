@@ -60,11 +60,18 @@ def _create_authenticated_user(*, role: UserRole = UserRole.OWNER) -> dict[str, 
         db.add(auth_user)
         db.flush()
 
-        # Create a v2 session directly and return the raw token
+        # Create a v2 session directly and return the raw token.
         raw_token = generate_token(32)
         token_hash = hash_token(raw_token)
+        # Set user_id (the Phase 2+ direct FK) so auth resolves via the
+        # canonical path, exactly like production sessions. Without it, auth
+        # falls back to the legacy AuthUser email bridge, whose
+        # created_at < password_changed_at freshness check spuriously 401s
+        # here because AuthUser.password_changed_at defaults to flush-time
+        # now(), which is a hair later than the `now` captured above.
         session = AuthSession(
             auth_user_id=auth_user.id,
+            user_id=user.id,
             token_hash=token_hash,
             csrf_hash=hash_token(generate_token(16)),
             created_at=now,

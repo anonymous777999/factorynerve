@@ -208,7 +208,14 @@ def get_current_user(db: Session, session: AuthSession) -> User:
             User.is_active.is_(True),
         ).first()
         if user:
-            if session.created_at < (user.password_changed_at or datetime.min.replace(tzinfo=timezone.utc)):
+            # Normalize both sides to offset-aware UTC before comparing.
+            # session.created_at and user.password_changed_at may arrive
+            # naive (SQLite / some driver reads) or aware (Postgres
+            # timestamptz); comparing a naive and an aware datetime raises
+            # TypeError and surfaces as a 500 on every authenticated request.
+            session_created = ensure_utc(session.created_at)
+            pwd_changed = ensure_utc(user.password_changed_at) or datetime.min.replace(tzinfo=timezone.utc)
+            if session_created is not None and session_created < pwd_changed:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Session invalidated.",
@@ -223,7 +230,14 @@ def get_current_user(db: Session, session: AuthSession) -> User:
     ).first()
     if not auth_user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-    if session.created_at < auth_user.password_changed_at:
+    # Same naive/aware normalization as the direct-FK path above.
+    session_created = ensure_utc(session.created_at)
+    auth_pwd_changed = ensure_utc(auth_user.password_changed_at)
+    if (
+        session_created is not None
+        and auth_pwd_changed is not None
+        and session_created < auth_pwd_changed
+    ):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated.")
     user = db.query(User).filter(
         User.email == auth_user.email,
