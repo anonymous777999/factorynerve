@@ -75,11 +75,14 @@ def build_correction_request(
         is_proactive: bool — whether this is a proactive (not error-driven) correction
         reason: str — human-readable reason for the correction
     """
-    from backend.services.anthropic_usage import get_next_anthropic_model_upgrade
-
+    # Keep the correction pass on the SAME model that did the extraction.
+    # Upgrading to Opus here was the hidden ~7x cost blow-up: extraction ran
+    # cheap on Sonnet, then this second call jumped to Opus. The design tier is
+    # "Sonnet + correction pass ~$0.006" — both passes must stay on Sonnet.
+    # An explicit caller override still wins if one is supplied.
     correction_model = (
         explicit_model
-        or get_next_anthropic_model_upgrade(first_model_used)
+        or first_model_used
         or "claude-sonnet-4-6"
     )
 

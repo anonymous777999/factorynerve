@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import html
 import json
 import logging
 import mimetypes
@@ -1233,12 +1234,25 @@ def _extract_table_excel_scalar(
     return str(value).strip()
 
 
+def _unescape_model_html(text: str) -> str:
+    """Undo HTML entities the model sometimes emits in plain text.
+
+    Vision models occasionally return "Earnings &amp; Deductions" instead of a
+    literal "&". Left alone it looks broken on a payslip. Two passes handle the
+    rare double-escape ("&amp;amp;") without touching normal text.
+    """
+    if "&" not in text:
+        return text
+    once = html.unescape(text)
+    return html.unescape(once) if "&" in once else once
+
+
 def _normalize_table_excel_value(value: object) -> str:
     if value is None:
         return ""
     if isinstance(value, (dict, list, tuple)):
-        return _extract_table_excel_scalar(value)
-    return str(value).strip()
+        return _unescape_model_html(_extract_table_excel_scalar(value))
+    return _unescape_model_html(str(value).strip())
 
 
 def _normalize_ragged_rows(
@@ -2163,7 +2177,7 @@ def _normalize_export_sections(raw: object, *, _depth: int = 0) -> list[dict]:
     for item in raw[:40]:
         if not isinstance(item, dict):
             continue
-        title = sanitize_text(str(item.get("title") or ""), max_length=120, preserve_newlines=False) or ""
+        title = _unescape_model_html(sanitize_text(str(item.get("title") or ""), max_length=120, preserve_newlines=False) or "")
         sec_type = str(item.get("type") or "").strip().lower()
         section: dict = {"title": title, "type": sec_type or "table"}
         if isinstance(item.get("fields"), list) and sec_type == "form":
