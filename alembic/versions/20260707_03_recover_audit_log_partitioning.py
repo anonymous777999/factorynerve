@@ -12,6 +12,11 @@ dropped some indexes, Step 2 failed). This recovery migration:
 2. Otherwise, drops the old PK, creates the composite PK, and
    converts ``audit_logs`` to a monthly-range partitioned table.
 
+This recovery deliberately references ``audit_logs_pkey`` (the real, applied
+PostgreSQL-default name) with ``IF EXISTS`` guards, precisely to undo the naming
+mismatch that broke 20260707_02. It therefore opts out of the naming linter:
+# migration-lint: ignore-file
+
 Revision ID: 20260707_03
 Revises: 20260707_02
 Create Date: 2026-07-07

@@ -963,7 +963,7 @@ export default function EntryPage() {
                 <div className="rounded-[24px] border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-100 flex items-center gap-3">
                   <span className="text-lg">⚠️</span>
                   <span>
-                    You haven't punched in yet for today{" "}
+                    You haven&apos;t punched in yet for today{" "}
                     {attendanceToday?.attendance_date ? `(${attendanceToday.attendance_date})` : ""}.{' '}
                     <Link href="/attendance" className="underline underline-offset-4 font-semibold">
                       Punch in first

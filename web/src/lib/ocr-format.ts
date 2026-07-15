@@ -50,7 +50,8 @@ export function formatDisplayDate(raw: string): string {
   const dmy = trimmed.match(/^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{2,4})$/);
   let date: Date | null = null;
   if (dmy) {
-    let [, d, m, y] = dmy;
+    const [, d, m] = dmy;
+    let y = dmy[3];
     if (y.length === 2) y = `20${y}`;
     date = new Date(Number(y), Number(m) - 1, Number(d));
   } else {

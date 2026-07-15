@@ -626,7 +626,7 @@ export function SteelScrapLossIntelligencePage() {
                   </Card>
                   <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.7)] shadow-sm">
                     <CardContent className="pt-4">
-                      <div className="text-xs uppercase tracking-wider text-[var(--muted)]">Today's Cost</div>
+                      <div className="text-xs uppercase tracking-wider text-[var(--muted)]">Today&apos;s Cost</div>
                       <div className="mt-1 text-2xl font-bold text-amber-300">{formatInr(financial?.today_scrap_cost_inr)}</div>
                     </CardContent>
                   </Card>
@@ -863,7 +863,7 @@ export function SteelScrapLossIntelligencePage() {
             {/* What's Possible vs Missing */}
             <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.7)] shadow-sm">
               <CardHeader>
-                <CardTitle>What's Available vs What's Missing</CardTitle>
+                <CardTitle>What&apos;s Available vs What&apos;s Missing</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-3">

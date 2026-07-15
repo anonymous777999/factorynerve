@@ -1045,7 +1045,7 @@ export function SteelProductionIntelligencePage() {
 
             <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.7)] shadow-sm lg:col-span-2">
               <CardHeader>
-                <CardTitle>What's Possible vs What's Missing</CardTitle>
+                <CardTitle>What&apos;s Possible vs What&apos;s Missing</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-3">

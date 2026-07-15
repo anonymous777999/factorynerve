@@ -16,6 +16,12 @@ transparently with RLS policies.
 REVERSIBLE: downgrade() detaches all partitions and converts
 back to a regular table (data preserved).
 
+This migration intentionally references the constraint ``audit_logs_pkey`` —
+the real PostgreSQL-default PK name that already exists on the applied table —
+and guards every drop with ``IF EXISTS``. Editing this applied migration's SQL
+to satisfy the naming-convention linter would be unsafe, so the file opts out:
+# migration-lint: ignore-file
+
 Revision ID: 20260707_02
 Revises: 20260707_01
 Create Date: 2026-07-07

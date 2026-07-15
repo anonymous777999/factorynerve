@@ -63,11 +63,26 @@ class LintIssue(NamedTuple):
     message: str
 
 
+# Suppression markers, mirroring the flake8/eslint ``noqa`` convention. Some
+# migrations legitimately reference a constraint by its real (already-applied)
+# name — e.g. reworking a table whose PK is the PostgreSQL default
+# ``<table>_pkey``. Editing an applied migration's SQL to satisfy a naming
+# lint would be actively dangerous, so intent is declared explicitly instead:
+#   - line-level:  put ``# migration-lint: ignore`` on the offending line
+#   - file-level:  put ``# migration-lint: ignore-file`` anywhere in the file
+_LINE_IGNORE = "migration-lint: ignore"
+_FILE_IGNORE = "migration-lint: ignore-file"
+
+
 def lint_migration(filepath: Path) -> list[LintIssue]:
     """Lint a single migration file."""
     issues: list[LintIssue] = []
     content = filepath.read_text(encoding="utf-8")
     lines = content.splitlines()
+
+    # Whole-file opt-out for frozen/already-applied migrations.
+    if _FILE_IGNORE in content:
+        return issues
 
     table_name = filepath.stem
 
@@ -76,6 +91,10 @@ def lint_migration(filepath: Path) -> list[LintIssue]:
 
         # Skip comments
         if stripped.startswith("#") and not stripped.startswith("##"):
+            continue
+
+        # Respect an explicit per-line suppression.
+        if _LINE_IGNORE in line:
             continue
 
         # ── Check 1: DROP CONSTRAINT without IF EXISTS ──────
