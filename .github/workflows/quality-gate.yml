@@ -42,6 +42,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install mypy pre-commit
+          pip install pytest==9.0.2 pytest-asyncio==1.4.0 httpx==0.28.1
 
       - name: Check #1 — Cross-reference requirements.txt against imports
         run: python scripts/check_deps.py
