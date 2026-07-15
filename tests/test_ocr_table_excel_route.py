@@ -291,7 +291,9 @@ def test_run_table_excel_pipeline_builds_excel_from_form_response(monkeypatch):
     assert metadata["total_rows"] == 2
     assert metadata["total_columns"] == 2
     assert metadata["image_quality_score"] == 90
-    assert metadata["model_used"] == ocr_router._TABLE_EXCEL_MODEL_HAIKU
+    # Model is chosen by the cost router (document-nature aware), not raw quality
+    # alone, so a form routes to Sonnet rather than Haiku.
+    assert metadata["model_used"] == ocr_router._TABLE_EXCEL_MODEL_SONNET
 
 
 def test_build_table_excel_bytes_orders_dict_columns_and_adds_totals_footer():
@@ -476,14 +478,17 @@ def test_run_table_excel_pipeline_builds_excel_from_mixed_sections(monkeypatch):
     sheet = workbook.active
 
     assert sheet["A1"].value == "Extracted Data"
+    # Form section renders as a clean label/value layout (no redundant
+    # "Field/Value" header row) via the Document AST renderer.
     assert sheet["A3"].value == "Header"
-    assert sheet["A4"].value == "Field"
-    assert sheet["A5"].value == "Invoice"
-    assert sheet["B5"].value == "INV-1001"
-    assert sheet["A7"].value == "Items"
-    assert sheet["A8"].value == "Item"
-    assert sheet["A9"].value == "Bolt"
-    assert sheet["B9"].value == 5
+    assert sheet["A4"].value == "Invoice"
+    assert sheet["B4"].value == "INV-1001"
+    # Table section keeps its native headers + row, in its own block.
+    assert sheet["A6"].value == "Items"
+    assert sheet["A7"].value == "Item"
+    assert sheet["B7"].value == "Qty"
+    assert sheet["A8"].value == "Bolt"
+    assert sheet["B8"].value == 5
     assert metadata["extracted_type"] == "mixed"
     assert metadata["total_rows"] == 2
     assert metadata["total_columns"] == 2

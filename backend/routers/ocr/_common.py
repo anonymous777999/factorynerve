@@ -1486,17 +1486,41 @@ def _build_table_excel_workbook(extracted_json: dict[str, object]) -> tuple[byte
             include_totals = False
         else:
             sections = normalized.get("sections", [])
-            excel_bytes, report_input = generate_excel_from_sections(
-                {
-                    "title": "Extracted Data",
-                    "metadata": {"Extracted Type": extracted_type},
-                    "sections": sections,
-                },
-                sheet_name="Extracted Data",
+            # Render each region by its true type (form/table/text) via the
+            # Document AST. Falls back to the legacy flat-section renderer if the
+            # AST can't build content, so a scan never yields an empty download.
+            from backend.services.document_ast import (
+                build_ast,
+                render_document_to_excel,
+                document_has_content,
             )
-            totals = report_input.get("totals") if isinstance(report_input.get("totals"), dict) else {}
-            total_rows = int(totals.get("row_count") or 0)
-            total_columns = int(totals.get("column_count") or 0)
+
+            document = build_ast(
+                {"title": "Extracted Data", "sections": sections},
+                doc_type=(normalized.get("doc_type_hint") or None),
+            )
+            if document_has_content(document):
+                excel_bytes = render_document_to_excel(document, sheet_name="Extracted Data")
+                total_rows = sum(
+                    len(b.rows) + len(b.fields) + len(b.lines)
+                    for s in document.sections for b in s.blocks
+                )
+                total_columns = max(
+                    (len(b.headers) for s in document.sections for b in s.blocks if b.headers),
+                    default=2,
+                )
+            else:
+                excel_bytes, report_input = generate_excel_from_sections(
+                    {
+                        "title": "Extracted Data",
+                        "metadata": {"Extracted Type": extracted_type},
+                        "sections": sections,
+                    },
+                    sheet_name="Extracted Data",
+                )
+                totals = report_input.get("totals") if isinstance(report_input.get("totals"), dict) else {}
+                total_rows = int(totals.get("row_count") or 0)
+                total_columns = int(totals.get("column_count") or 0)
             if not excel_bytes:
                 raise RuntimeError("Workbook writer returned empty output.")
             return excel_bytes, {
@@ -2785,18 +2809,27 @@ def _verification_export_response(verification: OcrVerification) -> Response:
     stored_sections = (verification.scan_quality or {}).get("sections") if isinstance(verification.scan_quality, dict) else None
     if isinstance(stored_sections, list) and len(stored_sections) > 1:
         try:
-            excel_bytes, _report = generate_excel_from_sections(
+            from backend.services.document_ast import (
+                build_ast,
+                render_document_to_excel,
+                document_has_content,
+            )
+
+            document = build_ast(
                 {
                     "title": _verification_export_source(verification) or "OCR Extraction",
-                    "metadata": {
-                        "Verification Id": verification.id,
-                        "Verification Status": verification.status,
-                        "Export Source": export_source,
-                        "Trusted Export": "Yes" if trusted_export else "No",
-                    },
                     "sections": stored_sections,
                 },
-                sheet_name="Extracted Data",
+                doc_type=doc_type or None,
+            )
+            excel_bytes = (
+                render_document_to_excel(
+                    document,
+                    sheet_name="Extracted Data",
+                    verification_status=verification.status,
+                )
+                if document_has_content(document)
+                else None
             )
             if excel_bytes:
                 return Response(
@@ -2808,7 +2841,7 @@ def _verification_export_response(verification: OcrVerification) -> Response:
                     },
                 )
         except Exception as sections_error:
-            logger.warning("[EXPORT] Section skeleton export failed, falling back to flat table: %s", sections_error)
+            logger.warning("[EXPORT] AST skeleton export failed, falling back to flat table: %s", sections_error)
 
     try:
         data = {"headers": headers, "rows": rows}
