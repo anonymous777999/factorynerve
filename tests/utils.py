@@ -73,11 +73,23 @@ def register_user(
         "factory_name": factory_name or unique_factory(),
         "company_code": company_code,
     }
-    # The auth_secure register endpoint creates the user directly with
-    # is_email_verified=True and logs them in immediately via session cookie.
+    # The auth_secure register endpoint no longer creates the User directly.
+    # It records a PendingRegistration and returns verification_required=True
+    # plus a verification_link (exposed because conftest sets
+    # EMAIL_VERIFICATION_EXPOSE_LINK=1). The User row is only created once the
+    # verification token is redeemed, so we must complete that step here before
+    # the user can be looked up or logged in.
     resp = client.post("/auth/register", json=payload)
     assert resp.status_code in (200, 201), resp.text
     data = _unwrap_response(resp.json())
+
+    if data.get("verification_required"):
+        verification_link = data.get("verification_link")
+        assert verification_link, f"verification_link missing from register response: {data}"
+        token = parse_qs(urlparse(verification_link).query).get("token", [None])[0]
+        assert token, f"could not extract verification token from link: {verification_link}"
+        verify_resp = client.post("/auth/email/verify", json={"token": token})
+        assert verify_resp.status_code in (200, 201), verify_resp.text
 
     # Look up the user from DB
     user = _lookup_user(normalized_email)
@@ -158,7 +170,11 @@ def register_user(
     return {
         "email": user.email,
         "password": payload["password"],
-        "access_token": "",  # JWT removed — use v2 session cookies
+        "access_token": session_token,  # JWT removed; auth is via the v2 session
+        # cookie already set on the client. We surface the session token here so
+        # legacy `Authorization: Bearer {access_token}` test helpers still emit a
+        # legal (non-empty) header — the backend ignores it and authenticates
+        # from the cookie jar.
         "session_token": session_token,
         "csrf_token": csrf_token,
         "user_id": user.id,
