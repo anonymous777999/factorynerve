@@ -63,7 +63,15 @@ def invalidate_rate_limit_cache() -> None:
         _ENV_LIMIT_CACHE.clear()
 
 
-limiter = Limiter(key_func=authenticated_user_key, headers_enabled=True) if Limiter else None
+# headers_enabled must stay False: slowapi's header injection requires the
+# decorated endpoint to either return a starlette.Response or declare a
+# `response: Response` parameter. Our rate-limited endpoints return plain
+# dicts (FastAPI serializes them), so with headers_enabled=True slowapi
+# raised "parameter `response` must be an instance of ...Response" and turned
+# every call to those routes — including the Razorpay payment webhook — into a
+# 500. Nothing consumes the X-RateLimit-* response headers, so disabling them
+# removes the fault with no behavioral loss. The 429 enforcement is unaffected.
+limiter = Limiter(key_func=authenticated_user_key, headers_enabled=False) if Limiter else None
 
 
 def _parse_limit(limit_value: str) -> tuple[int, int]:
