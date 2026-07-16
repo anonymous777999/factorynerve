@@ -389,7 +389,7 @@ def _require_min_plan(db: Session, current_user: User, *, min_plan: str, feature
 def _consume_quota(db: Session, current_user: User, *, quota_feature: str, plan: str) -> None:
     del plan
     try:
-        check_rate_limit(current_user.id, feature=quota_feature)
+        check_rate_limit(current_user.id, feature=quota_feature, db=db)
     except RateLimitError as error:
         raise HTTPException(status_code=429, detail=error.detail) from error
     org_id = resolve_org_id(current_user)
@@ -1966,7 +1966,11 @@ def _generate_anomaly_response(
         days=days,
         plan=plan,
         min_plan=min_plan,
-        quota_feature="nlq",
+        # The /anomalies endpoint consumes the "summary" quota (see
+        # _consume_quota below the call site). Report the feature that is
+        # actually charged so the client's quota accounting stays truthful —
+        # the anomaly-preview endpoint already reports "summary" here too.
+        quota_feature="summary",
         provider=provider,
         ai_used=ai_used,
         degraded=is_degraded,
