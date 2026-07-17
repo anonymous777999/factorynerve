@@ -791,7 +791,7 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         key="system.observability.view",
         label="View system observability",
         description="View AI system dashboard, governance, and tracing data.",
-        scope_level=ScopeLevel.PLATFORM,
+        scope_level=ScopeLevel.ORG,
         default_roles=_ADMIN_PLUS,
     ),
 
@@ -816,7 +816,7 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         key="feedback.manage",
         label="Manage feedback",
         description="Read, export, and manage user feedback (admin/owner only).",
-        scope_level=ScopeLevel.PLATFORM,
+        scope_level=ScopeLevel.ORG,
         default_roles=_INTERNAL_STAFF,
     ),
 

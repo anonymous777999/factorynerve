@@ -193,16 +193,16 @@ class TestProductionEntryPermissions:
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_approve_entry_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
-        resp = http_client.post("/entries/999999/approve", json={}, cookies=_cookies(attendance_user))
+        resp = http_client.post("/entries/999999/approve", json={"notes": "test"}, cookies=_cookies(attendance_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_approve_entry_operator_blocked(self, http_client: httpx.Client, operator_user: dict) -> None:
         """Operator does NOT have production.entry.approve."""
-        resp = http_client.post("/entries/999999/approve", json={}, cookies=_cookies(operator_user))
+        resp = http_client.post("/entries/999999/approve", json={"notes": "test"}, cookies=_cookies(operator_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_approve_entry_supervisor_allowed(self, http_client: httpx.Client, supervisor_user: dict) -> None:
-        resp = http_client.post("/entries/999999/approve", json={}, cookies=_cookies(supervisor_user))
+        resp = http_client.post("/entries/999999/approve", json={"notes": "test"}, cookies=_cookies(supervisor_user))
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_delete_entry_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
@@ -390,21 +390,33 @@ class TestSteelDispatchPermissions:
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_dispatch_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
-        resp = http_client.post("/steel/dispatches", json={}, cookies=_cookies(attendance_user))
+        resp = http_client.post("/steel/dispatches",
+            json={"invoice_id": 1, "dispatch_date": "2026-01-01", "truck_number": "MP09AB1234",
+                  "driver_name": "Test", "lines": [{"invoice_line_id": 1, "weight_kg": 100}]},
+            cookies=_cookies(attendance_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_dispatch_operator_blocked(self, http_client: httpx.Client, operator_user: dict) -> None:
         """Operator does NOT have dispatch.record.create."""
-        resp = http_client.post("/steel/dispatches", json={}, cookies=_cookies(operator_user))
+        resp = http_client.post("/steel/dispatches",
+            json={"invoice_id": 1, "dispatch_date": "2026-01-01", "truck_number": "MP09AB1234",
+                  "driver_name": "Test", "lines": [{"invoice_line_id": 1, "weight_kg": 100}]},
+            cookies=_cookies(operator_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_dispatch_supervisor_blocked(self, http_client: httpx.Client, supervisor_user: dict) -> None:
         """Supervisor does NOT have dispatch.record.create."""
-        resp = http_client.post("/steel/dispatches", json={}, cookies=_cookies(supervisor_user))
+        resp = http_client.post("/steel/dispatches",
+            json={"invoice_id": 1, "dispatch_date": "2026-01-01", "truck_number": "MP09AB1234",
+                  "driver_name": "Test", "lines": [{"invoice_line_id": 1, "weight_kg": 100}]},
+            cookies=_cookies(supervisor_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_dispatch_manager_allowed(self, http_client: httpx.Client, manager_user: dict) -> None:
-        resp = http_client.post("/steel/dispatches", json={}, cookies=_cookies(manager_user))
+        resp = http_client.post("/steel/dispatches",
+            json={"invoice_id": 1, "dispatch_date": "2026-01-01", "truck_number": "MP09AB1234",
+                  "driver_name": "Test", "lines": [{"invoice_line_id": 1, "weight_kg": 100}]},
+            cookies=_cookies(manager_user))
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
 
@@ -414,16 +426,22 @@ class TestSteelPaymentPermissions:
     """payment.record.* permissions."""
 
     def test_create_payment_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
-        resp = http_client.post("/steel/customers/payments", json={}, cookies=_cookies(attendance_user))
+        resp = http_client.post("/steel/customers/payments",
+            json={"customer_id": 1, "payment_date": "2026-01-01", "amount": 100},
+            cookies=_cookies(attendance_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_payment_operator_blocked(self, http_client: httpx.Client, operator_user: dict) -> None:
         """Operator does NOT have payment.record.create."""
-        resp = http_client.post("/steel/customers/payments", json={}, cookies=_cookies(operator_user))
+        resp = http_client.post("/steel/customers/payments",
+            json={"customer_id": 1, "payment_date": "2026-01-01", "amount": 100},
+            cookies=_cookies(operator_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_payment_accountant_allowed(self, http_client: httpx.Client, accountant_user: dict) -> None:
-        resp = http_client.post("/steel/customers/payments", json={}, cookies=_cookies(accountant_user))
+        resp = http_client.post("/steel/customers/payments",
+            json={"customer_id": 1, "payment_date": "2026-01-01", "amount": 100},
+            cookies=_cookies(accountant_user))
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
 
@@ -446,16 +464,22 @@ class TestSteelInvoicePermissions:
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_invoice_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
-        resp = http_client.post("/steel/invoices", json={}, cookies=_cookies(attendance_user))
+        resp = http_client.post("/steel/invoices",
+            json={"invoice_date": "2026-01-01", "lines": [{"item_id": 1, "weight_kg": 100, "rate_per_kg": 50}]},
+            cookies=_cookies(attendance_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_invoice_accountant_blocked(self, http_client: httpx.Client, accountant_user: dict) -> None:
         """Accountant does NOT have invoice.record.create (manager+ only)."""
-        resp = http_client.post("/steel/invoices", json={}, cookies=_cookies(accountant_user))
+        resp = http_client.post("/steel/invoices",
+            json={"invoice_date": "2026-01-01", "lines": [{"item_id": 1, "weight_kg": 100, "rate_per_kg": 50}]},
+            cookies=_cookies(accountant_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_invoice_manager_allowed(self, http_client: httpx.Client, manager_user: dict) -> None:
-        resp = http_client.post("/steel/invoices", json={}, cookies=_cookies(manager_user))
+        resp = http_client.post("/steel/invoices",
+            json={"invoice_date": "2026-01-01", "lines": [{"item_id": 1, "weight_kg": 100, "rate_per_kg": 50}]},
+            cookies=_cookies(manager_user))
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
 
@@ -473,22 +497,28 @@ class TestSteelInventoryPermissions:
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_inventory_item_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
-        resp = http_client.post("/steel/inventory/items", json={}, cookies=_cookies(attendance_user))
+        resp = http_client.post("/steel/inventory/items",
+            json={"item_code": "TEST", "name": "Test Item", "category": "raw"},
+            cookies=_cookies(attendance_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_inventory_item_supervisor_blocked(self, http_client: httpx.Client, supervisor_user: dict) -> None:
         """Supervisor does NOT have inventory.item.manage."""
-        resp = http_client.post("/steel/inventory/items", json={}, cookies=_cookies(supervisor_user))
+        resp = http_client.post("/steel/inventory/items",
+            json={"item_code": "TEST", "name": "Test Item", "category": "raw"},
+            cookies=_cookies(supervisor_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_inventory_item_manager_allowed(self, http_client: httpx.Client, manager_user: dict) -> None:
-        resp = http_client.post("/steel/inventory/items", json={}, cookies=_cookies(manager_user))
+        resp = http_client.post("/steel/inventory/items",
+            json={"item_code": "TEST", "name": "Test Item", "category": "raw"},
+            cookies=_cookies(manager_user))
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_reconciliation_approve_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
         resp = http_client.post(
             "/steel/inventory/reconciliations/999999/approve",
-            json={},
+            json={"approver_notes": "test"},
             cookies=_cookies(attendance_user),
         )
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
@@ -497,7 +527,7 @@ class TestSteelInventoryPermissions:
         """Manager does NOT have inventory.reconciliation.approve (admin+ only)."""
         resp = http_client.post(
             "/steel/inventory/reconciliations/999999/approve",
-            json={},
+            json={"approver_notes": "test"},
             cookies=_cookies(manager_user),
         )
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
@@ -505,7 +535,7 @@ class TestSteelInventoryPermissions:
     def test_reconciliation_approve_admin_allowed(self, http_client: httpx.Client, admin_user: dict) -> None:
         resp = http_client.post(
             "/steel/inventory/reconciliations/999999/approve",
-            json={},
+            json={"approver_notes": "test"},
             cookies=_cookies(admin_user),
         )
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
@@ -805,7 +835,7 @@ class TestOCRPermissions:
     def test_approve_verification_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
         resp = http_client.post(
             "/ocr/verifications/999999/approve",
-            json={},
+            json={"decision": "approve"},
             cookies=_cookies(attendance_user),
         )
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
@@ -814,7 +844,7 @@ class TestOCRPermissions:
         """Operator does NOT have ocr.verification.approve."""
         resp = http_client.post(
             "/ocr/verifications/999999/approve",
-            json={},
+            json={"decision": "approve"},
             cookies=_cookies(operator_user),
         )
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
@@ -822,7 +852,7 @@ class TestOCRPermissions:
     def test_approve_verification_supervisor_allowed(self, http_client: httpx.Client, supervisor_user: dict) -> None:
         resp = http_client.post(
             "/ocr/verifications/999999/approve",
-            json={},
+            json={"decision": "approve"},
             cookies=_cookies(supervisor_user),
         )
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
@@ -1016,16 +1046,22 @@ class TestWorkforceIntelligencePermissions:
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_workforce_cost_manage_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
-        resp = http_client.post("/steel/workforce/costs/rates", json={}, cookies=_cookies(attendance_user))
+        resp = http_client.post("/steel/workforce/costs/rates",
+            json={"role": "operator", "base_rate": 100, "effective_from": "2026-01-01"},
+            cookies=_cookies(attendance_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_workforce_cost_manage_manager_blocked(self, http_client: httpx.Client, manager_user: dict) -> None:
         """Manager does NOT have workforce.cost.manage (admin+ only)."""
-        resp = http_client.post("/steel/workforce/costs/rates", json={}, cookies=_cookies(manager_user))
+        resp = http_client.post("/steel/workforce/costs/rates",
+            json={"role": "operator", "base_rate": 100, "effective_from": "2026-01-01"},
+            cookies=_cookies(manager_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_workforce_cost_manage_admin_allowed(self, http_client: httpx.Client, admin_user: dict) -> None:
-        resp = http_client.post("/steel/workforce/costs/rates", json={}, cookies=_cookies(admin_user))
+        resp = http_client.post("/steel/workforce/costs/rates",
+            json={"role": "operator", "base_rate": 100, "effective_from": "2026-01-01"},
+            cookies=_cookies(admin_user))
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
 
@@ -1095,11 +1131,11 @@ class TestEmailSummaryPermissions:
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_generate_email_summary_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
-        resp = http_client.post("/emails/summary/generate", json={}, cookies=_cookies(attendance_user))
+        resp = http_client.post("/emails/summary/generate", json={"period": "daily"}, cookies=_cookies(attendance_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_generate_email_summary_accountant_allowed(self, http_client: httpx.Client, accountant_user: dict) -> None:
-        resp = http_client.post("/emails/summary/generate", json={}, cookies=_cookies(accountant_user))
+        resp = http_client.post("/emails/summary/generate", json={"period": "daily"}, cookies=_cookies(accountant_user))
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
 
@@ -1130,16 +1166,22 @@ class TestSteelFinancePermissions:
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_vendor_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
-        resp = http_client.post("/steel/vendors", json={}, cookies=_cookies(attendance_user))
+        resp = http_client.post("/steel/vendors",
+            json={"name": "Test Vendor", "phone": "+919999999999"},
+            cookies=_cookies(attendance_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_vendor_accountant_blocked(self, http_client: httpx.Client, accountant_user: dict) -> None:
         """Accountant does NOT have invoice.record.create (manager+ only)."""
-        resp = http_client.post("/steel/vendors", json={}, cookies=_cookies(accountant_user))
+        resp = http_client.post("/steel/vendors",
+            json={"name": "Test Vendor", "phone": "+919999999999"},
+            cookies=_cookies(accountant_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_vendor_manager_allowed(self, http_client: httpx.Client, manager_user: dict) -> None:
-        resp = http_client.post("/steel/vendors", json={}, cookies=_cookies(manager_user))
+        resp = http_client.post("/steel/vendors",
+            json={"name": "Test Vendor", "phone": "+919999999999"},
+            cookies=_cookies(manager_user))
         assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
 
