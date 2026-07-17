@@ -37,6 +37,9 @@ def test_profile_read_and_update(http_client):
 def test_profile_update_rejects_email_like_phone(http_client):
     user = register_user(http_client, role="supervisor")
 
+    me = http_client.get("/auth/v2/me")
+    assert me.status_code == HTTPStatus.OK, me.text
+
     updated = http_client.put(
         "/auth/profile",
         headers=_csrf_headers(http_client),

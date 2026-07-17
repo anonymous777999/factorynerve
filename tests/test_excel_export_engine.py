@@ -327,7 +327,7 @@ class TestIndianNumberFormat:
         wb = load_workbook(BytesIO(_generate_invoice_excel(data)))
         ws = wb["Invoice"]
         # The rate and amount columns should have Indian number format
-        cell = ws.cell(row=10, column=6)  # Rate column in line items section
+        cell = ws.cell(row=12, column=6)  # First data row, Rate column
         fmt = cell.number_format
         assert "#,##" in fmt  # Indian format has ## after the initial comma
         wb.close()

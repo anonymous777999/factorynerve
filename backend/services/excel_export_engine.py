@@ -567,7 +567,7 @@ def _generate_ledger_excel(data: dict, verification_meta: dict | None = None) ->
                      right_align_cols={ld_headers.index(h) + 1 for h in ld_headers
                                        if any(k in h.lower() for k in ["debit", "credit", "balance", "amount", "₹"])})
     _add_draft_warning(ws, r + 1, col_count, status)
-    ws.freeze_panes = str(r - len(rows))
+    ws.freeze_panes = f"A{r - len(rows)}"
     _auto_column_width(ws, col_count)
 
     # ── Summary Sheet ────────────────────────────────────────────────────
