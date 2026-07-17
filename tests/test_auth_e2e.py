@@ -80,7 +80,7 @@ def test_session_timeout_behaves_like_unauthorized(http_client):
 
 
 def test_public_registration_bootstraps_first_workspace_as_owner(http_client):
-    """The auth_secure register creates the user directly and assigns OWNER role."""
+    """The auth_secure register uses pending registration; verify after verification the user is OWNER."""
     email = unique_email()
     password = "StrongPassw0rd!"
     response = http_client.post(
@@ -94,9 +94,13 @@ def test_public_registration_bootstraps_first_workspace_as_owner(http_client):
     )
     assert response.status_code == HTTPStatus.CREATED, response.text
     payload = response.json()
-    assert payload["role"] == "owner", f"Expected owner, got {payload}"
-    assert payload["org_id"]
-    assert payload["factory_id"]
+    # Register now uses pending registration flow — complete verification
+    verification_link = payload.get("verification_link")
+    if verification_link:
+        token = parse_qs(urlparse(verification_link).query).get("token", [None])[0]
+        assert token, f"No token in verification_link: {verification_link}"
+        verify_resp = http_client.post("/auth/email/verify", json={"token": token})
+        assert verify_resp.status_code in (HTTPStatus.OK, HTTPStatus.CREATED), verify_resp.text
 
     login = http_client.post("/auth/v2/login", json={"email": email, "password": password})
     assert login.status_code == HTTPStatus.OK, login.text

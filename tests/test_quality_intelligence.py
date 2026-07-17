@@ -159,7 +159,7 @@ def _create_and_approve_entry(
 
 def _create_batch(
     http_client,
-    
+
     input_id: int,
     output_id: int,
     input_kg: float,

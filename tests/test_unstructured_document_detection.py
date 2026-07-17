@@ -73,7 +73,7 @@ class TestUnstructuredPrompts:
         """The ledger prompt should include balance validation instructions."""
         assert "opening_balance" in LEDGER_SHEET_PROMPT
         assert "closing_balance" in LEDGER_SHEET_PROMPT
-        assert "running balance" in LEDGER_SHEET_PROMPT.lower()
+        assert "balance_check" in LEDGER_SHEET_PROMPT
 
     def test_handwritten_prompt_has_confidence(self):
         """The handwritten prompt should include confidence ratings."""

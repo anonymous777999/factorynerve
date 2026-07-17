@@ -81,7 +81,8 @@ from backend.utils import (
 )
 from backend.ai.prompt_sanitizer import sanitize_prompt_input
 from backend.ocr_limits import check_rate_limit, check_and_record_usage, check_and_record_org_usage, get_org_plan_for_usage
-from backend.plans import has_plan_feature, min_plan_for_feature, org_has_ocr_access
+from backend.plans import has_plan_feature, min_plan_for_feature
+from backend.models.org_subscription_addon import OrgSubscriptionAddon
 from backend.services.background_jobs import (
     create_job,
     get_job as get_background_job,
@@ -2968,7 +2969,21 @@ def _require_templates_access(db: Session, current_user: User) -> None:
     plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
     if has_plan_feature(plan, "templates"):
         return
-    if org_has_ocr_access(db, org_id=org_id, fallback_user_id=current_user.id):
+    # Allow template access if the org has purchased an active OCR addon
+    # (e.g. ocr_light, ocr_standard). Do NOT use org_has_ocr_access here
+    # because free plans have a built-in OCR limit (>0) which would leak
+    # the paid templates feature to non-paying users (BILL-1).
+    has_ocr_addon = (
+        db.query(OrgSubscriptionAddon)
+        .filter(
+            OrgSubscriptionAddon.org_id == org_id,
+            OrgSubscriptionAddon.status == "active",
+            OrgSubscriptionAddon.feature_key == "ocr_pack",
+        )
+        .first()
+        is not None
+    )
+    if has_ocr_addon:
         return
     min_plan = min_plan_for_feature("templates")
     raise HTTPException(

@@ -218,7 +218,7 @@ def test_google_callback_restores_recent_factory_context(monkeypatch, http_clien
 
     assert response.headers["location"] == "https://www.factorynerve.online/dashboard"
     set_cookie = ", ".join(response.headers.getlist("set-cookie"))
-    assert "dpr_access=" in set_cookie
+    assert "auth_session=" in set_cookie
     assert "dpr_refresh=" in set_cookie
     assert "dpr_csrf=" in set_cookie
 

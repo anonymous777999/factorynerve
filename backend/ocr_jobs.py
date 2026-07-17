@@ -365,7 +365,7 @@ def _save_jobs_to_disk() -> None:
     # Atomic write: write to .tmp then rename
     tmp_path = _JOB_PERSIST_PATH.with_suffix(".tmp")
     tmp_path.write_text(json_module.dumps(data), encoding="utf-8")
-    tmp_path.rename(_JOB_PERSIST_PATH)
+    os.replace(str(tmp_path), str(_JOB_PERSIST_PATH))
 
 
 def _recover_jobs_on_startup() -> int:
