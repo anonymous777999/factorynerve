@@ -858,7 +858,7 @@ def approve_entry(
         raise HTTPException(status_code=404, detail="Entry not found.")
 
     # Step 2: Approval service initiation (maker-checker)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=entry.user_id,
         workflow_key="production.entry.approve",
@@ -929,7 +929,7 @@ def reject_entry(
         raise HTTPException(status_code=404, detail="Entry not found.")
 
     # Step 2: Approval service initiation (maker-checker)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=entry.user_id,
         workflow_key="production.entry.approve",

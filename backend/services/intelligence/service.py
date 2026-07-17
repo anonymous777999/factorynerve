@@ -428,12 +428,12 @@ def _build_pipeline_result(
         ),
         2,
     )
-    
+
     # Identify if any stage used a fallback or reached maximum escalation
     stages = [structured_stage, validation_stage, anomaly_stage, loss_stage]
     degraded = any(s.provider == "fallback" or s.model_tier == "opus" for s in stages if classification.complexity != "complex")
     any_fallback = any(s.provider == "fallback" for s in stages)
-    
+
     pipeline_state = {
         "ocr_extraction": {
             "warnings": document.warnings,

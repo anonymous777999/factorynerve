@@ -2331,7 +2331,7 @@ def approve_steel_stock_reconciliation(
     # Step 1: Approval service initiation (maker-checker)
     org_id = resolve_org_id(current_user)
     factory_id = factory.factory_id
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=row.counted_by_user_id,
         workflow_key="inventory.reconciliation.approve",
@@ -2374,7 +2374,7 @@ def approve_steel_stock_reconciliation(
     row.rejected_by_user_id = None
     row.approved_at = datetime.now(timezone.utc)
     row.rejected_at = None
-    
+
     if abs(float(row.variance_kg or 0.0)) > 0.0001:
         # Pessimistic lock the item before posting the ledger adjustment
         db.query(SteelInventoryItem).filter(SteelInventoryItem.id == row.item_id).with_for_update().first()
@@ -2474,7 +2474,7 @@ def reject_steel_stock_reconciliation(
     # Approval service initiation (maker-checker)
     org_id = resolve_org_id(current_user)
     factory_id = factory.factory_id
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=row.counted_by_user_id,
         workflow_key="inventory.reconciliation.reject",
@@ -3356,7 +3356,7 @@ def review_steel_customer_verification(
     # Approval service initiation (maker-checker for verification review)
     org_id_cv = resolve_org_id(current_user)
     factory_id_cv = factory.factory_id
-    approval_decision_cv = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision_cv = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=customer.created_by_user_id or current_user.id,
         workflow_key="customer.verification.review",
@@ -4761,7 +4761,7 @@ def update_steel_dispatch_status(
     # Approval service initiation for dispatch status changes
     org_id_ds = resolve_org_id(current_user)
     factory_id_ds = factory.factory_id
-    approval_decision_ds = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision_ds = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=dispatch.created_by_user_id,
         workflow_key="dispatch.status.update",
@@ -5767,18 +5767,18 @@ def verify_gate_pass(
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    
+
     dispatch = _get_dispatch_or_404(db, org_id=factory.org_id, factory_id=factory.factory_id, dispatch_id=dispatch_id)
-    
+
     if dispatch.status not in {"pending", "loaded"}:
         raise HTTPException(status_code=400, detail=f"Gate pass can only be verified for pending or loaded dispatches (current: {dispatch.status}).")
-    
+
     if dispatch.gate_pass_verified_at is not None:
         raise HTTPException(status_code=409, detail="Gate pass already verified.")
-    
+
     dispatch.gate_pass_verified_at = datetime.now(timezone.utc)
     dispatch.gate_pass_verified_by_user_id = current_user.id
-    
+
     _write_steel_audit(
         db,
         actor=current_user,
@@ -5788,7 +5788,7 @@ def verify_gate_pass(
         request=request,
     )
     db.commit()
-    
+
     return {
         "verified": True,
         "dispatch_id": dispatch_id,

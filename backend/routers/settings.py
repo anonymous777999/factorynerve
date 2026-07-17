@@ -604,7 +604,7 @@ def create_factory(
         raise HTTPException(status_code=403, detail=str(error)) from error
 
     # Step 2: Approval service initiation (maker-checker)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=None,
         workflow_key="factory.create",
@@ -1163,7 +1163,7 @@ def update_user_factory_access(
     user.factory_code = primary_factory.factory_code
 
     # Step 2: Approval service initiation (maker-checker)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=user.id,
         workflow_key="user.membership.assign",
@@ -1317,7 +1317,7 @@ def update_user_role(
         membership.role = payload.role
 
     # Step 2: Approval service initiation (maker-checker)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=user.id,
         workflow_key="user.role.assign",
@@ -1473,7 +1473,7 @@ def deactivate_user(
             raise HTTPException(status_code=400, detail="Cannot deactivate the last owner/admin account.")
 
     # Step 2: Approval service initiation (maker-checker)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=user.id,
         workflow_key="user.deactivate",
