@@ -192,7 +192,7 @@ def trends(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_analytics_feature(db, current_user)
+    _require_basic_analytics(db, current_user)
     PDP(db=db).require_permission(actor=current_user, permission_key="analytics.operations.view")
     today = date.today()
     start = today - timedelta(days=6)

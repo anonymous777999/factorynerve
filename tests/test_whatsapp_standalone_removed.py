@@ -18,6 +18,8 @@ def test_deleted_standalone_whatsapp_endpoints_are_not_reachable(http_client):
 
 
 def test_admin_alert_recipients_route_requires_authentication(http_client):
+    # Clear any cookies from previous tests to ensure unauthenticated state
+    http_client.cookies.clear()
     response = http_client.get("/settings/alert-recipients")
 
     assert response.status_code == HTTPStatus.UNAUTHORIZED, response.text
