@@ -4,7 +4,7 @@ from tests.utils import register_user, set_org_plan_for_user_email, unique_email
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def test_auth_context_and_factory_switch_with_cookies(http_client):

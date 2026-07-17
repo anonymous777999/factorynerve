@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import logging
 import mimetypes
+import os
 import re
 import secrets
 from difflib import SequenceMatcher
@@ -75,6 +77,7 @@ from backend.utils import normalize_identifier_code, normalize_phone_number, nor
 
 
 router = APIRouter(tags=["Steel"])
+logger = logging.getLogger(__name__)
 SteelPaymentMode = Literal["bank_transfer", "cash", "cheque", "upi"]
 SteelCustomerStatus = Literal["active", "on_hold", "blocked"]
 SteelDispatchStatus = Literal["pending", "loaded", "exited", "dispatched", "delivered", "cancelled"]
@@ -840,9 +843,9 @@ def _normalize_customer_payment_terms(value: int | float | str | None) -> int:
     try:
         normalized = float(value)
     except (TypeError, ValueError) as error:
-        raise HTTPException(status_code=400, detail="Payment terms must be a positive whole number.") from error
-    if not normalized.is_integer() or int(normalized) <= 0:
-        raise HTTPException(status_code=400, detail="Payment terms must be a positive whole number.")
+        raise HTTPException(status_code=400, detail="Payment terms must be a positive whole number or 0 for cash/advance.") from error
+    if not normalized.is_integer() or int(normalized) < 0:
+        raise HTTPException(status_code=400, detail="Payment terms must be a positive whole number or 0 for cash/advance.")
     return int(normalized)
 
 
@@ -1762,11 +1765,17 @@ def download_steel_owner_daily_pdf(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    PDP(db=db).require_permission(actor=current_user, permission_key="admin.billing.quota.reset")
+    if current_user.role not in (UserRole.OWNER, UserRole.ADMIN):
+        raise HTTPException(status_code=403, detail="Owner daily PDF is restricted to owner and admin roles.")
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="production.analytics.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
 
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
@@ -4030,7 +4039,6 @@ def create_steel_invoice(
             # P1-8: GST fields from item
             hsn_code=line["item"].hsn_code if line["item"].hsn_code else None,
             gst_rate=line["item"].gst_rate if line["item"].gst_rate else None,
-            taxable_amount=round(float(line["weight_kg"]) * float(line["rate_per_kg"]), 2),
             # P1-8: Auto-calc CGST/SGST (intra-state, 50/50 split) or IGST (inter-state)
             cgst_amount=line["cgst_amount"],
             sgst_amount=line["sgst_amount"],

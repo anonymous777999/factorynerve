@@ -26,7 +26,7 @@ from tests.utils import register_user
 
 
 def _headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def _build_override_service() -> tuple[OTPService, MockSMSProvider]:

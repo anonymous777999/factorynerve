@@ -5,7 +5,7 @@ from tests.utils import register_user
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def _sample_pdf_bytes() -> bytes:

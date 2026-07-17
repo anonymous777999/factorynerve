@@ -347,7 +347,7 @@ def _run_entry_summary_job(progress, *, entry_id: int, consume_quota: bool = Tru
         org_id = entry.org_id
         plan = get_org_plan(db, org_id=org_id, fallback_user_id=entry.user_id)
         if consume_quota:
-            check_rate_limit(entry.user_id, feature="summary")
+            check_rate_limit(entry.user_id, feature="summary", db=db)
             if org_id:
                 consume_ai_quota(db, org_id=org_id, feature="summary")
         progress(70, "Generating AI summary")
@@ -1091,7 +1091,7 @@ def regenerate_entry_summary(
             detail=f"AI summaries are not available on the {plan.title()} plan. Upgrade to {_summary_min_plan().title()} or higher to unlock this.",
         )
     try:
-        check_rate_limit(current_user.id, feature="summary")
+        check_rate_limit(current_user.id, feature="summary", db=db)
     except RateLimitError as error:
         raise HTTPException(status_code=429, detail=error.detail) from error
     if org_id:

@@ -262,6 +262,7 @@ def test_quality_intelligence_empty_factory(http_client):
 def test_quality_intelligence_basic_summary_with_data(http_client):
     """Create entries with structured quality data and verify summary."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     # Seed defect reasons for FK references
@@ -294,6 +295,7 @@ def test_quality_intelligence_basic_summary_with_data(http_client):
 def test_quality_intelligence_defect_categorization(http_client):
     """Verify defect category analysis groups by defect_reason."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     dr_map = _seed_defect_reasons()
@@ -324,6 +326,7 @@ def test_quality_intelligence_defect_categorization(http_client):
 def test_quality_intelligence_by_operator(http_client):
     """Verify operator breakdown works."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     dr_map = _seed_defect_reasons()
@@ -347,6 +350,7 @@ def test_quality_intelligence_by_operator(http_client):
 def test_quality_intelligence_by_shift(http_client):
     """Verify shift breakdown works."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     dr_map = _seed_defect_reasons()
@@ -375,6 +379,7 @@ def test_quality_intelligence_by_shift(http_client):
 def test_quality_intelligence_by_department(http_client):
     """Verify department breakdown works."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     dr_map = _seed_defect_reasons()
@@ -399,6 +404,7 @@ def test_quality_intelligence_by_department(http_client):
 def test_quality_intelligence_scrap_vs_rework(http_client):
     """Verify scrap vs rework analysis."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     # Use different shifts to avoid 409 conflicts
@@ -424,6 +430,7 @@ def test_quality_intelligence_scrap_vs_rework(http_client):
 def test_quality_intelligence_batch_integration(http_client):
     """Verify batch quality integration works."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     raw_id = _create_item(http_client,  "QI-RAW", "QI Input", "raw_material", rate=50.0)
@@ -528,6 +535,7 @@ def test_quality_intelligence_financial_redaction(http_client):
 def test_quality_intelligence_financial_access_for_owner(http_client):
     """Verify owner role can see cost fields."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     dr_map = _seed_defect_reasons()
@@ -556,6 +564,7 @@ def test_quality_intelligence_requires_auth(http_client):
 def test_quality_intelligence_data_confidence_section(http_client):
     """Verify data_confidence section structure."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     dr_map = _seed_defect_reasons()
@@ -585,6 +594,7 @@ def test_quality_intelligence_data_confidence_section(http_client):
 def test_quality_intelligence_rejection_trend(http_client):
     """Verify daily rejection trend is populated."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     dr_map = _seed_defect_reasons()
@@ -620,6 +630,7 @@ def test_quality_intelligence_rejection_trend(http_client):
 def test_quality_intelligence_daily_trend_with_batches(http_client):
     """Verify daily trend merges entry and batch data."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     dr_map = _seed_defect_reasons()
@@ -654,6 +665,7 @@ def test_quality_intelligence_daily_trend_with_batches(http_client):
 def test_quality_intelligence_increase_drivers(http_client):
     """Verify increase drivers section works."""
     user = register_user(http_client, role="admin")
+    headers = {"Cookie": f"auth_session={user['session_token']}"}
     _promote_factory_to_steel(user["email"])
     _set_user_role(user["email"], "owner")
     dr_map = _seed_defect_reasons()

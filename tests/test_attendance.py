@@ -4,7 +4,7 @@ from tests.utils import register_user
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def test_attendance_punch_flow_and_live_board(http_client):

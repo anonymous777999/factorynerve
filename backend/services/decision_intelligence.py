@@ -242,6 +242,8 @@ def _build_top_cost_problems(
             )
             .scalar()
         )
+        if last_txn is not None and last_txn.tzinfo is None:
+            last_txn = last_txn.replace(tzinfo=timezone.utc)
         if last_txn is None or last_txn < dead_cutoff:
             bal = balances.get(item.id, 0.0)
             if bal > 0.001:

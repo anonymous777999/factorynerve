@@ -97,9 +97,18 @@ def _try_prune_stale_keys() -> None:
         db = SessionLocal()
         try:
             cutoff = datetime.now(timezone.utc) - timedelta(hours=IDEMPOTENCY_TTL_HOURS)
-            db.query(IdempotencyKey).filter(
-                IdempotencyKey.created_at < cutoff
-            ).limit(IDEMPOTENCY_MAX_DELETE_BATCH).delete(synchronize_session=False)
+            # SQLAlchemy forbids .delete() after .limit(). Use a subquery instead.
+            stale_ids = [
+                row[0]
+                for row in db.query(IdempotencyKey.id)
+                .filter(IdempotencyKey.created_at < cutoff)
+                .limit(IDEMPOTENCY_MAX_DELETE_BATCH)
+                .all()
+            ]
+            if stale_ids:
+                db.query(IdempotencyKey).filter(
+                    IdempotencyKey.id.in_(stale_ids)
+                ).delete(synchronize_session=False)
             db.commit()
         finally:
             db.close()

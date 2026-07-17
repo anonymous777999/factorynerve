@@ -13,7 +13,7 @@ PNG_1X1_BYTES = base64.b64decode(
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def _wait_for_api_job(http_client, path: str, headers: dict[str, str], attempts: int = 80):

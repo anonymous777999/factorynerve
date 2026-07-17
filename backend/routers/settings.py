@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 from datetime import date, datetime, timedelta, timezone
@@ -68,6 +69,7 @@ from backend.utils import generate_company_code
 
 
 router = APIRouter(tags=["Settings"])
+logger = logging.getLogger(__name__)
 EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
 PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "30"))
 INVITE_EMAIL_SUBJECT = os.getenv("INVITE_EMAIL_SUBJECT", "You're invited to FactoryNerve")
@@ -447,7 +449,19 @@ def _serialize_factory_summaries(
     summaries: list[dict] = []
     for factory in factories:
         profile = get_factory_profile(factory.industry_type)
-        template_key = normalize_workflow_template_key(factory.industry_type, factory.workflow_template_key)
+        try:
+            template_key = normalize_workflow_template_key(factory.industry_type, factory.workflow_template_key)
+        except ValueError:
+            # Defensive: a factory row whose stored workflow_template_key drifted out
+            # of sync with its industry_type must not 500 the whole factory list.
+            logger.warning(
+                "Factory %s has an inconsistent workflow_template_key=%r for industry_type=%r; "
+                "falling back to the default template.",
+                getattr(factory, "factory_id", None),
+                factory.workflow_template_key,
+                factory.industry_type,
+            )
+            template_key = default_workflow_template_key(factory.industry_type)
         template = get_workflow_template(template_key)
         summaries.append(
             {

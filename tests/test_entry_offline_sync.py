@@ -4,7 +4,7 @@ from tests.utils import create_entry_payload, register_user
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def test_entry_create_is_idempotent_for_same_client_request_id(http_client):

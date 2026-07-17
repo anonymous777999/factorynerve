@@ -10,7 +10,7 @@ init_db()
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def _set_org_plan(email: str, plan: str) -> None:

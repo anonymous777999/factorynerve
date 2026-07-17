@@ -73,7 +73,7 @@ def _setup_steel_factory(user_email: str, factory_name: str) -> None:
 # ── Auth header helper ───────────────────────────────────────────────────────
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 # ── AI endpoints (8) ─────────────────────────────────────────────────────────

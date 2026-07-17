@@ -943,7 +943,7 @@ def enqueue_intelligence_request(
 ) -> dict[str, Any]:
     validate_upload(filename=filename, content_type=content_type, size_bytes=len(file_bytes))
     if enforce_rate_limit:
-        check_rate_limit(current_user.id, feature="factory_intelligence", limit=INTELLIGENCE_RATE_LIMIT)
+        check_rate_limit(current_user.id, feature="factory_intelligence", limit=INTELLIGENCE_RATE_LIMIT, db=db)
     _register_retry_handler()
 
     request_id = uuid4().hex

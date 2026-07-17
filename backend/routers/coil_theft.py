@@ -45,7 +45,7 @@ def _consume_quota(db: Session, current_user: User, *, quota_feature: str, plan:
     from backend.ai_rate_limit import check_rate_limit, RateLimitError
     from backend.tenancy import resolve_org_id
     try:
-        check_rate_limit(current_user.id, feature=quota_feature)
+        check_rate_limit(current_user.id, feature=quota_feature, db=db)
     except RateLimitError as error:
         raise HTTPException(status_code=429, detail=error.detail) from error
     org_id = resolve_org_id(current_user)

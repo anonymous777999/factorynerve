@@ -238,7 +238,7 @@ def generate_summary_email(
             detail=f"Email summaries are not available on the {plan.title()} plan. Upgrade to {_summary_min_plan().title()} or higher to unlock this.",
         )
     try:
-        check_rate_limit(current_user.id, feature="email")
+        check_rate_limit(current_user.id, feature="email", db=db)
     except RateLimitError as error:
         raise HTTPException(status_code=429, detail=error.detail) from error
     if org_id:

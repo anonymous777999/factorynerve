@@ -503,7 +503,7 @@ def build_anomaly_detection(
         db.query(SteelStockReconciliation)
         .filter(
             SteelStockReconciliation.factory_id == factory_id,
-            SteelStockReconciliation.created_at >= cutoff,
+            SteelStockReconciliation.counted_at >= cutoff,
         )
         .all()
     )
@@ -637,7 +637,7 @@ def build_anomaly_detection(
             .all()
         )
         line_sum = sum(float(l.weight_kg or 0.0) for l in lines)
-        if lines and abs(disp.total_weight_kg - line_sum) > 1.0:
+        if lines and abs(float(disp.total_weight_kg or 0.0) - line_sum) > 1.0:
             dispatch_fraud_alerts.append({
                 "type": "weight_inconsistency",
                 "severity": "warning",

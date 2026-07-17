@@ -2,11 +2,8 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from http import HTTPStatus
-from urllib.parse import parse_qs, urlparse
 
-from backend.database import SessionLocal, init_db
-from backend.models.user import User
-from backend.models.user_factory_role import UserFactoryRole
+from tests.utils import register_user
 
 
 def _register(
@@ -18,55 +15,25 @@ def _register(
     factory_name: str,
     company_code: str | None = None,
 ) -> dict:
-    response = http_client.post(
-        "/auth/register",
-        json={
-            "name": name,
-            "email": email,
-            "password": "StrongPassw0rd!",
+    # Delegate to the shared helper, which performs register -> email verify ->
+    # v2 login and returns the session token as ``access_token``. Adapt the
+    # return shape to what this module's tests expect (``["user"]["factory_code"]``
+    # and a top-level ``access_token``).
+    user = register_user(
+        http_client,
+        role=role,
+        email=email,
+        factory_name=factory_name,
+        company_code=company_code,
+    )
+    return {
+        "access_token": user["access_token"],
+        "user": {
+            "factory_code": user.get("company_code"),
             "role": role,
-            "factory_name": factory_name,
-            "company_code": company_code,
-            "phone_number": "+910000000000",
         },
-    )
-    assert response.status_code == HTTPStatus.CREATED, response.text
-    payload = response.json()
-    verification_link = payload.get("verification_link")
-    assert verification_link, payload
-    parsed = urlparse(verification_link)
-    token_values = parse_qs(parsed.query).get("token") or parse_qs(parsed.query).get("verification_token")
-    assert token_values, verification_link
-    verify = http_client.post("/auth/email/verify", json={"token": token_values[0]})
-    assert verify.status_code == HTTPStatus.OK, verify.text
-    login = http_client.post(
-        "/auth/login",
-        json={"email": email, "password": "StrongPassw0rd!"},
-    )
-    assert login.status_code == HTTPStatus.OK, login.text
-    login_payload = login.json()
-    actual_role = login_payload.get("user", {}).get("role")
-    if actual_role != role:
-        init_db()
-        db = SessionLocal()
-        try:
-            user = db.query(User).filter(User.email == email).first()
-            assert user is not None
-            user.role = role
-            memberships = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == user.id).all()
-            for membership in memberships:
-                membership.role = role
-            db.commit()
-        finally:
-            db.close()
-        login = http_client.post(
-            "/auth/login",
-            json={"email": email, "password": "StrongPassw0rd!"},
-        )
-        assert login.status_code == HTTPStatus.OK, login.text
-        login_payload = login.json()
-    login_payload["access_token"] = login_payload["access_token"]
-    return login_payload
+    }
+
 
 
 def _entry_payload(*, day_offset: int, units_target: int, units_produced: int, downtime_minutes: int, quality_issues: bool) -> dict:
@@ -106,8 +73,8 @@ def test_reports_insights_show_weekly_employee_rankings(http_client):
         company_code=factory_code,
     )
 
-    manager_headers = {"Authorization": f"Bearer {manager['access_token']}"}
-    operator_headers = {"Authorization": f"Bearer {operator['access_token']}"}
+    manager_headers = {"Authorization": f"Bearer {manager['access_token']}", "Cookie": f"auth_session={manager['access_token']}"}
+    operator_headers = {"Authorization": f"Bearer {operator['access_token']}", "Cookie": f"auth_session={operator['access_token']}"}
 
     response = http_client.post("/entries", json=_entry_payload(day_offset=1, units_target=100, units_produced=118, downtime_minutes=0, quality_issues=False), headers=manager_headers)
     assert response.status_code == HTTPStatus.CREATED, response.text
@@ -143,6 +110,6 @@ def test_reports_insights_block_operator_role(http_client):
         role="operator",
         factory_name="Operator Block Factory",
     )
-    headers = {"Authorization": f"Bearer {operator['access_token']}"}
+    headers = {"Authorization": f"Bearer {operator['access_token']}", "Cookie": f"auth_session={operator['access_token']}"}
     response = http_client.get("/reports/insights", headers=headers)
     assert response.status_code == HTTPStatus.FORBIDDEN, response.text

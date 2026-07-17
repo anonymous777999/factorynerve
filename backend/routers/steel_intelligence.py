@@ -177,7 +177,7 @@ def get_steel_owner_dashboard(
         raise HTTPException(status_code=400, detail=str(error)) from error
     PDP(db=db).require_permission(
         actor=current_user,
-        permission_key="admin.billing.quota.reset",
+        permission_key="production.analytics.view",
         resource=ResourceContext(factory_id=factory.factory_id),
     )
     return build_owner_dashboard(db, factory)
@@ -205,7 +205,7 @@ def get_steel_decision_dashboard(
         raise HTTPException(status_code=400, detail=str(error)) from error
     PDP(db=db).require_permission(
         actor=current_user,
-        permission_key="admin.billing.quota.reset",
+        permission_key="production.analytics.view",
         resource=ResourceContext(factory_id=factory.factory_id),
     )
     return build_decision_dashboard(db, factory)

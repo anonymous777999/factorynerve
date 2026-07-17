@@ -359,7 +359,7 @@ app.include_router(steel_router, prefix="/steel")
 app.include_router(steel_intelligence_router, prefix="/steel")
 app.include_router(steel_finance_router, prefix="/steel")
 app.include_router(steel_bom_router, prefix="/steel")
-app.include_router(notifications_router, prefix="/notifications")
+app.include_router(notifications_router)
 app.include_router(workforce_intelligence_router, prefix="/intelligence")
 app.include_router(cron_router)
 
