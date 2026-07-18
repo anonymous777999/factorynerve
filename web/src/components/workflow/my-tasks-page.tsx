@@ -58,14 +58,14 @@ function roleEligible(role?: string | null) {
 
 function highlightCard(enabled: boolean) {
   return enabled
-    ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)] shadow-[0_0_0_1px_rgba(62,166,255,0.14)]"
+    ? "border-[rgba(197,109,45,0.45)] bg-[rgba(197,109,45,0.12)] shadow-[0_0_0_1px_rgba(197,109,45,0.14)]"
     : "border-[var(--border)] bg-[rgba(20,24,36,0.88)]";
 }
 
 function taskTone(type: "good" | "watch" | "action") {
   if (type === "good") return "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100";
   if (type === "watch") return "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100";
-  return "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100";
+  return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]";
 }
 
 export default function MyTasksPage() {

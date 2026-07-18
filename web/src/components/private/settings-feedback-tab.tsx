@@ -60,7 +60,7 @@ function badgeTone(status: FeedbackStatus) {
   if (status === "triaged") {
     return "border-amber-400/30 bg-amber-500/12 text-amber-100";
   }
-  return "border-sky-400/30 bg-sky-500/12 text-sky-100";
+  return "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]";
 }
 
 function formatSourceLabel(value: FeedbackAdminItem["source"]) {
@@ -239,7 +239,7 @@ export default function SettingsFeedbackTab({ active }: Props) {
           {recurringGroups.length ? (
             <div className="grid gap-3 xl:grid-cols-4">
               {recurringGroups.map((row) => (
-                <div key={row.group_key} className="rounded-2xl border border-[rgba(62,166,255,0.22)] bg-[rgba(20,24,36,0.86)] p-4">
+                <div key={row.group_key} className="rounded-2xl border border-[rgba(197,109,45,0.22)] bg-[rgba(20,24,36,0.86)] p-4">
                   <div className="text-[10px] font-semibold uppercase tracking-label text-[var(--accent)]">
                     Recurring issue
                   </div>
@@ -296,7 +296,7 @@ export default function SettingsFeedbackTab({ active }: Props) {
                           </span>
                         ) : null}
                         {row.group_occurrences > 1 ? (
-                          <span className="rounded-full border border-[rgba(62,166,255,0.26)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-label text-sky-100">
+                          <span className="rounded-full border border-[rgba(197,109,45,0.26)] bg-[rgba(197,109,45,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-label text-[var(--accent)]">
                             {row.group_occurrences} similar
                           </span>
                         ) : null}

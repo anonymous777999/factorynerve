@@ -12,7 +12,7 @@ export default function OfflinePage() {
           If you already opened the DPR entry page, keep working there. Drafts stay in this browser and queued submissions
           will sync automatically the moment your connection returns.
         </p>
-        <div className="mt-6 rounded-2xl border border-[rgba(62,166,255,0.2)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-[var(--text)]/90">
+        <div className="mt-6 rounded-2xl border border-[rgba(197,109,45,0.2)] bg-[rgba(197,109,45,0.08)] p-4 text-sm text-[var(--text)]/90">
           Recommended: reopen <span className="font-semibold">DPR Entry</span> once the shell reconnects, then press
           <span className="font-semibold"> Sync Now</span> only if the queue does not clear automatically.
         </div>

@@ -645,8 +645,8 @@ export default function AiInsightsPage() {
                         onClick={() => setActiveDomain(tab.id)}
                         className={
                           isActive
-                            ? "flex items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[rgba(62,166,255,0.12)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-all duration-150"
-                            : "flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[rgba(12,16,26,0.72)] px-3.5 py-1.5 text-xs font-medium text-[var(--muted)] transition-all duration-150 hover:border-[rgba(62,166,255,0.3)] hover:text-white"
+                            ? "flex items-center gap-1.5 rounded-full border border-[var(--accent)] bg-[rgba(197,109,45,0.12)] px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm transition-all duration-150"
+                            : "flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[rgba(12,16,26,0.72)] px-3.5 py-1.5 text-xs font-medium text-[var(--muted)] transition-all duration-150 hover:border-[rgba(197,109,45,0.3)] hover:text-white"
                         }
                       >
                         <span className="text-sm">{tab.emoji}</span>
@@ -670,14 +670,15 @@ export default function AiInsightsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {builtInPresets.map((preset) => (
-                    <button
+                    <Button
                       key={preset.id}
-                      type="button"
-                      className="rounded-full border border-[var(--border)] bg-[var(--card)] px-3.5 py-2 text-xs font-medium transition-all duration-150 hover:border-[rgba(62,166,255,0.4)] hover:text-white"
+                      variant="outline"
+                      size="sm"
+                      className="h-auto rounded-full px-3.5 py-2 text-xs"
                       onClick={() => setQuestion(preset.question)}
                     >
                       {preset.label}
-                    </button>
+                    </Button>
                   ))}
                 </div>
               </div>
@@ -691,13 +692,14 @@ export default function AiInsightsPage() {
                   <div className="flex flex-wrap gap-2">
                     {savedPresets.map((preset) => (
                       <div key={preset.id} className="flex items-center gap-1.5">
-                        <button
-                          type="button"
-                          className="rounded-full border border-[rgba(99,102,241,0.3)] bg-[rgba(99,102,241,0.08)] px-3.5 py-2 text-xs font-medium text-indigo-200 transition-all duration-150 hover:border-[rgba(99,102,241,0.6)] hover:text-white"
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-auto rounded-full px-3.5 py-2 text-xs"
                           onClick={() => setQuestion(preset.question)}
                         >
                           {preset.label}
-                        </button>
+                        </Button>
                         <button
                           type="button"
                           className="text-[10px] text-[var(--muted)] underline underline-offset-4 hover:text-red-300"

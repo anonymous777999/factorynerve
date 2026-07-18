@@ -15,6 +15,7 @@ import {
   type WorkerSummary,
 } from "@/lib/workforce";
 import { useSession } from "@/lib/use-session";
+import { EmptyState, TabButton } from "@/components/shared";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -50,30 +51,6 @@ function severityColor(value: number | null | undefined) {
   if (value > 10) return "text-rose-400";
   if (value > 5) return "text-amber-400";
   return "text-emerald-400";
-}
-
-function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? "border border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] text-sky-100 shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-          : "border border-[var(--border)] bg-[rgba(20,24,36,0.7)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
-      {message}
-    </div>
-  );
 }
 
 function DataChip({ label, value, color }: { label: string; value: string | number; color?: string }) {
@@ -227,7 +204,7 @@ export function WorkforceIntelligencePage() {
               <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.7)] shadow-sm">
                 <CardContent className="pt-4">
                   <div className="text-xs uppercase tracking-wider text-[var(--muted)]">Completed</div>
-                  <div className="mt-1 text-2xl font-bold text-sky-400">{formatNumber(today?.completed)}</div>
+                  <div className="mt-1 text-2xl font-bold text-[var(--accent)]">{formatNumber(today?.completed)}</div>
                   <div className="mt-1 text-xs text-[var(--muted)]">Closed attendance</div>
                 </CardContent>
               </Card>
@@ -377,8 +354,8 @@ export function WorkforceIntelligencePage() {
                   onClick={() => setSortBy(opt.key)}
                   className={`rounded-xl px-3 py-1.5 text-xs font-semibold transition ${
                     sortBy === opt.key
-                      ? "border border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] text-sky-100"
-                      : "border border-[var(--border)] bg-[rgba(20,24,36,0.7)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)]"
+                      ? "border border-[rgba(197,109,45,0.45)] bg-[rgba(197,109,45,0.14)] text-[var(--accent)]"
+                      : "border border-[var(--border)] bg-[rgba(20,24,36,0.7)] text-[var(--muted)] hover:border-[rgba(197,109,45,0.28)]"
                   }`}
                 >
                   {opt.label}
@@ -498,7 +475,7 @@ export function WorkforceIntelligencePage() {
                             <td className="px-3 py-3 font-semibold text-white capitalize">{s.shift}</td>
                             <td className="px-3 py-3 font-mono text-white">{s.total_records}</td>
                             <td className="px-3 py-3 font-mono text-emerald-400">{s.working}</td>
-                            <td className="px-3 py-3 font-mono text-sky-400">{s.completed}</td>
+                            <td className="px-3 py-3 font-mono text-[var(--accent)]">{s.completed}</td>
                             <td className="px-3 py-3 font-mono text-rose-400">{s.absent}</td>
                             <td className="px-3 py-3 font-mono text-white">{formatNumber(s.total_worked_hours)}</td>
                             <td className="px-3 py-3">

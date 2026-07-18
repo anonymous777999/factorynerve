@@ -19,6 +19,7 @@ import {
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
+import { EmptyState, TabButton } from "@/components/shared";
 
 type Tab = "overview" | "trends" | "machines_lines" | "operators_shifts" | "financial" | "drivers_confidence";
 
@@ -53,30 +54,6 @@ function severityColor(value: number | null | undefined) {
   if (value > 10) return "text-rose-400";
   if (value > 5) return "text-amber-400";
   return "text-emerald-400";
-}
-
-function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? "border border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] text-sky-100 shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-          : "border border-[var(--border)] bg-[rgba(20,24,36,0.7)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
-      {message}
-    </div>
-  );
 }
 
 function DataChip({ label, value, color }: { label: string; value: string | number; color?: string }) {
@@ -244,7 +221,7 @@ export function SteelScrapLossIntelligencePage() {
               </Card>
             </section>
 
-            {/* Highest Contributors */}  
+            {/* Highest Contributors */}
             <section className="grid gap-6 lg:grid-cols-3">
               <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.7)] shadow-sm">
                 <CardHeader>
@@ -290,7 +267,7 @@ export function SteelScrapLossIntelligencePage() {
               </Card>
             </section>
 
-            {/* Data Quality Overview */}  
+            {/* Data Quality Overview */}
             <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.7)] shadow-sm">
               <CardHeader>
                 <CardTitle>Data Quality &amp; Attribution Status</CardTitle>

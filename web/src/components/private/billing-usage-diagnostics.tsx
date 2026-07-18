@@ -65,7 +65,7 @@ export function BillingUsageDiagnostics({
               <div className="text-sm font-semibold text-white">AI Quota Usage</div>
               <div className="mt-1 text-xs leading-5 text-[var(--muted)]">Live AI usage</div>
             </div>
-            <span className="rounded-full border border-sky-400/30 bg-sky-400/15 px-3 py-1 text-[11px] uppercase tracking-caption text-sky-200">
+            <span className="rounded-full border border-[var(--accent-soft)] bg-[var(--accent-soft)] px-3 py-1 text-[11px] uppercase tracking-caption text-[var(--accent)]">
               Live sync
             </span>
           </div>

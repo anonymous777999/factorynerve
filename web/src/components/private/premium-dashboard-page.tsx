@@ -80,7 +80,7 @@ function levelClasses(level: number) {
     case 2:
       return "bg-[rgba(34,197,94,0.75)]";
     case 1:
-      return "bg-[rgba(62,166,255,0.55)]";
+      return "bg-[rgba(197,109,45,0.55)]";
     default:
       return "bg-[rgba(255,255,255,0.06)]";
   }
@@ -110,7 +110,7 @@ function severityClasses(severity: "normal" | "watch" | "high" | "critical") {
     case "high":
       return "border-amber-400/35 bg-[rgba(245,158,11,0.12)] text-amber-100";
     case "watch":
-      return "border-cyan-400/35 bg-[rgba(34,211,238,0.12)] text-cyan-100";
+      return "border-[var(--accent-soft)] bg-[rgba(197,109,45,0.12)] text-[var(--accent)]";
     default:
       return "border-emerald-400/35 bg-[rgba(34,197,94,0.12)] text-emerald-100";
   }
@@ -232,8 +232,8 @@ function FactoryChart({
             onClick={() => onSelect(active ? null : item.factoryId)}
             className={`w-full rounded-2xl border p-4 text-left transition ${
               active
-                ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)]"
-                : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(62,166,255,0.25)]"
+                ? "border-[rgba(197,109,45,0.45)] bg-[rgba(197,109,45,0.14)]"
+                : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(197,109,45,0.25)]"
             }`}
           >
             <div className="flex items-center justify-between gap-3">
@@ -275,8 +275,8 @@ function ShiftChart({
             onClick={() => onSelect(active ? null : item.shift)}
             className={`rounded-2xl border p-4 text-left transition ${
               active
-                ? "border-[rgba(45,212,191,0.45)] bg-[rgba(45,212,191,0.14)]"
-                : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(45,212,191,0.28)]"
+                ? "border-[rgba(140,66,24,0.45)] bg-[rgba(140,66,24,0.14)]"
+                : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(140,66,24,0.28)]"
             }`}
           >
             <div className="text-xs uppercase tracking-header text-[var(--muted)]">{shiftLabel(item.shift)}</div>
@@ -627,7 +627,7 @@ export default function PremiumDashboardPage() {
             ? formatCurrency(steelOverview.profit_summary?.outstanding_invoice_amount_inr)
             : "Restricted",
           helper: `${formatKg(steelOverview.profit_summary?.outstanding_invoice_weight_kg)} still not realized from invoices already raised.`,
-          tone: "border-sky-400/30 bg-[rgba(56,189,248,0.12)]",
+          tone: "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)]",
           href: "/steel/dispatches",
           action: "Open Dispatch",
         },
@@ -658,10 +658,10 @@ export default function PremiumDashboardPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-8" data-component="premium-dashboard-page">
       <div className="mx-auto max-w-[1500px] space-y-6">
-        <section className="rounded-[2rem] border border-[rgba(62,166,255,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
+        <section className="rounded-[2rem] border border-[rgba(197,109,45,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(197,109,45,0.18),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-[0.32em] text-[rgba(62,166,255,0.88)]">
+              <div className="text-xs font-semibold uppercase tracking-[0.32em] text-[rgba(197,109,45,0.88)]">
                 Owner Intelligence
               </div>
               <h1 className="text-3xl font-semibold text-[var(--text)]">Read the owner signals before you jump into a desk</h1>
@@ -677,7 +677,7 @@ export default function PremiumDashboardPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 text-xs">
-            <span className="rounded-full border border-[rgba(45,212,191,0.34)] bg-[rgba(45,212,191,0.14)] px-4 py-2 text-[var(--text)]">
+            <span className="rounded-full border border-[rgba(140,66,24,0.34)] bg-[rgba(140,66,24,0.14)] px-4 py-2 text-[var(--text)]">
               Tier: {dashboard?.plan?.toUpperCase() || "PREMIUM"}
             </span>
             {dashboard?.enterprise_mode ? (
@@ -685,7 +685,7 @@ export default function PremiumDashboardPage() {
                 Enterprise mode active
               </span>
             ) : (
-              <span className="rounded-full border border-[rgba(62,166,255,0.25)] bg-[rgba(62,166,255,0.1)] px-4 py-2 text-[var(--text)]">
+              <span className="rounded-full border border-[rgba(197,109,45,0.25)] bg-[rgba(197,109,45,0.1)] px-4 py-2 text-[var(--text)]">
                 Factory premium surface
               </span>
             )}
@@ -698,7 +698,7 @@ export default function PremiumDashboardPage() {
               </span>
             ) : null}
             {ocrSummary ? (
-              <span className="rounded-full border border-cyan-400/30 bg-[rgba(34,211,238,0.1)] px-4 py-2 text-[var(--text)]">
+              <span className="rounded-full border border-[var(--accent-soft)] bg-[rgba(197,109,45,0.1)] px-4 py-2 text-[var(--text)]">
                 Trusted OCR: {ocrSummary.trusted_documents} docs
               </span>
             ) : null}
@@ -1018,7 +1018,7 @@ export default function PremiumDashboardPage() {
                     <CardContent className="space-y-3">
                       {topBatchSignals.length ? (
                         topBatchSignals.map((item) => (
-                          <Link key={`batch:${item.id}`} href={`/steel/batches/${item.id}`} className="block rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 transition hover:border-[rgba(62,166,255,0.3)]">
+                          <Link key={`batch:${item.id}`} href={`/steel/batches/${item.id}`} className="block rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 transition hover:border-[rgba(197,109,45,0.3)]">
                             <div className="flex items-center justify-between gap-3">
                               <div className="text-sm font-semibold text-[var(--text)]">{item.batch_code}</div>
                               <div className="text-xs text-[var(--muted)]">Score {item.anomaly_score.toFixed(1)}</div>
@@ -1091,17 +1091,17 @@ export default function PremiumDashboardPage() {
                         <div className="mt-2 text-2xl font-semibold text-red-50">{ocrSummary.untrusted_documents}</div>
                         <div className="mt-1 text-sm text-red-100/85">{ocrSummary.untrusted_rows} rows outside trusted reporting</div>
                       </div>
-                      <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.12)] p-4">
-                        <div className="text-xs uppercase tracking-header text-cyan-100/80">Approval rate</div>
-                        <div className="mt-2 text-2xl font-semibold text-cyan-50">
+                      <div className="rounded-2xl border border-[var(--accent-soft)] bg-[rgba(197,109,45,0.12)] p-4">
+                        <div className="text-xs uppercase tracking-header text-[var(--accent)]">Approval rate</div>
+                        <div className="mt-2 text-2xl font-semibold text-[var(--accent)]">
                           {(ocrSummary.approval_rate ?? 0).toFixed(0)}%
                         </div>
-                        <div className="mt-1 text-sm text-cyan-100/85">
+                        <div className="mt-1 text-sm text-[var(--accent)]">
                           Last trusted: {ocrSummary.last_trusted_at ? formatDateTime(ocrSummary.last_trusted_at) : "-"}
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-[rgba(62,166,255,0.2)] bg-[rgba(62,166,255,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90">
+                    <div className="rounded-2xl border border-[rgba(197,109,45,0.2)] bg-[rgba(197,109,45,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90">
                       {ocrSummary.trust_note}
                     </div>
                   </CardContent>
@@ -1146,7 +1146,7 @@ export default function PremiumDashboardPage() {
                   {(dashboard.insights || []).map((insight) => (
                     <div
                       key={insight}
-                      className="rounded-2xl border border-[rgba(62,166,255,0.16)] bg-[rgba(62,166,255,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90"
+                      className="rounded-2xl border border-[rgba(197,109,45,0.16)] bg-[rgba(197,109,45,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90"
                     >
                       {insight}
                     </div>

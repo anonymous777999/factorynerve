@@ -146,7 +146,7 @@ export function statusBadgeClass(
       case "pending":
         return "border-amber-200 bg-amber-50 text-amber-800";
       default:
-        return "border-sky-200 bg-sky-50 text-sky-800";
+        return "border-[var(--accent-soft)] bg-[var(--accent)] text-[var(--accent)]";
     }
   }
   switch (status) {
@@ -157,7 +157,7 @@ export function statusBadgeClass(
     case "pending":
       return "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100";
     default:
-      return "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100";
+      return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]";
   }
 }
 
@@ -172,7 +172,7 @@ export function signalTone(
     case "warning":
       return "border-amber-400/30 bg-[rgba(245,158,11,0.08)] text-amber-100";
     default:
-      return "border-sky-400/30 bg-[rgba(56,189,248,0.08)] text-sky-100";
+      return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.08)] text-[var(--accent)]";
   }
 }
 
@@ -183,7 +183,7 @@ export function signalToneLight(tone: ReviewIssueTone): string {
     case "warning":
       return "border-amber-200 bg-amber-50 text-amber-800";
     default:
-      return "border-sky-200 bg-sky-50 text-sky-800";
+      return "border-[var(--accent-soft)] bg-[var(--accent)] text-[var(--accent)]";
   }
 }
 
@@ -203,7 +203,7 @@ export function impactTone(
 ): string {
   switch (impact) {
     case "billing":
-      return "border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100";
+      return "border-[var(--accent-soft)] bg-[rgba(197,109,45,0.12)] text-[var(--accent)]";
     case "dispatch":
       return "border-violet-400/30 bg-[rgba(167,139,250,0.14)] text-violet-100";
     case "stock":

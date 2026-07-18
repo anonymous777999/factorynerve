@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ProcessingStage =
@@ -28,15 +29,13 @@ const STAGES: Array<{
 function iconForState(state: "pending" | "active" | "done") {
   if (state === "done") {
     return (
-      <span className="grid h-6 w-6 place-items-center rounded-full bg-[#185FA5] text-white">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
-          <path d="m3.2 8.1 2.7 2.7 6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+      <span className="grid h-6 w-6 place-items-center rounded-full bg-[#8c4218] text-white">
+        <Check className="h-3.5 w-3.5" strokeWidth={2} />
       </span>
     );
   }
   if (state === "active") {
-    return <span className="h-6 w-6 rounded-full border-2 border-[#185FA5] border-t-transparent animate-spin" />;
+    return <span className="h-6 w-6 rounded-full border-2 border-[#8c4218] border-t-transparent animate-spin" />;
   }
   return <span className="h-6 w-6 rounded-full border border-[#d5dde6] bg-white" />;
 }
@@ -70,7 +69,7 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
         </h2>
         <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#eaf0f5]">
           <div
-            className="h-full rounded-full bg-[#185FA5] transition-[width] duration-300"
+            className="h-full rounded-full bg-[#8c4218] transition-[width] duration-300"
             style={{ width: `${activeStage.progress}%` }}
           />
         </div>

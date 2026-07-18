@@ -6,6 +6,7 @@ import type { ReportInsights } from "@/lib/reports";
 import type { SteelOverview } from "@/lib/steel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { MetricCard } from "@/components/shared";
 
 function formatDate(value: string) {
   const parsed = new Date(value);
@@ -38,16 +39,6 @@ function severityTone(score: number) {
   if (score >= 80) return "text-red-300";
   if (score >= 55) return "text-amber-300";
   return "text-emerald-300";
-}
-
-function MetricCard({ label, value, hint }: { label: string; value: string; hint: string }) {
-  return (
-    <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card-strong)] p-4">
-      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{value}</div>
-      <div className="mt-2 text-xs leading-5 text-[var(--muted)]">{hint}</div>
-    </div>
-  );
 }
 
 function EmptyCard({ title, message }: { title: string; message: string }) {

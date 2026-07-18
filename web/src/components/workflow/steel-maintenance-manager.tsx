@@ -28,7 +28,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  scheduled: "border-sky-400/25 bg-sky-400/8 text-sky-200/80",
+  scheduled: "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]",
   in_progress: "border-amber-400/35 bg-amber-400/12 text-amber-200",
   completed: "border-emerald-400/35 bg-emerald-400/12 text-emerald-200",
   cancelled: "border-[var(--border)] bg-[rgba(20,24,36,0.5)] text-[var(--muted)]",
@@ -308,7 +308,7 @@ export function SteelMaintenanceManager({ machineId, machineName }: Props) {
             </thead>
             <tbody>
               {tasks.map((task) => (
-                <tr key={task.id} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(62,166,255,0.04)]">
+                <tr key={task.id} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(197,109,45,0.04)]">
                   {editingId === task.id ? (
                     <>
                       <td className="px-3 py-2">
@@ -374,7 +374,7 @@ export function SteelMaintenanceManager({ machineId, machineName }: Props) {
                         <div className="flex gap-1">
                           <Button  variant="outline" onClick={() => startEdit(task)}>Edit</Button>
                           <Button
-                            
+
                             variant="outline"
                             className="border-rose-400/30 text-rose-300 hover:bg-rose-500/15 hover:text-rose-200"
                             onClick={() => void handleDelete(task.id)}

@@ -292,7 +292,7 @@ export function SteelMachinesPage() {
                   <tbody>
                     {machines.map((machine) => (
                       <>
-                      <tr key={machine.id} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(62,166,255,0.04)]">
+                      <tr key={machine.id} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(197,109,45,0.04)]">
                         <td className="px-3 py-3 font-mono text-xs font-semibold">{machine.machine_code}</td>
                         <td className="px-3 py-3 font-semibold">{machine.name}</td>
                         <td className="px-3 py-3 text-[var(--muted)]">{machine.machine_type || "\u2014"}</td>

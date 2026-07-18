@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Lock, ShieldCheck, RefreshCw } from "lucide-react";
 
 import { ApiError } from "@/lib/api";
 import { AUTH_ROUTE_PARAM_GUARDS } from "@/config/featureFlags";
@@ -14,32 +15,15 @@ import { PasswordStrengthMeter } from "@/components/auth/password-strength-meter
 import { Button } from "@/components/ui/button";
 
 function LockSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
+  return <Lock className="h-4 w-4" />;
 }
 
 function ShieldSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
+  return <ShieldCheck className="h-4 w-4" />;
 }
 
 function RefreshSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 2v6h-6" />
-      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-      <path d="M3 22v-6h6" />
-      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-    </svg>
-  );
+  return <RefreshCw className="h-4 w-4" />;
 }
 
 export default function ResetPasswordPage() {

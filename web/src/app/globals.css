@@ -1,9 +1,8 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 @import "tailwindcss" source("../");
 
 :root {
-  --font-body: "IBM Plex Sans";
-  --font-display: "Space Grotesk";
+  --font-body: var(--font-plex-sans), "IBM Plex Sans", system-ui, sans-serif;
+  --font-display: var(--font-space-grotesk), "Space Grotesk", system-ui, sans-serif;
   --bg: #0d1218;
   --bg-soft: #151d24;
   --card: #172028;
@@ -12,7 +11,7 @@
   --border: rgba(171, 154, 137, 0.2);
   --border-strong: rgba(201, 180, 157, 0.34);
   --text: #ece7df;
-  --muted: #ab9f93;
+  --muted: #c4b8a8;
   --accent: #c56d2d;
   --accent-strong: #8c4218;
   --accent-soft: rgba(197, 109, 45, 0.18);
@@ -42,6 +41,25 @@
   --tracking-header: 0.23em;
   --tracking-prominent: 0.28em;
   --tracking-display: 0.36em;
+  /* Z-index scale — semantic layers. Use these instead of ad-hoc z-[NN]. */
+  --z-base: 0;
+  --z-raised: 10;
+  --z-sticky: 20;
+  --z-dropdown: 30;
+  --z-overlay: 40;
+  --z-drawer: 50;
+  --z-modal: 60;
+  --z-toast: 70;
+  --z-tooltip: 80;
+  /* Type scale — semantic sizes (rem). Body min is 0.875rem (14px). */
+  --text-caption: 0.75rem;
+  --text-small: 0.8125rem;
+  --text-body: 0.875rem;
+  --text-base: 1rem;
+  --text-lead: 1.125rem;
+  --text-title: 1.375rem;
+  --text-heading: 1.75rem;
+  --text-display: 2.25rem;
 }
 
 @theme inline {
@@ -371,7 +389,7 @@ input[type="checkbox"] {
 }
 
 .auth-input:focus {
-  border-color: #5ba8ff;
+  border-color: var(--accent);
   background: #383e49;
   outline: none;
 }
@@ -380,20 +398,20 @@ input[type="checkbox"] {
   height: 4.4rem;
   width: 100%;
   border-radius: var(--radius-md);
-  border: 1px solid rgba(124, 191, 255, 0.2);
-  background: linear-gradient(180deg, #89bcf8, #55a9ff);
-  color: #07131f;
+  border: 1px solid var(--accent-soft);
+  background: linear-gradient(180deg, var(--accent), var(--accent-strong));
+  color: #fbf3ec;
   font-size: 1.02rem;
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.24em;
-  box-shadow: 0 20px 40px rgba(66, 150, 255, 0.3);
+  box-shadow: 0 20px 40px rgba(197, 109, 45, 0.3);
   cursor: pointer;
   transition: background 180ms ease;
 }
 
 .auth-button-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #9bc8ff, #63b2ff);
+  background: linear-gradient(180deg, #d97e3e, #a4501f);
 }
 
 .auth-button-primary:disabled {
@@ -406,7 +424,7 @@ input[type="checkbox"] {
   border-radius: var(--radius-md);
   border: 1px solid #2d3746;
   background: #151a24;
-  color: #9bc9ff;
+  color: var(--accent);
   font-size: 0.875rem;
   font-weight: 600;
   text-transform: uppercase;

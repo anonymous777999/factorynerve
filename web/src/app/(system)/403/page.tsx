@@ -2,18 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useSession } from "@/lib/use-session";
 
 function LockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M7 10V7a5 5 0 0 1 10 0v3" strokeLinecap="round" strokeLinejoin="round" />
-      <rect x="5" y="10" width="14" height="10" rx="2" />
-      <path d="M12 14v3" strokeLinecap="round" />
-    </svg>
-  );
+  return <Lock className="h-7 w-7" strokeWidth={1.8} />;
 }
 
 export default function AccessRestrictedPage() {
@@ -42,13 +37,13 @@ export default function AccessRestrictedPage() {
           <Button
             type="button"
             onClick={() => router.push("/dashboard")}
-            className="rounded-xl bg-[linear-gradient(180deg,#89bcf8,#55a9ff)] px-5 text-sm font-semibold text-[#07131f]"
+            className="rounded-xl bg-[linear-gradient(180deg,#c56d2d,#c56d2d)] px-5 text-sm font-semibold text-[#07131f]"
           >
             Back to Dashboard
           </Button>
           <Link
             href="mailto:admin@dpr.ai"
-            className="inline-flex items-center justify-center rounded-xl border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-sky-300/30 hover:text-white"
+            className="inline-flex items-center justify-center rounded-xl border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-[var(--accent-soft)] hover:text-white"
           >
             Contact your administrator
           </Link>

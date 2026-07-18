@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Check, Minus, Shield, Zap, BarChart3, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 /* ───────────────────────────────────────────────
    DATA
@@ -319,70 +321,27 @@ function resolveFeatureValue(
    ─────────────────────────────────────────────── */
 
 function CheckIcon() {
-  return (
-    <svg
-      className="h-4 w-4 flex-shrink-0 text-[var(--accent)]"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <polyline points="20 6 9 17 4 12" />
-    </svg>
-  );
+  return <Check className="h-4 w-4 flex-shrink-0 text-[var(--accent)]" strokeWidth={2.5} />;
 }
 
 function DashIcon() {
-  return (
-    <svg
-      className="h-4 w-4 flex-shrink-0 text-[var(--muted)] opacity-40"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
-  );
+  return <Minus className="h-4 w-4 flex-shrink-0 text-[var(--muted)] opacity-40" strokeWidth={2} />;
 }
 
 function ShieldIcon() {
-  return (
-    <svg className="h-6 w-6 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-    </svg>
-  );
+  return <Shield className="h-6 w-6 text-[var(--accent)]" strokeWidth={1.5} />;
 }
 
 function BoltIcon() {
-  return (
-    <svg className="h-6 w-6 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-    </svg>
-  );
+  return <Zap className="h-6 w-6 text-[var(--accent)]" strokeWidth={1.5} />;
 }
 
 function ChartIcon() {
-  return (
-    <svg className="h-6 w-6 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10" />
-      <line x1="12" y1="20" x2="12" y2="4" />
-      <line x1="6" y1="20" x2="6" y2="14" />
-    </svg>
-  );
+  return <BarChart3 className="h-6 w-6 text-[var(--accent)]" strokeWidth={1.5} />;
 }
 
 function LockIcon() {
-  return (
-    <svg className="h-6 w-6 text-[var(--accent)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
+  return <Lock className="h-6 w-6 text-[var(--accent)]" strokeWidth={1.5} />;
 }
 
 type TrustItemProps = {
@@ -530,7 +489,7 @@ function PlanCard({
       className={cn(
         "relative flex flex-col rounded-[1.7rem] border p-6 sm:p-8 transition-all duration-300",
         highlight
-          ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(57,255,114,0.06),rgba(18,27,41,0.98))] shadow-[0_0_40px_rgba(57,255,114,0.12),0_0_0_1px_rgba(57,255,114,0.2)] scale-[1.02] sm:scale-105 z-10"
+          ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(197,109,45,0.06),rgba(18,27,41,0.98))] shadow-[0_0_40px_rgba(197,109,45,0.12),0_0_0_1px_rgba(197,109,45,0.2)] scale-[1.02] sm:scale-105 z-10"
           : "border-[var(--border)] bg-[linear-gradient(180deg,rgba(18,27,41,0.96),rgba(13,20,32,0.98))] shadow-[var(--shadow-md)]",
       )}
     >
@@ -600,20 +559,12 @@ function PlanCard({
       </div>
 
       {/* CTA Button */}
-      <button
-        type="button"
-        className={cn(
-          "w-full rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]",
-          ctaStyle === "primary" &&
-            "border border-[var(--accent)]/20 bg-[linear-gradient(135deg,var(--accent),var(--accent-strong))] text-[#06111c] shadow-[0_14px_30px_rgba(57,255,114,0.28)] hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_18px_38px_rgba(57,255,114,0.34)]",
-          ctaStyle === "outline" &&
-            "border border-[var(--border-strong)] bg-white/[0.02] text-[var(--text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:-translate-y-0.5 hover:border-[var(--accent)]/30 hover:bg-[rgba(57,255,114,0.08)]",
-          ctaStyle === "ghost" &&
-            "border border-transparent bg-transparent text-[var(--text)] hover:-translate-y-0.5 hover:border-white/8 hover:bg-white/[0.05]",
-        )}
+      <Button
+        variant={ctaStyle === "primary" ? "primary" : ctaStyle === "outline" ? "outline" : "ghost"}
+        className="w-full rounded-full"
       >
         {cta}
-      </button>
+      </Button>
 
       {/* Subtext */}
       <p className="mt-3 text-center text-xs leading-relaxed text-[var(--muted)]">
@@ -674,12 +625,9 @@ function OcrPackCard({
         ))}
       </div>
 
-      <button
-        type="button"
-        className="mt-6 w-full rounded-full border border-[var(--border-strong)] bg-white/[0.02] px-5 py-2.5 text-sm font-semibold tracking-tight text-[var(--text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/30 hover:bg-[rgba(57,255,114,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
-      >
+      <Button variant="outline" className="mt-6 w-full rounded-full">
         {cta}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -708,12 +656,9 @@ function WhatsAppPack({ name, price, priceSuffix, volume, cta }: WhatsAppPackPro
 
       <p className="mt-2 text-sm font-medium text-[var(--accent)]">{volume}</p>
 
-      <button
-        type="button"
-        className="mt-6 w-full rounded-full border border-[var(--border-strong)] bg-white/[0.02] px-5 py-2.5 text-sm font-semibold tracking-tight text-[var(--text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/30 hover:bg-[rgba(57,255,114,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
-      >
+      <Button variant="outline" className="mt-6 w-full rounded-full">
         {cta}
-      </button>
+      </Button>
     </div>
   );
 }

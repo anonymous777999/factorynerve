@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { ShieldCheck, Zap, Lock } from "lucide-react";
 
 import { login, resendEmailVerification, startGoogleLogin, warmBackendConnection } from "@/lib/auth";
 import { resolveAccessReasonMessage } from "@/lib/access-reason";
@@ -35,29 +36,15 @@ function destinationLabel(path: string, t: (key: string, fallback?: string) => s
 }
 
 function ShieldSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
+  return <ShieldCheck className="h-4 w-4" />;
 }
 
 function ZapSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" />
-    </svg>
-  );
+  return <Zap className="h-4 w-4" />;
 }
 
 function LockSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
+  return <Lock className="h-4 w-4" />;
 }
 
 export default function AccessPage() {
@@ -261,7 +248,7 @@ export default function AccessPage() {
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4" noValidate>          <div>
-            <label htmlFor="login-email" className="text-sm font-semibold uppercase tracking-label text-[#8ec4ff]">
+            <label htmlFor="login-email" className="text-sm font-semibold uppercase tracking-label text-[#c56d2d]">
               {t("auth.login.email_label", "Email address")}
             </label>
             <Input
@@ -283,7 +270,7 @@ export default function AccessPage() {
             </label>
             <Link
               href="/forgot-password"
-              className="text-xs font-medium text-slate-400 transition hover:text-sky-300"
+              className="text-xs font-medium text-slate-400 transition hover:text-[var(--accent)]"
             >
               {t("auth.login.reset_password", "Forgot password?")}
             </Link>
@@ -301,7 +288,7 @@ export default function AccessPage() {
             <button
               type="button"
               onClick={() => setShowPassword((current) => !current)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold uppercase tracking-[0.12em] text-[#8ec4ff] transition hover:text-white"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold uppercase tracking-[0.12em] text-[#c56d2d] transition hover:text-white"
             >
               {showPassword ? t("auth.login.hide_password", "Hide") : t("auth.login.show_password", "Show")}
             </button>
@@ -347,7 +334,7 @@ export default function AccessPage() {
 
       <div className="mt-6 text-center text-sm text-slate-400">
         {t("auth.login.create_account_prompt", "New to DPR.ai?")}{" "}
-        <Link href="/register" className="font-semibold text-[#82c0ff] transition hover:text-white">
+        <Link href="/register" className="font-semibold text-[#c56d2d] transition hover:text-white">
           {t("auth.login.create_account", "Create an account")}
         </Link>
       </div>

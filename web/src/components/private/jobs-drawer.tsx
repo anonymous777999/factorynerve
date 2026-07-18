@@ -292,7 +292,7 @@ export function JobsDrawer() {
           className={cn(
             "rounded-full border px-2 py-0.5 text-xs",
             activeCount
-              ? "border-[rgba(62,166,255,0.35)] text-[var(--accent)]"
+              ? "border-[rgba(197,109,45,0.35)] text-[var(--accent)]"
               : "border-[var(--border)] text-[var(--muted)]",
           )}
         >

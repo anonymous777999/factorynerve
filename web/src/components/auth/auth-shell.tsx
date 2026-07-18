@@ -90,7 +90,7 @@ export function AuthShell({
               className="pointer-events-none absolute inset-0"
               style={{
                 background:
-                  "radial-gradient(circle at 20% 15%, rgba(72,158,255,0.14), transparent 42%), radial-gradient(circle at 80% 80%, rgba(34,211,238,0.08), transparent 40%), linear-gradient(180deg, #0b1116 0%, #111820 100%)",
+                  "radial-gradient(circle at 20% 15%, rgba(72,158,255,0.14), transparent 42%), radial-gradient(circle at 80% 80%, rgba(197,109,45,0.08), transparent 40%), linear-gradient(180deg, #0b1116 0%, #111820 100%)",
               }}
             />
             <div
@@ -103,7 +103,7 @@ export function AuthShell({
               {brand.useFnLogo ? (
                 <FnLogo variant="mark" className="h-10 w-10" />
               ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(76,176,255,0.24),rgba(45,212,191,0.18))] shadow-[0_8px_20px_rgba(5,13,24,0.3)]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-[var(--accent-soft)] bg-[linear-gradient(135deg,rgba(197,109,45,0.24),rgba(140,66,24,0.18))] shadow-[0_8px_20px_rgba(5,13,24,0.3)]">
                   <span className="text-base font-bold text-white">{brand.appInitial}</span>
                 </div>
               )}
@@ -121,7 +121,7 @@ export function AuthShell({
               <ul className="mt-10 space-y-4">
                 {brand.trustPoints.map((point) => (
                   <li key={point.text} className="flex items-start gap-3 text-sm text-[#97a6bd]">
-                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-400/10 text-cyan-300">
+                    <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--accent-soft)] text-[var(--accent)]">
                       {point.icon}
                     </span>
                     <span>{point.text}</span>
@@ -143,7 +143,7 @@ export function AuthShell({
                 {brand.useFnLogo ? (
                   <FnLogo variant="mark" className="h-9 w-9" />
                 ) : (
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200/20 bg-[linear-gradient(135deg,rgba(76,176,255,0.24),rgba(45,212,191,0.18))]">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-[var(--accent-soft)] bg-[linear-gradient(135deg,rgba(197,109,45,0.24),rgba(140,66,24,0.18))]">
                     <span className="text-sm font-bold text-white">{brand.appInitial}</span>
                   </div>
                 )}
@@ -156,7 +156,7 @@ export function AuthShell({
                   cardClassName,
                 )}
               >
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(76,176,255,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.08),transparent_28%)]" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,109,45,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(140,66,24,0.08),transparent_28%)]" />
                 <CardHeader className="relative space-y-3 border-b border-white/8 pb-6">
                   <div className="inline-flex w-fit rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-header text-slate-300">
                     {badge}
@@ -169,16 +169,16 @@ export function AuthShell({
 
               {/* Footer */}
               <div className="mt-10 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-slate-500">
-                <Link href="/privacy" className="transition hover:text-sky-300 hover:underline">
+                <Link href="/privacy" className="transition hover:text-[var(--accent)] hover:underline">
                   {t("auth.shell.footer_privacy", "Privacy")}
                 </Link>
-                <Link href="/terms" className="transition hover:text-sky-300 hover:underline">
+                <Link href="/terms" className="transition hover:text-[var(--accent)] hover:underline">
                   {t("auth.shell.footer_terms", "Terms")}
                 </Link>
-                <Link href="/security" className="transition hover:text-sky-300 hover:underline">
+                <Link href="/security" className="transition hover:text-[var(--accent)] hover:underline">
                   {t("auth.shell.footer_security", "Security")}
                 </Link>
-                <Link href="/contact" className="transition hover:text-sky-300 hover:underline">
+                <Link href="/contact" className="transition hover:text-[var(--accent)] hover:underline">
                   {t("auth.shell.footer_contact", "Contact")}
                 </Link>
               </div>
@@ -196,8 +196,8 @@ export function AuthShell({
       <div className="auth-ocean-mesh pointer-events-none absolute inset-0 opacity-90" />
       <div className="auth-dot-field pointer-events-none absolute inset-0 opacity-70" />
       <div className="pointer-events-none absolute inset-x-0 top-0 -translate-y-8 h-[45%] bg-[radial-gradient(circle_at_top,rgba(120,214,255,0.16),transparent_58%)]" />
-      <div className="auth-float-slow pointer-events-none absolute left-4 top-14 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl sm:-left-20 sm:h-72 sm:w-72" />
-      <div className="auth-float-delay pointer-events-none absolute right-4 top-[16%] h-44 w-44 rounded-full bg-sky-400/10 blur-3xl sm:right-0 sm:h-80 sm:w-80 sm:translate-x-16" />
+      <div className="auth-float-slow pointer-events-none absolute left-4 top-14 h-40 w-40 rounded-full bg-[var(--accent-soft)] blur-3xl sm:-left-20 sm:h-72 sm:w-72" />
+      <div className="auth-float-delay pointer-events-none absolute right-4 top-[16%] h-44 w-44 rounded-full bg-[var(--accent-soft)] blur-3xl sm:right-0 sm:h-80 sm:w-80 sm:translate-x-16" />
       <div className="auth-float-slower pointer-events-none absolute bottom-4 left-[14%] h-36 w-36 rounded-full bg-teal-300/8 blur-3xl sm:bottom-0 sm:h-64 sm:w-64 sm:translate-y-16" />
 
       <div className="relative mx-auto w-full max-w-5xl">
@@ -219,7 +219,7 @@ export function AuthShell({
           )}
         >
           <div className="auth-edge-beam pointer-events-none absolute inset-x-10 top-0 h-px" />
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(76,176,255,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.08),transparent_28%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(197,109,45,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(140,66,24,0.08),transparent_28%)]" />
           <CardHeader className="relative space-y-4 border-b border-white/8 pb-6">
             <div
               className="auth-rise inline-flex w-fit rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-header text-slate-300"
@@ -279,7 +279,7 @@ export function AuthShell({
                       className="rounded-[1.35rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                     >
                       <div className="flex items-start gap-3">
-                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cyan-200/15 bg-cyan-300/10 text-sm font-semibold text-cyan-100">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-[var(--accent-soft)] bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent)]">
                           {index + 1}
                         </div>
                         <div>
@@ -304,52 +304,52 @@ export function AuthShell({
         {/* Footer links */}
         <div className="mt-10 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 border-t border-white/5 pt-6 text-xs text-slate-500">
           <span>&copy; {new Date().getFullYear()} DPR.ai Technologies</span>
-          <Link href="/privacy" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/privacy" className="transition hover:text-[var(--accent)] hover:underline">
             Privacy Policy
           </Link>
-          <Link href="/terms" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/terms" className="transition hover:text-[var(--accent)] hover:underline">
             Terms of Service
           </Link>
-          <Link href="/cookies" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/cookies" className="transition hover:text-[var(--accent)] hover:underline">
             Cookie Policy
           </Link>
-          <Link href="/refunds" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/refunds" className="transition hover:text-[var(--accent)] hover:underline">
             Refund Policy
           </Link>
-          <Link href="/contact" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/contact" className="transition hover:text-[var(--accent)] hover:underline">
             Contact
           </Link>
-          <Link href="/security" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/security" className="transition hover:text-[var(--accent)] hover:underline">
             Security
           </Link>
-          <Link href="/data-retention" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/data-retention" className="transition hover:text-[var(--accent)] hover:underline">
             Data Retention
           </Link>
-          <Link href="/sla" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/sla" className="transition hover:text-[var(--accent)] hover:underline">
             SLA
           </Link>
-          <Link href="/dpa" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/dpa" className="transition hover:text-[var(--accent)] hover:underline">
             DPA
           </Link>
-          <Link href="/compliance" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/compliance" className="transition hover:text-[var(--accent)] hover:underline">
             Trust Center
           </Link>
-          <Link href="/acceptable-use" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/acceptable-use" className="transition hover:text-[var(--accent)] hover:underline">
             Acceptable Use
           </Link>
-          <Link href="/subprocessors" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/subprocessors" className="transition hover:text-[var(--accent)] hover:underline">
             Sub-processors
           </Link>
-          <Link href="/faq" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/faq" className="transition hover:text-[var(--accent)] hover:underline">
             FAQ
           </Link>
-          <Link href="/disclosure" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/disclosure" className="transition hover:text-[var(--accent)] hover:underline">
             Disclosure
           </Link>
-          <Link href="/eula" className="transition hover:text-sky-300 hover:underline">
+          <Link href="/eula" className="transition hover:text-[var(--accent)] hover:underline">
             EULA
           </Link>
-          <a href="mailto:privacy@dpr.ai" className="transition hover:text-sky-300 hover:underline">
+          <a href="mailto:privacy@dpr.ai" className="transition hover:text-[var(--accent)] hover:underline">
             Contact
           </a>
         </div>

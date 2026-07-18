@@ -354,7 +354,7 @@ export default function SettingsAttendancePage() {
                   <button
                     key={profile.user_id}
                     type="button"
-                    className={`w-full rounded-2xl border p-4 text-left transition ${selectedUserId === String(profile.user_id) ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)]" : "border-[var(--border)] bg-[var(--card-strong)]"}`}
+                    className={`w-full rounded-2xl border p-4 text-left transition ${selectedUserId === String(profile.user_id) ? "border-[rgba(197,109,45,0.45)] bg-[rgba(197,109,45,0.12)]" : "border-[var(--border)] bg-[var(--card-strong)]"}`}
                     onClick={() => applySelectedUser(String(profile.user_id))}
                   >
                     <div className="font-semibold text-[var(--text)]">{profile.name}</div>
@@ -400,7 +400,7 @@ export default function SettingsAttendancePage() {
                   <button
                     key={item.id}
                     type="button"
-                    className={`w-full rounded-2xl border p-4 text-left transition ${selectedShiftId === String(item.id) ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)]" : "border-[var(--border)] bg-[var(--card-strong)]"}`}
+                    className={`w-full rounded-2xl border p-4 text-left transition ${selectedShiftId === String(item.id) ? "border-[rgba(197,109,45,0.45)] bg-[rgba(197,109,45,0.12)]" : "border-[var(--border)] bg-[var(--card-strong)]"}`}
                     onClick={() => applySelectedShift(String(item.id))}
                   >
                     <div className="font-semibold text-[var(--text)]">{item.shift_name}</div>

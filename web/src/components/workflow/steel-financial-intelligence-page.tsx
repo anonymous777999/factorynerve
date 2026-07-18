@@ -24,6 +24,7 @@ import {
 import { useSession } from "@/lib/use-session";
 import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
+import { TabButton } from "@/components/shared";
 
 type Tab = "overview" | "products" | "receivables" | "payables" | "expenses" | "cashflow";
 
@@ -61,22 +62,6 @@ function DataQualityBadge({ quality }: { quality: string }) {
     <span className="inline-flex rounded-full border border-emerald-400/25 bg-emerald-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-caption text-emerald-200">
       Actual
     </span>
-  );
-}
-
-function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? "border border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] text-sky-100 shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-          : "border border-[var(--border)] bg-[rgba(20,24,36,0.7)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
 

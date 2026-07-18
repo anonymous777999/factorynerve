@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { Menu, X } from "lucide-react";
 import { FnLogo } from "@/components/shared/fn-logo";
 import { navItems, sectionIds } from "./data";
 
@@ -77,13 +78,11 @@ export default function NavBar() {
           className="flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 md:hidden"
           aria-label="Toggle menu"
         >
-          <svg viewBox="0 0 24 24" className="h-5 w-5 text-slate-300" fill="none" stroke="currentColor" strokeWidth="2">
-            {mobileOpen ? (
-              <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
-            ) : (
-              <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-            )}
-          </svg>
+          {mobileOpen ? (
+            <X className="h-5 w-5 text-slate-300" strokeWidth={2} />
+          ) : (
+            <Menu className="h-5 w-5 text-slate-300" strokeWidth={2} />
+          )}
         </button>
       </div>
 

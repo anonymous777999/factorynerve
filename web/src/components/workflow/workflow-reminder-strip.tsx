@@ -87,13 +87,13 @@ function toneClasses(tone: ReminderTone) {
   if (tone === "watch") {
     return "border-amber-400/30 bg-[rgba(245,158,11,0.12)]";
   }
-  return "border-sky-400/30 bg-[rgba(56,189,248,0.12)]";
+  return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)]";
 }
 
 function dotClasses(tone: ReminderTone) {
   if (tone === "danger") return "bg-red-300";
   if (tone === "watch") return "bg-amber-300";
-  return "bg-sky-300";
+  return "bg-[var(--accent)]";
 }
 
 export function WorkflowReminderStrip({ className }: { className?: string }) {
@@ -388,7 +388,7 @@ export function WorkflowReminderStrip({ className }: { className?: string }) {
       <div className="rounded-[1.6rem] border border-[var(--border)] bg-[rgba(14,18,28,0.92)] px-4 py-4 shadow-[0_18px_50px_rgba(3,8,20,0.18)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-header text-[rgba(62,166,255,0.88)]">
+            <div className="text-[11px] font-semibold uppercase tracking-header text-[rgba(197,109,45,0.88)]">
               Live Reminders
             </div>
             <div className="mt-1 text-sm text-[var(--muted)]">

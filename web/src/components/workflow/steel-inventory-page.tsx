@@ -24,6 +24,7 @@ import {
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
+import { EmptyState, TabButton } from "@/components/shared";
 
 type Tab = "stock" | "alerts" | "turnover" | "slow_dead_overstock" | "value_abc" | "reconciliation_risk";
 
@@ -61,30 +62,6 @@ function deriveOperationalZone(category: string) {
   if (cat.includes("ingot") || cat.includes("billet")) return "Melt Shop WIP";
   if (cat.includes("finished") || cat.includes("tmt") || cat.includes("round") || cat.includes("section")) return "Dispatch Yard";
   return "Process Floor";
-}
-
-function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? "border border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] text-sky-100 shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-          : "border border-[var(--border)] bg-[rgba(20,24,36,0.7)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
-      {message}
-    </div>
-  );
 }
 
 export function SteelInventoryPage() {
@@ -817,7 +794,7 @@ export function SteelInventoryPage() {
                           </div>
                           <div className="h-2.5 rounded-full bg-[rgba(255,255,255,0.08)]">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-sky-500 to-sky-400"
+                              className="h-full rounded-full bg-gradient-to-r from-[var(--accent)] to-[var(--accent)]"
                               style={{ width: `${Math.min(pct, 100)}%` }}
                             />
                           </div>

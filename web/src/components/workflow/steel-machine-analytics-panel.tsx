@@ -32,7 +32,7 @@ function barWidth(pct: number) {
 const REASON_COLORS: Record<string, string> = {
   mechanical_failure: "bg-rose-500/70",
   electrical_failure: "bg-orange-500/70",
-  planned_maintenance: "bg-sky-500/70",
+  planned_maintenance: "bg-[var(--accent-soft)]",
   power_outage: "bg-amber-500/70",
   material_shortage: "bg-yellow-500/70",
   operator_error: "bg-violet-500/70",
@@ -215,7 +215,7 @@ export function SteelMachineAnalyticsPanel({ machineId, machineName, onClose }: 
                             })()
                           : null;
                         return (
-                          <tr key={wk.week_start} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(62,166,255,0.04)]">
+                          <tr key={wk.week_start} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(197,109,45,0.04)]">
                             <td className="px-3 py-2 font-mono text-xs text-white">{wk.week_start}</td>
                             <td className="px-3 py-2 font-mono text-xs text-white">{wk.failure_count}</td>
                             <td className="px-3 py-2 font-mono text-xs text-[var(--muted)]">{formatMinutes(wk.downtime_minutes)}</td>
@@ -270,7 +270,7 @@ export function SteelMachineAnalyticsPanel({ machineId, machineName, onClose }: 
                     </thead>
                     <tbody>
                       {analytics.daily_downtime_trend.map((day) => (
-                        <tr key={day.date} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(62,166,255,0.04)]">
+                        <tr key={day.date} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(197,109,45,0.04)]">
                           <td className="px-3 py-2 font-mono text-xs text-white">{day.date}</td>
                           <td className="px-3 py-2 font-mono text-xs text-amber-400">{formatMinutes(day.downtime_minutes)}</td>
                           <td className="px-3 py-2 font-mono text-xs text-white">{day.event_count}</td>

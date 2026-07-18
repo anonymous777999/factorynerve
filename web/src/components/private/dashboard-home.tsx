@@ -124,7 +124,7 @@ function attendanceStatusTone(status?: AttendanceStatus | null) {
     case "absent":
       return "border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100";
     case "completed":
-      return "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100";
+      return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]";
     default:
       return "border-white/10 bg-[rgba(255,255,255,0.04)] text-slate-200";
   }
@@ -1417,7 +1417,7 @@ export default function DashboardHome() {
                 <div className="text-xs uppercase tracking-caption text-slate-400">Main Action</div>
                 <Link
                   href={workerPrimaryAction.href}
-                  className="mt-3 inline-flex h-20 w-full items-center justify-center rounded-[28px] bg-[linear-gradient(90deg,#22d3ee,#60a5fa)] px-6 text-xl font-semibold text-[#08101D] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]"
+                  className="mt-3 inline-flex h-20 w-full items-center justify-center rounded-[28px] bg-[linear-gradient(90deg,#22d3ee,#60a5fa)] px-6 text-xl font-semibold text-[#08101D] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]"
                 >
                   {workerPrimaryAction.label}
                 </Link>
@@ -1431,7 +1431,7 @@ export default function DashboardHome() {
                     <Link
                       key={action.key}
                       href={action.href}
-                      className={`${action.key === "tasks" ? "col-span-2 sm:col-span-1" : ""} rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center transition hover:border-cyan-300/25 hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]`}
+                      className={`${action.key === "tasks" ? "col-span-2 sm:col-span-1" : ""} rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center transition hover:border-[var(--accent-soft)] hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]`}
                     >
                       <div className="text-base font-semibold text-white">{action.label}</div>
                       <div className="mt-1 text-xs text-slate-400">{action.meta}</div>
@@ -1661,23 +1661,23 @@ export default function DashboardHome() {
                 </div>
               ) : null}
               {state.ocrSummary ? (
-                <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] p-4">
-                  <div className="text-xs uppercase tracking-caption text-cyan-100">Trusted OCR</div>
+                <div className="rounded-2xl border border-[var(--accent-soft)] bg-[rgba(197,109,45,0.08)] p-4">
+                  <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Trusted OCR</div>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border border-cyan-400/20 bg-[rgba(8,18,28,0.42)] p-3">
-                      <div className="text-[11px] text-cyan-100/80">Approved docs</div>
+                    <div className="rounded-xl border border-[var(--accent-soft)] bg-[rgba(8,18,28,0.42)] p-3">
+                      <div className="text-[11px] text-[var(--accent)]">Approved docs</div>
                       <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.trusted_documents}</div>
                     </div>
-                    <div className="rounded-xl border border-cyan-400/20 bg-[rgba(8,18,28,0.42)] p-3">
-                      <div className="text-[11px] text-cyan-100/80">Trusted rows</div>
+                    <div className="rounded-xl border border-[var(--accent-soft)] bg-[rgba(8,18,28,0.42)] p-3">
+                      <div className="text-[11px] text-[var(--accent)]">Trusted rows</div>
                       <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.trusted_rows}</div>
                     </div>
-                    <div className="rounded-xl border border-cyan-400/20 bg-[rgba(8,18,28,0.42)] p-3">
-                      <div className="text-[11px] text-cyan-100/80">Pending docs</div>
+                    <div className="rounded-xl border border-[var(--accent-soft)] bg-[rgba(8,18,28,0.42)] p-3">
+                      <div className="text-[11px] text-[var(--accent)]">Pending docs</div>
                       <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.pending_documents}</div>
                     </div>
                   </div>
-                  <div className="mt-3 text-xs text-cyan-50/80">
+                  <div className="mt-3 text-xs text-[var(--accent)]">
                     {state.ocrSummary.trust_note} Last approved OCR update: {formatDateTime(state.ocrSummary.last_trusted_at || undefined, locale)}.
                   </div>
                 </div>

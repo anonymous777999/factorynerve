@@ -996,7 +996,7 @@ if (loading) {
                     onClick={() => route.openVerification(verification.id, targetStep)}
                     className={`w-full rounded-2xl border p-4 text-left transition ${
                       isActive
-                        ? "border-[var(--accent)] bg-[rgba(62,166,255,0.08)]"
+                        ? "border-[var(--accent)] bg-[rgba(197,109,45,0.08)]"
                         : "border-[var(--border)] hover:border-[var(--accent)]/40"
                     }`}
                   >
@@ -1142,7 +1142,7 @@ if (loading) {
                     Reviewed rows are ready and waiting for approval.
                   </div>
                 ) : activeRecord ? (
-                  <div className="rounded-[1.35rem] border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] px-4 py-3 text-sm text-cyan-100">
+                  <div className="rounded-[1.35rem] border border-[var(--accent-soft)] bg-[rgba(197,109,45,0.08)] px-4 py-3 text-sm text-[var(--accent)]">
                     This is still a working draft. Save your corrections here, then send the
                     document for approval.
                   </div>
@@ -1247,7 +1247,7 @@ if (loading) {
                                 <span
                                   className={cn(
                                     "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label",
-                                    "border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100",
+                                    "border-[var(--accent-soft)] bg-[rgba(197,109,45,0.12)] text-[var(--accent)]",
                                   )}
                                 >
                                   {totalIssues
@@ -1403,7 +1403,7 @@ if (loading) {
                                           className={cn(
                                             "w-full rounded-[1.35rem] border px-4 py-4 text-left transition",
                                             isActive
-                                              ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(62,166,255,0.12),rgba(62,166,255,0.06))]"
+                                              ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(197,109,45,0.12),rgba(197,109,45,0.06))]"
                                               : "border-[var(--border)] bg-[var(--card-strong)] hover:-translate-y-0.5 hover:border-[var(--accent)]/30",
                                           )}
                                         >
@@ -1856,7 +1856,7 @@ if (loading) {
                                               "border-b border-[var(--border)]/60",
                                               activeIssue?.rowIndex ===
                                                 rowIndex &&
-                                                "bg-[rgba(62,166,255,0.05)]",
+                                                "bg-[rgba(197,109,45,0.05)]",
                                             )}
                                           >
                                             <td className="px-3 py-3 align-top font-semibold text-[var(--muted)]">
@@ -1919,7 +1919,7 @@ if (loading) {
                                                             confidence,
                                                           ),
                                                           isActive &&
-                                                            "border-cyan-400/60 ring-2 ring-cyan-400/30",
+                                                            "border-[var(--accent-soft)] ring-2 ring-[var(--accent-soft)]",
                                                           "pr-20",
                                                         )}
                                                       />

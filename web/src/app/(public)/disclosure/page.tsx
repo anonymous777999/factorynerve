@@ -1,5 +1,7 @@
 "use client";
 
+import { ShieldCheck, Lock, Download } from "lucide-react";
+
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="mb-12 scroll-mt-24">
@@ -18,23 +20,15 @@ function Body({ children }: { children: React.ReactNode }) {
 }
 
 function ShieldIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-emerald-400" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path d="M12 2l7 3v7c0 4.5-3.5 8-7 9-3.5-1-7-4.5-7-9V5l7-3z" strokeLinecap="round" strokeLinejoin="round" />
-      <polyline points="9 12 11 14 15 10" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  return <ShieldCheck className="h-5 w-5 shrink-0 text-emerald-400" strokeWidth={1.8} />;
 }
 
 function LockIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-      <rect x="5" y="11" width="14" height="10" rx="2" />
-      <path d="M8 11V7a4 4 0 0 1 8 0v4" strokeLinecap="round" />
-    </svg>
-  );
+  return <Lock className="h-4 w-4" strokeWidth={2} />;
 }
 
+// Phase-2.5 exception: bug-bounty hero glyph is a plus-in-circle. lucide `Bug` changes
+// the shape (legs/antennae) and `PlusCircle` drops the domain meaning — kept bespoke.
 function BugIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -85,13 +79,9 @@ export default function DisclosurePage() {
           <a
             href="#"
             onClick={(e) => { e.preventDefault(); window.print(); }}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-300 transition hover:border-sky-300/30 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-300 transition hover:border-[var(--accent-soft)] hover:text-white"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
-              <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
-              <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Download className="h-4 w-4" strokeWidth={2} />
             Download PDF
           </a>
         </div>
@@ -164,7 +154,7 @@ export default function DisclosurePage() {
             <p className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-4 text-emerald-200">
               <ShieldIcon />
               <span>
-                <a href="mailto:security@dpr.ai" className="font-medium text-sky-300 hover:underline">security@dpr.ai</a>
+                <a href="mailto:security@dpr.ai" className="font-medium text-[var(--accent)] hover:underline">security@dpr.ai</a>
                 {" \u2014 "}PGP fingerprint: <code className="rounded bg-white/[0.06] px-2 py-0.5 font-mono text-xs text-slate-300">D4E9 F2C1 8A7B 3E5F 91C0  2B6D 7A3E 9F81 C4D2 E5F6</code>
               </span>
             </p>
@@ -308,11 +298,11 @@ export default function DisclosurePage() {
               All vulnerability reports and security-related inquiries should be directed to:
             </p>
             <div className="mt-4 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-sm text-slate-300">
-              <p><strong className="text-slate-200">Security Team:</strong> <a href="mailto:security@dpr.ai" className="text-sky-300 hover:underline">security@dpr.ai</a></p>
+              <p><strong className="text-slate-200">Security Team:</strong> <a href="mailto:security@dpr.ai" className="text-[var(--accent)] hover:underline">security@dpr.ai</a></p>
               <p className="mt-1"><strong className="text-slate-200">PGP Key Fingerprint:</strong> <code className="rounded bg-white/[0.06] px-2 py-0.5 font-mono text-xs text-slate-300">D4E9 F2C1 8A7B 3E5F 91C0  2B6D 7A3E 9F81 C4D2 E5F6</code></p>
               <p className="mt-3 text-slate-400">
                 For non-security inquiries, please visit our{" "}
-                <a href="/contact" className="text-sky-300 hover:underline">Contact page</a>.
+                <a href="/contact" className="text-[var(--accent)] hover:underline">Contact page</a>.
               </p>
             </div>
           </Body>

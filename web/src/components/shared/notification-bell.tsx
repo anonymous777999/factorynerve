@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Bell, Star, Clock, Check } from "lucide-react";
 import {
   type NotificationItem,
   fetchUnreadNotificationCount,
@@ -13,21 +14,7 @@ import { cn } from "@/lib/utils";
 const POLL_INTERVAL_MS = 30000;
 
 function BellIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 20 20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.7"
-      className={className}
-    >
-      <path
-        d="M10 3.4a5.2 5.2 0 0 0-5.2 5.2v1.4c0 .5-.2 1.1-.5 1.5l-.8 1c-.6.8-.2 2.1.8 2.1h11.4c1 0 1.4-1.3.8-2.1l-.8-1c-.3-.4-.5-1-.5-1.5V8.6A5.2 5.2 0 0 0 10 3.4Z"
-        strokeLinejoin="round"
-      />
-      <path d="M7.7 15.2a2.3 2.3 0 0 0 4.6 0" strokeLinecap="round" />
-    </svg>
-  );
+  return <Bell className={className} strokeWidth={1.7} />;
 }
 
 function formatTimestamp(iso: string): string {
@@ -145,8 +132,8 @@ await markAllNotificationsRead();
         className={cn(
           "ui-no-select ui-no-callout relative inline-flex h-9 w-9 items-center justify-center rounded-xl border transition",
           open
-            ? "border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.14)]"
-            : "border-[var(--border)] bg-[rgba(8,12,20,0.62)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(20,24,36,0.85)]",
+            ? "border-[rgba(197,109,45,0.34)] bg-[rgba(197,109,45,0.14)]"
+            : "border-[var(--border)] bg-[rgba(8,12,20,0.62)] hover:border-[rgba(197,109,45,0.28)] hover:bg-[rgba(20,24,36,0.85)]",
         )}
       >
         <BellIcon className="h-[18px] w-[18px] text-[var(--text)]" />
@@ -181,7 +168,7 @@ await markAllNotificationsRead();
                 type="button"
                 disabled={markingAll}
                 onClick={handleMarkAllRead}
-                className="ui-no-select ui-no-callout rounded-lg px-2.5 py-1 text-[11px] font-semibold uppercase tracking-label text-[var(--accent)] transition hover:bg-[rgba(62,166,255,0.1)] disabled:opacity-50"
+                className="ui-no-select ui-no-callout rounded-lg px-2.5 py-1 text-[11px] font-semibold uppercase tracking-label text-[var(--accent)] transition hover:bg-[rgba(197,109,45,0.1)] disabled:opacity-50"
               >
                 {markingAll ? "Marking..." : "Mark all read"}
               </button>
@@ -211,35 +198,15 @@ await markAllNotificationsRead();
                     <div
                       key={notification.id}
                       className={cn(
-                        "group relative flex gap-3 px-4 py-3.5 transition hover:bg-[rgba(62,166,255,0.04)]",
+                        "group relative flex gap-3 px-4 py-3.5 transition hover:bg-[rgba(197,109,45,0.04)]",
                       )}
                     >
                       {/* Icon */}
                       <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[rgba(245,158,11,0.2)] bg-[rgba(245,158,11,0.08)]">
                         {isApprovalBypass ? (
-                          <svg
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.6"
-                            className="h-4 w-4 text-amber-300"
-                          >
-                            <path
-                              d="M10 3.8 11.8 7.7l4 .6-2.9 2.9.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.9 4-.6L10 3.8Z"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
+                          <Star className="h-4 w-4 text-amber-300" strokeWidth={1.6} />
                         ) : (
-                          <svg
-                            viewBox="0 0 20 20"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.6"
-                            className="h-4 w-4 text-sky-300"
-                          >
-                            <circle cx="10" cy="10" r="6.2" />
-                            <path d="M10 6.5v3.9l2.5 1.8" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
+                          <Clock className="h-4 w-4 text-[var(--accent)]" strokeWidth={1.6} />
                         )}
                       </div>
 
@@ -254,17 +221,9 @@ await markAllNotificationsRead();
                             aria-label="Mark as read"
                             title="Mark as read"
                             onClick={() => void handleMarkRead(notification.id)}
-                            className="ui-no-select ui-no-callout mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--muted)] opacity-0 transition hover:bg-[rgba(62,166,255,0.1)] hover:text-[var(--accent)] group-hover:opacity-100 focus-visible:opacity-100"
+                            className="ui-no-select ui-no-callout mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[var(--muted)] opacity-0 transition hover:bg-[rgba(197,109,45,0.1)] hover:text-[var(--accent)] group-hover:opacity-100 focus-visible:opacity-100"
                           >
-                            <svg
-                              viewBox="0 0 20 20"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="1.6"
-                              className="h-3.5 w-3.5"
-                            >
-                              <path d="m6 10 2.5 2.5 5.5-5.5" strokeLinecap="round" strokeLinejoin="round" />
-                            </svg>
+                            <Check className="h-3.5 w-3.5" strokeWidth={1.6} />
                           </button>
                         </div>
                         {notification.body ? (

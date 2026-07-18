@@ -18,15 +18,15 @@ export default function Footer() {
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">Product</div>
               <ul className="mt-3 space-y-2">
-                <li><Link href="/plans" className="text-xs text-slate-500 transition hover:text-sky-300">Pricing</Link></li>
-                <li><Link href="/faq" className="text-xs text-slate-500 transition hover:text-sky-300">FAQ</Link></li>
-                <li><Link href="/contact" className="text-xs text-slate-500 transition hover:text-sky-300">Contact</Link></li>
+                <li><Link href="/plans" className="text-xs text-slate-500 transition hover:text-[var(--accent)]">Pricing</Link></li>
+                <li><Link href="/faq" className="text-xs text-slate-500 transition hover:text-[var(--accent)]">FAQ</Link></li>
+                <li><Link href="/contact" className="text-xs text-slate-500 transition hover:text-[var(--accent)]">Contact</Link></li>
               </ul>
             </div>
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">Company</div>
               <ul className="mt-3 space-y-2">
-                <li><Link href="/contact" className="text-xs text-slate-500 transition hover:text-sky-300">Support</Link></li>
+                <li><Link href="/contact" className="text-xs text-slate-500 transition hover:text-[var(--accent)]">Support</Link></li>
                 <li><span className="text-xs text-slate-600">Pilot program — now open</span></li>
               </ul>
             </div>
@@ -34,7 +34,7 @@ export default function Footer() {
               <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">Legal</div>
               <ul className="mt-3 space-y-2">
                 <li><span className="text-xs text-slate-600">Privacy &amp; Terms — coming soon</span></li>
-                <li><a href="mailto:support@factorynerve.online" className="text-xs text-slate-500 transition hover:text-sky-300">support@factorynerve.online</a></li>
+                <li><a href="mailto:support@factorynerve.online" className="text-xs text-slate-500 transition hover:text-[var(--accent)]">support@factorynerve.online</a></li>
               </ul>
             </div>
           </div>

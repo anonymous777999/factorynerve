@@ -379,8 +379,8 @@ export function FeedbackWidget({
   };
 
   const buttonClassName = immersiveScannerRoute
-    ? "safe-fixed-right safe-top-inset fixed right-3 top-3 z-[58] inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(12,16,26,0.96)] px-3 py-2 text-sm font-semibold text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(62,166,255,0.48)] hover:bg-[rgba(20,24,36,0.98)]"
-    : "fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] left-[calc(env(safe-area-inset-left,0px)+1rem)] z-[45] inline-flex min-h-11 items-center gap-2 rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(12,16,26,0.96)] px-4 py-2 text-sm font-semibold text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(62,166,255,0.48)] hover:bg-[rgba(20,24,36,0.98)] lg:bottom-[7rem] lg:left-auto lg:right-6";
+    ? "safe-fixed-right safe-top-inset fixed right-3 top-3 z-[58] inline-flex min-h-11 min-w-11 items-center justify-center rounded-full border border-[rgba(197,109,45,0.28)] bg-[rgba(12,16,26,0.96)] px-3 py-2 text-sm font-semibold text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(197,109,45,0.48)] hover:bg-[rgba(20,24,36,0.98)]"
+    : "fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] left-[calc(env(safe-area-inset-left,0px)+1rem)] z-[45] inline-flex min-h-11 items-center gap-2 rounded-full border border-[rgba(197,109,45,0.28)] bg-[rgba(12,16,26,0.96)] px-4 py-2 text-sm font-semibold text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(197,109,45,0.48)] hover:bg-[rgba(20,24,36,0.98)] lg:bottom-[7rem] lg:left-auto lg:right-6";
 
   return (
     <>
@@ -391,7 +391,7 @@ export function FeedbackWidget({
         data-feedback-ignore-action="true"
         aria-label="Open feedback"
       >
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(62,166,255,0.16)] text-xs">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(197,109,45,0.16)] text-xs">
           ?
         </span>
         {!immersiveScannerRoute ? <span>Help</span> : null}
@@ -440,8 +440,8 @@ export function FeedbackWidget({
                     className={cn(
                       "min-h-11 rounded-[1.25rem] border px-3 py-3 text-left text-sm transition",
                       feedbackType === option.value
-                        ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)] text-white"
-                        : "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)] hover:text-white",
+                        ? "border-[rgba(197,109,45,0.45)] bg-[rgba(197,109,45,0.12)] text-white"
+                        : "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)] hover:border-[rgba(197,109,45,0.28)] hover:text-white",
                     )}
                     onClick={() => {
                       setFeedbackType(option.value);
@@ -464,7 +464,7 @@ export function FeedbackWidget({
                     className={cn(
                       "min-h-11 rounded-full border px-3 py-2 text-sm transition",
                       mood === option.value
-                        ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)] text-white"
+                        ? "border-[rgba(197,109,45,0.45)] bg-[rgba(197,109,45,0.12)] text-white"
                         : "border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-[var(--muted)] hover:text-white",
                     )}
                     onClick={() => setMood(mood === option.value ? null : option.value)}
@@ -485,7 +485,7 @@ export function FeedbackWidget({
                     className={cn(
                       "min-h-11 rounded-full border px-3 py-2 text-sm transition",
                       followUpAnswer === option.value
-                        ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)] text-white"
+                        ? "border-[rgba(197,109,45,0.45)] bg-[rgba(197,109,45,0.12)] text-white"
                         : "border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-[var(--muted)] hover:text-white",
                     )}
                     onClick={() => setFollowUpAnswer(followUpAnswer === option.value ? "" : option.value)}
@@ -528,7 +528,7 @@ export function FeedbackWidget({
                         className={cn(
                           "min-h-11 rounded-full border px-3 py-2 text-sm transition",
                           languageHint === option.value
-                            ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)] text-white"
+                            ? "border-[rgba(197,109,45,0.45)] bg-[rgba(197,109,45,0.12)] text-white"
                             : "border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-[var(--muted)] hover:text-white",
                         )}
                         onClick={() => setLanguageHint(option.value)}

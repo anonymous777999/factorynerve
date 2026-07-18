@@ -1,6 +1,21 @@
 import type { Metadata, Viewport } from "next";
+import { IBM_Plex_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AppProviders } from "@/components/layout/app-providers";
+
+const plexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+  variable: "--font-plex-sans",
+});
+
+const spaceGrotesk = Space_Grotesk({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  display: "swap",
+  variable: "--font-space-grotesk",
+});
 import { AppShell } from "@/components/layout/app-shell";
 import { BetaRolloutBanner } from "@/components/shared/beta-rollout-banner";
 import { FeedbackSyncAgent } from "@/components/shared/feedback-sync-agent";
@@ -51,7 +66,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
+    <html lang="en" className={`h-full antialiased ${plexSans.variable} ${spaceGrotesk.variable}`}>
 
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--text)]">
         <AppProviders>

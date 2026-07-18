@@ -1,5 +1,7 @@
 "use client";
 
+import { Download } from "lucide-react";
+
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="mb-12 scroll-mt-24">
@@ -33,13 +35,9 @@ export default function EULAPage() {
           <a
             href="#"
             onClick={(e) => { e.preventDefault(); window.print(); }}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-300 transition hover:border-sky-300/30 hover:text-white"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-slate-300 transition hover:border-[var(--accent-soft)] hover:text-white"
           >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round" strokeLinejoin="round" />
-              <polyline points="7 10 12 15 17 10" strokeLinecap="round" strokeLinejoin="round" />
-              <line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <Download className="h-4 w-4" strokeWidth={2} />
             Download PDF
           </a>
         </div>
@@ -339,8 +337,8 @@ export default function EULAPage() {
               If you have any questions about this EULA, please contact:
             </p>
             <div className="mt-4 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-sm text-slate-300">
-              <p><strong className="text-slate-200">Email:</strong> <a href="mailto:legal@dpr.ai" className="text-sky-300 hover:underline">legal@dpr.ai</a></p>
-              <p className="mt-1"><strong className="text-slate-200">Legal Notices:</strong> <a href="mailto:legal@dpr.ai" className="text-sky-300 hover:underline">legal@dpr.ai</a></p>
+              <p><strong className="text-slate-200">Email:</strong> <a href="mailto:legal@dpr.ai" className="text-[var(--accent)] hover:underline">legal@dpr.ai</a></p>
+              <p className="mt-1"><strong className="text-slate-200">Legal Notices:</strong> <a href="mailto:legal@dpr.ai" className="text-[var(--accent)] hover:underline">legal@dpr.ai</a></p>
               <p className="mt-3 text-slate-400">
                 DPR.ai Technologies Pvt. Ltd.<br />
                 4th Floor, Tech Tower, Industrial District<br />
@@ -349,7 +347,7 @@ export default function EULAPage() {
             </div>
             <p className="mt-4">
               For support-related inquiries, please visit our{" "}
-              <a href="/contact" className="text-sky-300 hover:underline">Contact page</a>.
+              <a href="/contact" className="text-[var(--accent)] hover:underline">Contact page</a>.
             </p>
           </Body>
         </Section>

@@ -267,7 +267,7 @@ export function DataTableGrid({
                     value={header}
                     readOnly={readOnly}
                     onChange={(event) => updateHeader(columnIndex, event.target.value)}
-                    className="h-10 w-full rounded-[14px] border border-[#d9e1e8] bg-[#fbfcfd] px-3 text-sm font-medium text-[#101828] outline-none transition focus:border-[#185FA5] focus:bg-white"
+                    className="h-10 w-full rounded-[14px] border border-[#d9e1e8] bg-[#fbfcfd] px-3 text-sm font-medium text-[#101828] outline-none transition focus:border-[#8c4218] focus:bg-white"
                   />
                   {!readOnly ? (
                     <select
@@ -277,7 +277,7 @@ export function DataTableGrid({
                         next[columnIndex] = event.target.value as OcrColumnType;
                         onChangeColumnTypes(next);
                       }}
-                      className="mt-2 h-9 w-full rounded-[12px] border border-[#e0e7ef] bg-white px-3 text-xs text-[#667085] outline-none transition focus:border-[#185FA5]"
+                      className="mt-2 h-9 w-full rounded-[12px] border border-[#e0e7ef] bg-white px-3 text-xs text-[#667085] outline-none transition focus:border-[#8c4218]"
                     >
                       <option value="text">Text</option>
                       <option value="number">Number</option>
@@ -294,7 +294,7 @@ export function DataTableGrid({
               return (
               <tr
                 key={`row-${rowIndex}`}
-                className={cn(totalRow && "border-t-2 border-t-[#185FA5]/30 bg-[#f8fafc] font-semibold")}
+                className={cn(totalRow && "border-t-2 border-t-[#8c4218]/30 bg-[#f8fafc] font-semibold")}
               >
                 {row.map((currentCell, columnIndex) => {
                   const cellData = normalizeCell(currentCell);
@@ -348,7 +348,7 @@ export function DataTableGrid({
                             }
                           }}
                           className={cn(
-                            "h-10 w-full rounded-[14px] border border-[#185FA5] bg-white px-3 text-sm text-[#101828] outline-none",
+                            "h-10 w-full rounded-[14px] border border-[#8c4218] bg-white px-3 text-sm text-[#101828] outline-none",
                             alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                           )}
                         />
@@ -360,7 +360,7 @@ export function DataTableGrid({
                             "flex h-10 w-full items-center gap-2 rounded-[14px] border px-3 text-sm text-[#101828] outline-none transition duration-150",
                             alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                             isSelected
-                              ? "border-[#185FA5] bg-[#f4f9ff] shadow-[inset_0_0_0_1px_rgba(24,95,165,0.12)]"
+                              ? "border-[#8c4218] bg-[#f4f9ff] shadow-[inset_0_0_0_1px_rgba(24,95,165,0.12)]"
                               : "border-[#eef2f6] bg-[#fbfcfd] hover:border-[#d8e1ea] hover:bg-white",
                           )}
                           onClick={() => {

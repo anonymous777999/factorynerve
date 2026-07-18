@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { ShieldCheck, Zap, Clock } from "lucide-react";
 
 import { register, resendEmailVerification, type RegisterResponse } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
@@ -15,29 +16,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 function ShieldSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
+  return <ShieldCheck className="h-4 w-4" />;
 }
 
 function ZapSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" />
-    </svg>
-  );
+  return <Zap className="h-4 w-4" />;
 }
 
 function ClockSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <path d="M12 6v6l4 2" />
-    </svg>
-  );
+  return <Clock className="h-4 w-4" />;
 }
 
 function destinationLabel(path: string, t: (key: string, fallback?: string) => string) {
@@ -95,7 +82,7 @@ export default function RegisterPage() {
           ? "border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] text-amber-100"
           : isEmailDelivery
             ? "border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] text-green-100"
-            : "border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] text-sky-100",
+            : "border-[rgba(197,109,45,0.24)] bg-[rgba(197,109,45,0.08)] text-[var(--accent)]",
       }
     : null;
 
@@ -214,7 +201,7 @@ export default function RegisterPage() {
       {success ? (
         <div className="space-y-5">
               {hasRedirectTarget ? (
-                <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-[var(--text)]">
+                <div className="rounded-2xl border border-[rgba(197,109,45,0.24)] bg-[rgba(197,109,45,0.08)] p-4 text-sm text-[var(--text)]">
                   <div className="text-xs font-semibold uppercase tracking-header text-[var(--muted)]">{t("auth.register.after_verification", "After verification")}</div>
                   <div className="mt-2 text-base font-semibold">{t("auth.register.after_verification_detail", "Sign in to continue into {{destination}}.", { destination: nextDestination })}</div>
                 </div>
@@ -279,7 +266,7 @@ export default function RegisterPage() {
                     </div>
                     <a
                       href={success.verification_link}
-                      className="inline-flex rounded-full border border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(62,166,255,0.18)]"
+                      className="inline-flex rounded-full border border-[rgba(197,109,45,0.4)] bg-[rgba(197,109,45,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(197,109,45,0.18)]"
                     >
                       Open Verification Page
                     </a>
@@ -314,13 +301,13 @@ export default function RegisterPage() {
       ) : (
         <div className="space-y-5">
           {hasRedirectTarget ? (
-            <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-[var(--text)]">
+            <div className="rounded-2xl border border-[rgba(197,109,45,0.24)] bg-[rgba(197,109,45,0.08)] p-4 text-sm text-[var(--text)]">
               <div className="text-xs font-semibold uppercase tracking-header text-[var(--muted)]">{t("auth.register.start_here", "Start here first")}</div>
               <div className="mt-2 text-base font-semibold">{t("auth.register.start_here_detail", "After verification, the user can continue into {{destination}}.", { destination: nextDestination })}</div>
             </div>
           ) : null}
 
-          <details className="group rounded-2xl border border-[rgba(62,166,255,0.2)] bg-[rgba(62,166,255,0.08)] p-4">
+          <details className="group rounded-2xl border border-[rgba(197,109,45,0.2)] bg-[rgba(197,109,45,0.08)] p-4">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-[var(--text)]">
               {t("auth.register.google_summary", "Google sign-in")}
               <span className="text-xs uppercase tracking-caption text-[var(--muted)] transition group-open:hidden">{t("common.open", "Open")}</span>

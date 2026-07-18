@@ -3,6 +3,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { Plus, Minus } from "lucide-react";
 
 import { PasswordField } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
@@ -552,7 +553,7 @@ export default function ProfilePage() {
     <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-8 lg:py-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
-          <div className="text-[11px] font-semibold uppercase tracking-prominent text-[rgba(62,166,255,0.88)]">
+          <div className="text-[11px] font-semibold uppercase tracking-prominent text-[rgba(197,109,45,0.88)]">
             Profile
           </div>
           <h1 className="mt-2 text-3xl font-semibold text-white">Your account</h1>
@@ -606,7 +607,7 @@ export default function ProfilePage() {
                 />
                 <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
                   <div className="flex flex-col items-center sm:items-start">
-                    <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[2rem] border border-[rgba(62,166,255,0.24)] bg-[linear-gradient(135deg,rgba(34,211,238,0.14),rgba(96,165,250,0.22))] text-2xl font-semibold text-white shadow-[0_16px_40px_rgba(34,211,238,0.14)]">
+                    <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[2rem] border border-[rgba(197,109,45,0.24)] bg-[linear-gradient(135deg,rgba(197,109,45,0.14),rgba(96,165,250,0.22))] text-2xl font-semibold text-white shadow-[0_16px_40px_rgba(197,109,45,0.14)]">
                       {displayPhotoUrl ? (
                         <img
                           src={displayPhotoUrl}
@@ -667,7 +668,7 @@ export default function ProfilePage() {
 
                   <div className="min-w-0 flex-1 space-y-4">
                     {selectedPhotoPreview ? (
-                      <div className="rounded-[1.7rem] border border-[rgba(62,166,255,0.26)] bg-[rgba(8,12,20,0.56)] p-4">
+                      <div className="rounded-[1.7rem] border border-[rgba(197,109,45,0.26)] bg-[rgba(8,12,20,0.56)] p-4">
                         <div className="text-xs uppercase tracking-label text-slate-400">Crop selection</div>
                         <div className="mt-3 grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
                           <div>
@@ -680,7 +681,7 @@ export default function ProfilePage() {
                                     className="pointer-events-none absolute max-w-none select-none"
                                     style={cropPreviewStyle}
                                   />
-                                  <div className="pointer-events-none absolute inset-0 border border-[rgba(62,166,255,0.45)] shadow-[inset_0_0_0_999px_rgba(4,8,16,0.28)]" />
+                                  <div className="pointer-events-none absolute inset-0 border border-[rgba(197,109,45,0.45)] shadow-[inset_0_0_0_999px_rgba(4,8,16,0.28)]" />
                                   <div className="pointer-events-none absolute inset-[14%] rounded-[1.35rem] border border-dashed border-white/35" />
                                 </>
                               ) : null}
@@ -878,14 +879,15 @@ export default function ProfilePage() {
                     <div className="text-sm text-slate-400">Security</div>
                     <CardTitle className="mt-2 text-2xl text-white">Password and sessions</CardTitle>
                   </div>
-                  <button
-                    type="button"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] text-lg text-white lg:hidden"
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 rounded-full lg:hidden"
                     onClick={() => toggleSection("security")}
                     aria-label="Toggle security section"
                   >
-                    {expandedSections.security ? "-" : "+"}
-                  </button>
+                    {expandedSections.security ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className={sectionContentClass("security")}>
@@ -975,14 +977,15 @@ export default function ProfilePage() {
                     <div className="text-sm text-slate-400">Workspace</div>
                     <CardTitle className="mt-2 text-2xl text-white">Current access</CardTitle>
                   </div>
-                  <button
-                    type="button"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] text-lg text-white lg:hidden"
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="h-10 w-10 rounded-full lg:hidden"
                     onClick={() => toggleSection("workspace")}
                     aria-label="Toggle workspace section"
                   >
-                    {expandedSections.workspace ? "-" : "+"}
-                  </button>
+                    {expandedSections.workspace ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className={sectionContentClass("workspace")}>
@@ -1021,14 +1024,15 @@ export default function ProfilePage() {
                       <div className="text-sm text-slate-400">Activity</div>
                       <CardTitle className="mt-2 text-2xl text-white">Recent work</CardTitle>
                     </div>
-                    <button
-                      type="button"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] text-lg text-white lg:hidden"
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-10 w-10 rounded-full lg:hidden"
                       onClick={() => toggleSection("activity")}
                       aria-label="Toggle activity section"
                     >
-                      {expandedSections.activity ? "-" : "+"}
-                    </button>
+                      {expandedSections.activity ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className={sectionContentClass("activity")}>
@@ -1061,14 +1065,15 @@ export default function ProfilePage() {
                 <div className="text-sm text-slate-400">Actions</div>
                 <CardTitle className="mt-2 text-2xl text-white">Account tools</CardTitle>
               </div>
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] text-lg text-white lg:hidden"
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 rounded-full lg:hidden"
                 onClick={() => toggleSection("actions")}
                 aria-label="Toggle actions section"
               >
-                {expandedSections.actions ? "-" : "+"}
-              </button>
+                {expandedSections.actions ? <Minus className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              </Button>
             </div>
           </CardHeader>
           <CardContent className={sectionContentClass("actions")}>

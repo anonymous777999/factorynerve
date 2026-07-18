@@ -286,13 +286,13 @@ function buildDerivedReviewItem(item: AttendanceReviewItem): DerivedReviewItem {
 function severityClasses(severity: ReviewSeverity) {
   if (severity === "critical") return "border border-red-400/35 bg-[rgba(239,68,68,0.16)] text-red-100";
   if (severity === "warning") return "border border-amber-400/35 bg-[rgba(245,158,11,0.14)] text-amber-100";
-  return "border border-sky-400/35 bg-[rgba(56,189,248,0.14)] text-sky-100";
+  return "border border-[var(--accent-soft)] bg-[rgba(56,189,248,0.14)] text-[var(--accent)]";
 }
 
 function infoCardClasses(severity: ReviewSeverity) {
   if (severity === "critical") return "border-red-400/25 bg-[rgba(239,68,68,0.07)]";
   if (severity === "warning") return "border-amber-400/25 bg-[rgba(245,158,11,0.07)]";
-  return "border-sky-400/25 bg-[rgba(56,189,248,0.07)]";
+  return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.07)]";
 }
 
 function SummaryCard({ label, value, helper }: { label: string; value: number | string; helper: string }) {
@@ -472,9 +472,9 @@ function ReviewDetailPanel({
 
         {detailTab === "fix" ? (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(34,211,238,0.08)] p-4">
-              <div className="text-xs uppercase tracking-label text-cyan-100/80">Suggested outcome</div>
-              <div className="mt-2 text-sm font-semibold text-cyan-50">{review.suggestedFix}</div>
+            <div className="rounded-2xl border border-[var(--accent-soft)] bg-[rgba(197,109,45,0.08)] p-4">
+              <div className="text-xs uppercase tracking-label text-[var(--accent)]">Suggested outcome</div>
+              <div className="mt-2 text-sm font-semibold text-[var(--accent)]">{review.suggestedFix}</div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -1303,7 +1303,7 @@ export default function AttendanceReviewPage() {
                                             key={review.item.attendance_id}
                                             className={cn(
                                               "cursor-pointer border-t border-[var(--border)]/60 text-sm transition hover:bg-[rgba(255,255,255,0.02)]",
-                                              isActive ? "bg-[rgba(34,211,238,0.08)]" : "bg-transparent",
+                                              isActive ? "bg-[rgba(197,109,45,0.08)]" : "bg-transparent",
                                             )}
                                             onClick={() =>
                                               openReview(
@@ -1335,7 +1335,7 @@ export default function AttendanceReviewPage() {
                                             </td>
                                             <td className="px-6 py-4 align-top">
                                               <div className="flex items-start gap-3">
-                                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(34,211,238,0.16)] text-sm font-semibold text-cyan-50">
+                                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(197,109,45,0.16)] text-sm font-semibold text-[var(--accent)]">
                                                   {getAvatarLabel(review.item.name)}
                                                 </div>
                                                 <div>

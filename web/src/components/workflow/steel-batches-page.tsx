@@ -278,7 +278,7 @@ export function SteelBatchesPage() {
                         }}
                         className={`cursor-pointer border-b border-[var(--border)]/60 transition last:border-none ${
                           isHighlighted
-                            ? "bg-[rgba(62,166,255,0.16)] shadow-[inset_0_0_0_1px_rgba(62,166,255,0.45)]"
+                            ? "bg-[rgba(197,109,45,0.16)] shadow-[inset_0_0_0_1px_rgba(197,109,45,0.45)]"
                             : "hover:bg-[rgba(20,24,36,0.52)]"
                         }`}
                         onClick={() => router.push(`/steel/batches/${row.batch.id}`)}

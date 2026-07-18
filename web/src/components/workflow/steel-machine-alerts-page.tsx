@@ -12,6 +12,7 @@ import {
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
+import { EmptyState, TabButton } from "@/components/shared";
 
 type SeverityFilter = "all" | "critical" | "high" | "warning";
 type AlertTypeFilter = "all" | "mtbf_low" | "overdue_maintenance" | "maintenance_due_soon";
@@ -44,14 +45,6 @@ function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: 
     return <span className="ml-1 text-[10px] text-[var(--muted)]">↕</span>;
   }
   return <span className="ml-1 text-[10px]">{sortDir === "asc" ? "↑" : "↓"}</span>;
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
-      {message}
-    </div>
-  );
 }
 
 export function SteelMachineAlertsPage() {
@@ -199,19 +192,17 @@ export function SteelMachineAlertsPage() {
         {/* Severity Filter Tabs */}
         <div className="flex flex-wrap gap-2">
           {SEVERITY_TABS.map((tab) => (
-            <button
+            <TabButton
               key={tab.key}
-              type="button"
+              active={severityFilter === tab.key}
               onClick={() => setSeverityFilter(tab.key)}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                severityFilter === tab.key
-                  ? "border border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] text-sky-100 shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-                  : "border border-[var(--border)] bg-[rgba(20,24,36,0.7)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]"
-              }`}
-            >
-              {tab.label}
-              <span className="ml-1.5 text-xs opacity-70">({tab.count})</span>
-            </button>
+              label={
+                <>
+                  {tab.label}
+                  <span className="ml-1.5 text-xs opacity-70">({tab.count})</span>
+                </>
+              }
+            />
           ))}
         </div>
 
@@ -224,8 +215,8 @@ export function SteelMachineAlertsPage() {
               onClick={() => setTypeFilter(tab.key)}
               className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
                 typeFilter === tab.key
-                  ? "border border-[rgba(62,166,255,0.35)] bg-[rgba(62,166,255,0.1)] text-sky-200"
-                  : "border border-[var(--border)] bg-[rgba(20,24,36,0.5)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.2)] hover:bg-[rgba(28,34,51,0.72)]"
+                  ? "border border-[rgba(197,109,45,0.35)] bg-[rgba(197,109,45,0.1)] text-[var(--accent)]"
+                  : "border border-[var(--border)] bg-[rgba(20,24,36,0.5)] text-[var(--muted)] hover:border-[rgba(197,109,45,0.2)] hover:bg-[rgba(28,34,51,0.72)]"
               }`}
             >
               {tab.label}
@@ -310,7 +301,7 @@ export function SteelMachineAlertsPage() {
                       const isExpanded = expandedAlertKey === alertKey;
                       return (
                         <>
-                        <tr key={alertKey} className="border-b border-[var(--border)]/60 hover:bg-[rgba(62,166,255,0.04)]">
+                        <tr key={alertKey} className="border-b border-[var(--border)]/60 hover:bg-[rgba(197,109,45,0.04)]">
                           <td className="px-3 py-3">
                             <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] uppercase tracking-caption ${alertSeverityBadge(alert.severity)}`}>
                               {alert.severity}
@@ -383,7 +374,7 @@ export function SteelMachineAlertsPage() {
         <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.7)] shadow-sm">
           <CardContent className="pt-4">
             <div className="text-xs text-[var(--muted)]">
-              Alerts are computed from the machine intelligence snapshot (30-day window). 
+              Alerts are computed from the machine intelligence snapshot (30-day window).
               MTBF threshold is set at 2 hours. Click &ldquo;Refresh&rdquo; to get the latest data.
             </div>
           </CardContent>

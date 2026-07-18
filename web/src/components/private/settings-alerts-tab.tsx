@@ -110,7 +110,7 @@ function severityTone(severity: string) {
   if (normalized === "CRITICAL") return "border-red-400/30 bg-red-500/12 text-red-200";
   if (normalized === "HIGH") return "border-orange-400/30 bg-orange-500/12 text-orange-100";
   if (normalized === "MEDIUM") return "border-amber-400/30 bg-amber-500/12 text-amber-100";
-  return "border-sky-400/30 bg-sky-500/12 text-sky-100";
+  return "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]";
 }
 
 function maskPhoneNumber(value: string | null | undefined) {
@@ -859,8 +859,8 @@ export default function SettingsAlertsTab({ active }: Props) {
                           type="button"
                           onClick={() => void loadAlertDetail(alert.ref_id)}
                           className={cn(
-                            "w-full rounded-2xl border p-4 text-left transition hover:border-sky-300/30 hover:bg-[rgba(62,166,255,0.05)]",
-                            selectedAlertRef === alert.ref_id ? "border-sky-300/35 bg-[rgba(62,166,255,0.08)]" : "border-[var(--border)] bg-[var(--card-strong)]",
+                            "w-full rounded-2xl border p-4 text-left transition hover:border-[var(--accent-soft)] hover:bg-[rgba(197,109,45,0.05)]",
+                            selectedAlertRef === alert.ref_id ? "border-[var(--accent-soft)] bg-[rgba(197,109,45,0.08)]" : "border-[var(--border)] bg-[var(--card-strong)]",
                           )}
                         >
                           <div className="flex flex-wrap items-start gap-3">
@@ -1026,7 +1026,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                     key={item.key}
                     className={cn(
                       "rounded-[24px] border p-4 transition",
-                      item.disabled ? "border-[var(--border)]/60 bg-[rgba(255,255,255,0.03)] opacity-70" : "border-[var(--border)] bg-[var(--card-strong)] hover:border-sky-300/25",
+                      item.disabled ? "border-[var(--border)]/60 bg-[rgba(255,255,255,0.03)] opacity-70" : "border-[var(--border)] bg-[var(--card-strong)] hover:border-[var(--accent-soft)]",
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">

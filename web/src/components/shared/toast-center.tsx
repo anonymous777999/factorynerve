@@ -17,7 +17,7 @@ function toneClasses(tone: AppToast["tone"]) {
   if (tone === "error") {
     return "border-red-500/35 bg-[rgba(239,68,68,0.14)] text-red-50";
   }
-  return "border-[rgba(62,166,255,0.35)] bg-[rgba(62,166,255,0.12)] text-white";
+  return "border-[rgba(197,109,45,0.35)] bg-[rgba(197,109,45,0.12)] text-white";
 }
 
 export function ToastCenter() {

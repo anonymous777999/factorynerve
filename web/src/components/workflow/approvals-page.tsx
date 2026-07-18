@@ -259,9 +259,9 @@ function typeClasses(kind: TaskKind | SignalKind) {
     case "attendance":
       return "border-violet-400/30 bg-[rgba(167,139,250,0.12)] text-violet-100";
     case "entry":
-      return "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100";
+      return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]";
     case "ocr":
-      return "border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100";
+      return "border-[var(--accent-soft)] bg-[rgba(197,109,45,0.12)] text-[var(--accent)]";
     case "reconciliation":
       return "border-orange-400/30 bg-[rgba(249,115,22,0.12)] text-orange-100";
     case "batch":
@@ -1984,7 +1984,7 @@ export default function ApprovalsPage() {
             </div>
             <div className="flex flex-wrap gap-2">
               <QueueStatPill label="Urgent" value={urgentTaskCount} tone="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100" />
-              <QueueStatPill label="Open" value={filteredTasks.length} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+              <QueueStatPill label="Open" value={filteredTasks.length} tone="border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]" />
               <QueueStatPill label="24h+" value={staleTaskCount} tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
               <QueueStatPill label="Signals" value={signalCount} tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
             </div>
@@ -1992,7 +1992,7 @@ export default function ApprovalsPage() {
           <div className="space-y-6 border-t border-[var(--border)] px-6 py-6">
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <SummaryMetric label="Urgent reviews" value={urgentTaskCount} helper="Critical first" tone="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100" />
-              <SummaryMetric label="Open tasks" value={filteredTasks.length} helper="Decision queue" tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+              <SummaryMetric label="Open tasks" value={filteredTasks.length} helper="Decision queue" tone="border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]" />
               <SummaryMetric label="24h breaches" value={staleTaskCount} helper="Oldest first" tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
               <SummaryMetric label="Signals" value={signalCount} helper="Needs routing" tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
             </section>
@@ -2088,7 +2088,7 @@ export default function ApprovalsPage() {
                   <div className="mt-1 text-xl font-semibold text-[var(--text)]">Presets, filters, and bulk actions</div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <QueueStatPill label="Preset" value={presetLabel(activePreset)} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+                  <QueueStatPill label="Preset" value={presetLabel(activePreset)} tone="border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]" />
                   <QueueStatPill label="Filters" value={hasActiveFilters ? activeFilterCount : "none"} />
                   <QueueStatPill label="Selected" value={selectedTaskCount} />
                 </div>
@@ -2246,7 +2246,7 @@ export default function ApprovalsPage() {
                     <CardTitle className="text-xl">Start with the top decision</CardTitle>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <QueueStatPill label="Open" value={filteredTasks.length} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+                    <QueueStatPill label="Open" value={filteredTasks.length} tone="border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]" />
                     <QueueStatPill
                       label={restrictedTaskCount ? "Escalation" : "Priority"}
                       value={restrictedTaskCount || "risk-ranked"}
@@ -2260,8 +2260,8 @@ export default function ApprovalsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <QueueStatPill label="Attendance" value={attendanceTaskCount} tone="border-violet-400/30 bg-[rgba(167,139,250,0.12)] text-violet-100" />
-                  <QueueStatPill label="DPR" value={dprTaskCount} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
-                  <QueueStatPill label="OCR" value={ocrTaskCount} tone="border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100" />
+                  <QueueStatPill label="DPR" value={dprTaskCount} tone="border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]" />
+                  <QueueStatPill label="OCR" value={ocrTaskCount} tone="border-[var(--accent-soft)] bg-[rgba(197,109,45,0.12)] text-[var(--accent)]" />
                   <QueueStatPill label="Stock" value={stockTaskCount} tone="border-orange-400/30 bg-[rgba(249,115,22,0.12)] text-orange-100" />
                 </div>
                 <div className="text-sm text-[var(--muted)]">
@@ -2390,7 +2390,7 @@ export default function ApprovalsPage() {
                                         key={item.key}
                                         className={cn(
                                           "cursor-pointer border-t border-[var(--border)]/60 text-sm transition hover:bg-[rgba(255,255,255,0.02)]",
-                                          isActive ? "bg-[rgba(34,211,238,0.08)]" : "bg-transparent",
+                                          isActive ? "bg-[rgba(197,109,45,0.08)]" : "bg-transparent",
                                         )}
                                         onClick={() => openItem(item.key)}
                                       >
@@ -2524,7 +2524,7 @@ export default function ApprovalsPage() {
                       type="button"
                       className={cn(
                         "w-full rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-left transition hover:border-[var(--accent)]/30 hover:bg-[rgba(255,255,255,0.03)]",
-                        selectedKey === item.key ? "border-[var(--accent)]/50 bg-[rgba(34,211,238,0.08)]" : "",
+                        selectedKey === item.key ? "border-[var(--accent)]/50 bg-[rgba(197,109,45,0.08)]" : "",
                       )}
                       onClick={() => openItem(item.key, typeof window !== "undefined" && window.innerWidth < 1024)}
                     >

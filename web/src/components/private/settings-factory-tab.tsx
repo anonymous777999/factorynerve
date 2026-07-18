@@ -147,7 +147,7 @@ export function SettingsFactoryTab({
               {(selectedFactoryTemplate?.modules || factory.starter_modules || []).map((module) => (
                 <span
                   key={module}
-                  className="rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-label text-[var(--accent)]"
+                  className="rounded-full border border-[rgba(197,109,45,0.24)] bg-[rgba(197,109,45,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-label text-[var(--accent)]"
                 >
                   {module.replace(/_/g, " ")}
                 </span>
@@ -306,7 +306,7 @@ export function SettingsFactoryTab({
                 {(selectedNewFactoryTemplate?.modules || newFactoryTemplates?.starter_modules || []).map((module) => (
                   <span
                     key={module}
-                    className="rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-label text-[var(--accent)]"
+                    className="rounded-full border border-[rgba(197,109,45,0.24)] bg-[rgba(197,109,45,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-label text-[var(--accent)]"
                   >
                     {module.replace(/_/g, " ")}
                   </span>

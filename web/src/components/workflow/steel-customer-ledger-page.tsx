@@ -80,13 +80,13 @@ function fieldStatusTone(status: SteelCustomerVerificationFieldStatus) {
 function alertToneClass(level: "info" | "warning" | "critical") {
   if (level === "critical") return "border-rose-400/30 bg-rose-500/10 text-rose-100";
   if (level === "warning") return "border-amber-400/30 bg-amber-500/10 text-amber-100";
-  return "border-cyan-400/30 bg-cyan-500/10 text-cyan-100";
+  return "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]";
 }
 
 function taskPriorityBadgeClass(priority: SteelFollowUpTaskPriority) {
   if (priority === "critical") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
   if (priority === "high") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
-  if (priority === "medium") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
+  if (priority === "medium") return "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]";
   return "border-slate-400/35 bg-slate-500/12 text-slate-200";
 }
 
@@ -94,7 +94,7 @@ function taskStatusBadgeClass(status: SteelFollowUpTaskStatus) {
   if (status === "done") return "border-emerald-400/35 bg-emerald-500/12 text-emerald-200";
   if (status === "in_progress") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
   if (status === "cancelled") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
-  return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
+  return "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]";
 }
 
 function formatTaskLabel(value: string | null | undefined) {

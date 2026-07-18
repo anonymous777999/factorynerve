@@ -187,7 +187,7 @@ export default function AdminBillingPage() {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-sky-400/30 bg-[rgba(56,189,248,0.12)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-label text-sky-100">
+                          <span className="rounded-full border border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-label text-[var(--accent)]">
                             {event.event_type || "unknown"}
                           </span>
                           <span
@@ -313,7 +313,7 @@ export default function AdminBillingPage() {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-cyan-400/30 bg-[rgba(34,211,238,0.12)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-label text-cyan-100">
+                          <span className="rounded-full border border-[var(--accent-soft)] bg-[rgba(197,109,45,0.12)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-label text-[var(--accent)]">
                             {sub.plan}
                           </span>
                           <span
@@ -323,7 +323,7 @@ export default function AdminBillingPage() {
                                 : sub.status === "past_due"
                                   ? "border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100"
                                   : sub.status === "trialing"
-                                    ? "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100"
+                                    ? "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]"
                                     : "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100"
                             }`}
                           >

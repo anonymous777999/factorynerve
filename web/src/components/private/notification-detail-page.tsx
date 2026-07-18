@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { ChevronLeft, Star, Bell } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -201,11 +202,9 @@ export default function NotificationDetailPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/notifications"
-              className="ui-no-select ui-no-callout inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
+              className="ui-no-select ui-no-callout inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(197,109,45,0.35)]"
             >
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                <path d="m12 5.8-4.2 4.2 4.2 4.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ChevronLeft className="h-5 w-5" strokeWidth={1.8} />
             </Link>
           </div>
           <Card>
@@ -246,11 +245,9 @@ export default function NotificationDetailPage() {
         <nav className="flex items-center gap-3">
           <Link
             href="/notifications"
-            className="ui-no-select ui-no-callout inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
+            className="ui-no-select ui-no-callout inline-flex h-10 w-10 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(197,109,45,0.35)]"
           >
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-              <path d="m12 5.8-4.2 4.2 4.2 4.2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
+            <ChevronLeft className="h-5 w-5" strokeWidth={1.8} />
           </Link>
           <Link
             href="/notifications"
@@ -270,7 +267,7 @@ export default function NotificationDetailPage() {
             "rounded-[2rem] border p-6 shadow-2xl backdrop-blur md:p-8",
             notification.is_read
               ? "border-[var(--border)] bg-[rgba(20,24,36,0.88)]"
-              : "border-[rgba(62,166,255,0.18)] bg-[rgba(62,166,255,0.06)]",
+              : "border-[rgba(197,109,45,0.18)] bg-[rgba(197,109,45,0.06)]",
           )}
         >
           {/* Header row */}
@@ -286,32 +283,9 @@ export default function NotificationDetailPage() {
                 )}
               >
                 {notification.notification_type === "approval_bypass" ? (
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    className="h-6 w-6 text-amber-300"
-                  >
-                    <path
-                      d="M10 3.8 11.8 7.7l4 .6-2.9 2.9.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.9 4-.6L10 3.8Z"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  <Star className="h-6 w-6 text-amber-300" strokeWidth={1.6} />
                 ) : (
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    className="h-6 w-6 text-sky-300"
-                  >
-                    <path
-                      d="M10 3.4a5.2 5.2 0 0 0-5.2 5.2v1.4c0 .5-.2 1.1-.5 1.5l-.8 1c-.6.8-.2 2.1.8 2.1h11.4c1 0 1.4-1.3.8-2.1l-.8-1c-.3-.4-.5-1-.5-1.5V8.6A5.2 5.2 0 0 0 10 3.4Z"
-                      strokeLinejoin="round"
-                    />
-                    <path d="M7.7 15.2a2.3 2.3 0 0 0 4.6 0" strokeLinecap="round" />
-                  </svg>
+                  <Bell className="h-6 w-6 text-[var(--accent)]" strokeWidth={1.6} />
                 )}
               </div>
 
@@ -367,7 +341,7 @@ export default function NotificationDetailPage() {
                   "rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-label",
                   notification.is_read
                     ? "bg-[rgba(34,197,94,0.12)] text-emerald-100"
-                    : "bg-[rgba(62,166,255,0.12)] text-sky-100",
+                    : "bg-[rgba(197,109,45,0.12)] text-[var(--accent)]",
                 )}
               >
                 {notification.is_read ? "Read" : "Unread"}
@@ -427,15 +401,7 @@ export default function NotificationDetailPage() {
         <section className="flex flex-wrap items-center gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-6 py-4 shadow-2xl backdrop-blur">
           <Link href="/notifications">
             <Button variant="outline">
-              <svg
-                viewBox="0 0 20 20"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.8"
-                className="mr-2 h-4 w-4"
-              >
-                <path d="m12 5.8-4.2 4.2 4.2 4.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <ChevronLeft className="mr-2 h-4 w-4" strokeWidth={1.8} />
               Back to notifications
             </Button>
           </Link>

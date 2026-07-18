@@ -49,7 +49,7 @@ function statusTone(status: AttendanceLiveRow["status"]) {
     case "working":
       return "border-emerald-400/35 bg-[rgba(34,197,94,0.12)] text-emerald-100";
     case "completed":
-      return "border-sky-400/35 bg-[rgba(56,189,248,0.12)] text-sky-100";
+      return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]";
     default:
       return "border-amber-400/35 bg-[rgba(245,158,11,0.12)] text-amber-100";
   }

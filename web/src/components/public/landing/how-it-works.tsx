@@ -1,3 +1,5 @@
+import { ArrowRight } from "lucide-react";
+
 export default function HowItWorksSection() {
   const steps = [
     { num: "01", title: "Capture", desc: "Your team captures production data using mobile cameras, gallery uploads, or direct entry — online or offline. OCR extracts structured rows from paper registers automatically." },
@@ -21,9 +23,7 @@ export default function HowItWorksSection() {
             <div key={step.title} className="relative rounded-2xl border border-white/5 bg-[rgba(23,32,40,0.4)] p-6 backdrop-blur-sm">
               {i < 2 && (
                 <div className="absolute -right-3 top-1/2 hidden -translate-y-1/2 text-slate-600 sm:block">
-                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2">
-                    <line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" />
-                  </svg>
+                  <ArrowRight className="h-6 w-6" strokeWidth={2} />
                 </div>
               )}
               <div className="text-xs font-bold tracking-caption text-amber-400/60">{step.num}</div>

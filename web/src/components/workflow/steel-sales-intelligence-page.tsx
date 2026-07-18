@@ -345,7 +345,7 @@ export function SteelSalesIntelligencePage() {
                   <div className="mt-1 text-xs text-[#78716c]">Dispatched</div>
                   <div className="mt-2 h-2 rounded-full bg-[#e7e5e4]">
                     <div
-                      className="h-full rounded-full bg-blue-500"
+                      className="h-full rounded-full bg-[var(--accent)]"
                       style={{ width: `${funnel.conversion_rates.invoice_to_dispatch_pct}%` }}
                     />
                   </div>

@@ -14,7 +14,7 @@ import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 function factoryTone(factory: FactorySummary) {
   if (factory.is_active_context) {
-    return "border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.12)]";
+    return "border-[rgba(197,109,45,0.4)] bg-[rgba(197,109,45,0.12)]";
   }
   return "border-[var(--border)] bg-[rgba(20,24,36,0.82)]";
 }

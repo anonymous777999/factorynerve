@@ -139,7 +139,7 @@ function toneClass(tone: QueueTone) {
     case "good":
       return "border-emerald-400/35 bg-[rgba(34,197,94,0.12)]";
     default:
-      return "border-sky-400/35 bg-[rgba(56,189,248,0.12)]";
+      return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)]";
   }
 }
 
@@ -152,7 +152,7 @@ function toneBadgeClass(tone: QueueTone) {
     case "good":
       return "border-emerald-400/35 bg-[rgba(34,197,94,0.12)] text-emerald-100";
     default:
-      return "border-sky-400/35 bg-[rgba(56,189,248,0.12)] text-sky-100";
+      return "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]";
   }
 }
 
@@ -945,7 +945,7 @@ export default function WorkQueuePage() {
     if (missingShifts.length > 0) {
       return {
         label: `${missingShifts.length} shift pending`,
-        tone: "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100",
+        tone: "border-[var(--accent-soft)] bg-[rgba(56,189,248,0.12)] text-[var(--accent)]",
       };
     }
 
@@ -1057,7 +1057,7 @@ export default function WorkQueuePage() {
           <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-header text-[rgba(62,166,255,0.88)]">
+                <div className="text-[11px] font-semibold uppercase tracking-header text-[rgba(197,109,45,0.88)]">
                   {activeFactory?.name || user.factory_name || "Factory"}
                 </div>
                 <h1 className="mt-2 text-3xl font-semibold text-white">{t("queue.title", "Work Queue")}</h1>

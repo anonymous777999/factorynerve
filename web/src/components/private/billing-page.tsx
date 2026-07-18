@@ -91,7 +91,7 @@ function parseAddonQuantitiesParam(raw: string | null) {
 
 function badgeClass(tone: "blue" | "green" | "amber" | "slate") {
   if (tone === "blue") {
-    return "border border-sky-400/30 bg-sky-400/15 text-sky-200";
+    return "border border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]";
   }
   if (tone === "green") {
     return "border border-emerald-400/30 bg-emerald-400/15 text-emerald-200";
@@ -930,7 +930,7 @@ function BillingPageInner() {
               </div>
 
               {checkoutEstimate?.chargeableAddons.length ? (
-                <div className="rounded-2xl border border-sky-400/25 bg-sky-400/10 p-4 text-sm text-sky-100">
+                <div className="rounded-2xl border border-[var(--accent-soft)] bg-[var(--accent-soft)] p-4 text-sm text-[var(--accent)]">
                   Charging for:{" "}
                   {checkoutEstimate.chargeableAddons
                     .map((addon) => `${addon.name} x${addon.incrementalQuantity || addon.quantity || 0}`)

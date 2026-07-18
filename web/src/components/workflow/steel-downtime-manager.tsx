@@ -298,7 +298,7 @@ export function SteelDowntimeManager({ machineId, machineName }: Props) {
             </thead>
             <tbody>
               {events.map((ev) => (
-                <tr key={ev.id} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(62,166,255,0.04)]">
+                <tr key={ev.id} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(197,109,45,0.04)]">
                   {editingId === ev.id ? (
                     <>
                       <td className="px-3 py-2">
@@ -355,7 +355,7 @@ export function SteelDowntimeManager({ machineId, machineName }: Props) {
                         <div className="flex gap-1">
                           <Button  variant="outline" onClick={() => startEdit(ev)}>Edit</Button>
                           <Button
-                            
+
                             variant="outline"
                             className="border-rose-400/30 text-rose-300 hover:bg-rose-500/15 hover:text-rose-200"
                             onClick={() => void handleDelete(ev.id)}

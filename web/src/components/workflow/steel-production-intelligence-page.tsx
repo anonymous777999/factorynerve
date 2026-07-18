@@ -21,6 +21,7 @@ import {
 import { SteelMachineAnalyticsPanel } from "@/components/workflow/steel-machine-analytics-panel";
 import { useSession } from "@/lib/use-session";
 import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
+import { EmptyState, TabButton } from "@/components/shared";
 
 type Tab = "overview" | "trends" | "shift_downtime" | "batch_loss" | "operators" | "machines" | "confidence";
 
@@ -49,30 +50,6 @@ function severityBadge(severity: string) {
   if (severity === "high") return "border-amber-400/35 bg-amber-400/12 text-amber-200";
   if (severity === "watch") return "border-amber-400/25 bg-amber-400/8 text-amber-200/80";
   return "border-emerald-400/25 bg-emerald-400/8 text-emerald-200/80";
-}
-
-function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? "border border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] text-sky-100 shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-          : "border border-[var(--border)] bg-[rgba(20,24,36,0.7)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
-      {message}
-    </div>
-  );
 }
 
 export function SteelProductionIntelligencePage() {
@@ -818,7 +795,7 @@ export function SteelProductionIntelligencePage() {
                       <tbody>
                         {machineIntel.machines.map((m: MachineIntelligenceItem) => (
                           <>
-                          <tr key={m.machine_id} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(62,166,255,0.04)]">
+                          <tr key={m.machine_id} className="border-b border-[var(--border)]/60 last:border-none hover:bg-[rgba(197,109,45,0.04)]">
                             <td className="px-3 py-3">
                               <div className="font-semibold text-white">{m.machine_name}</div>
                               <div className="text-[10px] text-[var(--muted)] font-mono">{m.machine_code}</div>

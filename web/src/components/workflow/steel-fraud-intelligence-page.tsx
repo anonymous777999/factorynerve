@@ -22,6 +22,7 @@ import {
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
+import { EmptyState, TabButton } from "@/components/shared";
 
 type Tab = "overview" | "inventory_loss" | "dispatch_transactions" | "approvals_users" | "investigation" | "alerts" | "confidence";
 
@@ -57,30 +58,6 @@ function confidenceBadge(confidence: string | null | undefined) {
   if (confidence === "derived") return "border-amber-400/35 bg-amber-400/12 text-amber-200";
   if (confidence === "proxy") return "border-amber-400/25 bg-amber-400/8 text-amber-200/80";
   return "border-rose-400/35 bg-rose-400/12 text-rose-200";
-}
-
-function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-        active
-          ? "border border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] text-sky-100 shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-          : "border border-[var(--border)] bg-[rgba(20,24,36,0.7)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]"
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-8 text-center text-sm text-[var(--muted)]">
-      {message}
-    </div>
-  );
 }
 
 function DataChip({ label, value, color }: { label: string; value: string | number; color?: string }) {
@@ -713,7 +690,7 @@ export function SteelFraudIntelligencePage() {
                   <div className="flex items-center gap-2 text-xs text-[var(--muted)]">
                     <span className="inline-flex h-2 w-2 rounded-full bg-rose-400" /> Active
                     <span className="ml-3 inline-flex h-2 w-2 rounded-full bg-amber-400" /> Acknowledged
-                    <span className="ml-3 inline-flex h-2 w-2 rounded-full bg-blue-400" /> Investigating
+                    <span className="ml-3 inline-flex h-2 w-2 rounded-full bg-[var(--accent)]" /> Investigating
                   </div>
                   {alerts.map((alert: FraudAlert) => (
                     <div key={alert.id} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
@@ -730,7 +707,7 @@ export function SteelFraudIntelligencePage() {
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] uppercase tracking-caption ${
                               alert.status === "active" ? "border-rose-400/35 bg-rose-400/12 text-rose-200" :
                               alert.status === "acknowledged" ? "border-amber-400/35 bg-amber-400/12 text-amber-200" :
-                              "border-blue-400/35 bg-blue-400/12 text-blue-200"
+                              "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]"
                             }`}>
                               {alert.status}
                             </span>
@@ -754,13 +731,14 @@ export function SteelFraudIntelligencePage() {
                           </button>
                         )}
                         {alert.status !== "investigating" && (
-                          <button
-                            type="button"
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-auto rounded-lg px-3 py-1.5 text-xs"
                             onClick={() => void handleInvestigate(alert.id)}
-                            className="rounded-lg border border-blue-400/30 bg-blue-500/10 px-3 py-1.5 text-xs font-semibold text-blue-200 transition hover:bg-blue-500/20"
                           >
                             Investigate
-                          </button>
+                          </Button>
                         )}
                         <button
                           type="button"
@@ -769,13 +747,14 @@ export function SteelFraudIntelligencePage() {
                         >
                           Resolve
                         </button>
-                        <button
-                          type="button"
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-auto rounded-lg px-3 py-1.5 text-xs"
                           onClick={() => void handleDismiss(alert.id)}
-                          className="rounded-lg border border-rose-400/30 bg-rose-500/10 px-3 py-1.5 text-xs font-semibold text-rose-200 transition hover:bg-rose-500/20"
                         >
                           Dismiss
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Mail, ShieldCheck, Lock, RefreshCw } from "lucide-react";
 
 import { ApiError } from "@/lib/api";
 import { requestPasswordReset, resendEmailVerification, type PasswordForgotResponse } from "@/lib/auth";
@@ -11,41 +12,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 function MailSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="2" y="4" width="20" height="16" rx="2" />
-      <path d="m22 6-10 7L2 6" />
-    </svg>
-  );
+  return <Mail className="h-4 w-4" />;
 }
 
 function ShieldSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
+  return <ShieldCheck className="h-4 w-4" />;
 }
 
 function LockSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
+  return <Lock className="h-4 w-4" />;
 }
 
 function RefreshSm() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 2v6h-6" />
-      <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-      <path d="M3 22v-6h6" />
-      <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-    </svg>
-  );
+  return <RefreshCw className="h-4 w-4" />;
 }
 
 export default function ForgotPasswordPage() {
@@ -227,7 +206,7 @@ export default function ForgotPasswordPage() {
                   </div>
                   <a
                     href={response.reset_link}
-                    className="inline-flex rounded-full border border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(62,166,255,0.18)]"
+                    className="inline-flex rounded-full border border-[rgba(197,109,45,0.4)] bg-[rgba(197,109,45,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(197,109,45,0.18)]"
                   >
                     {t("auth.forgot.open_reset_form", "Open Reset Form")}
                   </a>

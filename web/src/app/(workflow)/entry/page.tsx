@@ -832,7 +832,7 @@ export default function EntryPage() {
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-1 text-xs uppercase tracking-header text-cyan-200">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-soft)] bg-[var(--accent-soft)] px-4 py-1 text-xs uppercase tracking-header text-[var(--accent)]">
               Shift entry
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">Finish one shift before the next one starts piling up</h1>
@@ -878,7 +878,7 @@ export default function EntryPage() {
           <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(21,28,44,0.92),rgba(11,15,25,0.98))] p-5 shadow-[0_24px_80px_rgba(6,10,18,0.48)] backdrop-blur md:p-7">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="text-sm uppercase tracking-header text-cyan-200">
+                <div className="text-sm uppercase tracking-header text-[var(--accent)]">
                   Step {activeStep + 1}/{STEP_DEFINITIONS.length}
                 </div>
                 <div className="mt-2 text-2xl font-semibold">{activeDefinition.title}</div>
@@ -911,9 +911,9 @@ export default function EntryPage() {
                     onClick={() => goToStep(index)}
                     className={`rounded-[24px] border px-4 py-4 text-left transition ${
                       isActive
-                        ? "border-cyan-300/40 bg-cyan-400/10 shadow-[0_0_0_1px_rgba(34,211,238,0.12),0_16px_36px_rgba(10,18,34,0.32)]"
+                        ? "border-[var(--accent-soft)] bg-[var(--accent-soft)] shadow-[0_0_0_1px_rgba(197,109,45,0.12),0_16px_36px_rgba(10,18,34,0.32)]"
                         : isUnlocked
-                          ? "border-white/10 bg-white/5 hover:border-cyan-300/25 hover:bg-white/8"
+                          ? "border-white/10 bg-white/5 hover:border-[var(--accent-soft)] hover:bg-white/8"
                           : "border-white/6 bg-white/[0.03] text-slate-500"
                     }`}
                   >
@@ -1020,8 +1020,8 @@ export default function EntryPage() {
                             onClick={() => setForm((prev) => ({ ...prev, shift: option.value }))}
                             className={`rounded-[24px] border px-4 py-4 text-left transition ${
                               active
-                                ? "border-cyan-300/40 bg-cyan-400/12 shadow-[0_0_0_1px_rgba(34,211,238,0.1)]"
-                                : "border-white/10 bg-white/5 hover:border-cyan-300/25 hover:bg-white/8"
+                                ? "border-[var(--accent-soft)] bg-[var(--accent-soft)] shadow-[0_0_0_1px_rgba(197,109,45,0.1)]"
+                                : "border-white/10 bg-white/5 hover:border-[var(--accent-soft)] hover:bg-white/8"
                             }`}
                           >
                             <div className="flex items-center justify-between gap-3">
@@ -1103,10 +1103,10 @@ export default function EntryPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-cyan-300/15 bg-[linear-gradient(180deg,rgba(34,211,238,0.1),rgba(14,21,36,0.95))] p-5">
+                  <div className="rounded-[24px] border border-[var(--accent-soft)] bg-[linear-gradient(180deg,rgba(197,109,45,0.1),rgba(14,21,36,0.95))] p-5">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <div className="text-xs uppercase tracking-caption text-cyan-200">Live Performance</div>
+                        <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Live Performance</div>
                         <div className="mt-3 text-4xl font-semibold">{performance.toFixed(0)}%</div>
                         <div className="mt-2 text-sm text-slate-300">
                           {form.units_produced} produced of {form.units_target} target
@@ -1165,7 +1165,7 @@ export default function EntryPage() {
                             onClick={() => setForm((prev) => ({ ...prev, quality_issues: false, quality_details: "" }))}
                             className={`rounded-[24px] border px-4 py-4 text-sm font-semibold transition ${
                               !form.quality_issues
-                                ? "border-cyan-300/40 bg-cyan-400/12 text-white"
+                                ? "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-white"
                                 : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/8"
                             }`}
                           >
@@ -1176,7 +1176,7 @@ export default function EntryPage() {
                             onClick={() => setForm((prev) => ({ ...prev, quality_issues: true }))}
                             className={`rounded-[24px] border px-4 py-4 text-sm font-semibold transition ${
                               form.quality_issues
-                                ? "border-cyan-300/40 bg-cyan-400/12 text-white"
+                                ? "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-white"
                                 : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/8"
                             }`}
                           >
@@ -1199,7 +1199,7 @@ export default function EntryPage() {
 
                       {/* ── Phase 1: Structured quality intelligence ─────────── */}
                       <hr className="border-white/10" />
-                      <div className="text-xs uppercase tracking-caption text-cyan-200">Structured Quality Data</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Structured Quality Data</div>
                       <div className="grid gap-4 sm:grid-cols-2">
                         <div>
                           <label className="text-sm text-slate-300">Rejection Qty (units)</label>
@@ -1245,7 +1245,7 @@ export default function EntryPage() {
                                 defect_reason_id: e.target.value === "" ? null : Number(e.target.value),
                               }))
                             }
-                            className="w-full rounded-[20px] border border-white/10 bg-[#0E1524]/80 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-cyan-300/40 focus:outline-none focus:ring-1 focus:ring-cyan-300/20"
+                            className="w-full rounded-[20px] border border-white/10 bg-[#0E1524]/80 px-4 py-3 text-sm text-white placeholder:text-slate-500 focus:border-[var(--accent-soft)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-soft)]"
                           >
                             <option value="">None</option>
                             {defectReasons.map((dr) => (
@@ -1261,7 +1261,7 @@ export default function EntryPage() {
                               type="checkbox"
                               checked={form.rework_required}
                               onChange={(e) => setForm((prev) => ({ ...prev, rework_required: e.target.checked }))}
-                              className="accent-cyan-400"
+                              className="accent-[var(--accent)]"
                             />
                             Rework Required
                           </label>
@@ -1346,8 +1346,8 @@ export default function EntryPage() {
                       </div>
 
                       {templateContext ? (
-                        <div className="rounded-[24px] border border-cyan-300/15 bg-white/5 px-4 py-4 text-sm text-slate-300">
-                          <div className="text-xs uppercase tracking-caption text-cyan-200">Active Workflow</div>
+                        <div className="rounded-[24px] border border-[var(--accent-soft)] bg-white/5 px-4 py-4 text-sm text-slate-300">
+                          <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Active Workflow</div>
                           <div className="mt-2 text-base font-semibold text-white">{templateContext.workflow_template_label}</div>
                           <div className="mt-2">{templateContext.template.description}</div>
                         </div>
@@ -1540,7 +1540,7 @@ export default function EntryPage() {
                 {conflictId ? (
                   <div className="mt-4 text-sm text-slate-300">
                     Existing shift entry:{" "}
-                    <Link href={`/entry/${conflictId}`} className="text-cyan-200 underline underline-offset-4">
+                    <Link href={`/entry/${conflictId}`} className="text-[var(--accent)] underline underline-offset-4">
                       Open #{conflictId}
                     </Link>
                   </div>

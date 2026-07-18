@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { logout } from "@/lib/auth";
@@ -50,18 +51,8 @@ export default function FactoryRequiredPage() {
     <main className="flex min-h-screen items-center justify-center bg-[#090d14] px-6 py-10 text-[#e8edf7]">
       <div className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(24,28,37,0.98),rgba(18,23,33,0.98))] p-8 shadow-[0_24px_60px_rgba(2,6,23,0.45)]">
         <div className="flex items-center gap-2">
-          <svg
-            viewBox="0 0 20 20"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.7"
-            className="h-5 w-5 text-amber-300"
-          >
-            <path d="M10 2.5 2.5 17.5h15L10 2.5Z" strokeLinejoin="round" />
-            <path d="M10 7.5v4.2" strokeLinecap="round" />
-            <circle cx="10" cy="14.5" r="0.7" fill="currentColor" stroke="none" />
-          </svg>
-          <div className="text-xs font-semibold uppercase tracking-prominent text-sky-200/80">
+          <AlertTriangle className="h-5 w-5 text-amber-300" strokeWidth={1.7} />
+          <div className="text-xs font-semibold uppercase tracking-prominent text-[var(--accent)]">
             Workspace unavailable
           </div>
         </div>
@@ -78,7 +69,7 @@ export default function FactoryRequiredPage() {
 
         <div className="mt-8 space-y-3">
           <Link href="mailto:admin@dpr.ai?subject=Factory%20access%20request&body=I%20am%20unable%20to%20access%20my%20workspace.%20Please%20restore%20my%20factory%20access.">
-            <Button className="w-full rounded-xl bg-[linear-gradient(180deg,#89bcf8,#55a9ff)] px-5 text-sm font-semibold text-[#07131f]">
+            <Button className="w-full rounded-xl bg-[linear-gradient(180deg,#c56d2d,#c56d2d)] px-5 text-sm font-semibold text-[#07131f]">
               Contact your administrator
             </Button>
           </Link>
@@ -95,7 +86,7 @@ export default function FactoryRequiredPage() {
 
         <p className="mt-6 text-xs leading-5 text-slate-500">
           Still having trouble? Reach out to support at{" "}
-          <a href="mailto:support@dpr.ai" className="text-sky-300 underline transition hover:text-sky-200">
+          <a href="mailto:support@dpr.ai" className="text-[var(--accent)] underline transition hover:text-[var(--accent)]">
             support@dpr.ai
           </a>
         </p>

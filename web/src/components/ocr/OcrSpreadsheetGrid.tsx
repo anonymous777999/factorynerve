@@ -105,7 +105,7 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
                   setDraftValue("");
                 }
               }}
-              className="w-full h-full px-3 py-2 border-2 border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-[#1a1a1a]"
+              className="w-full h-full px-3 py-2 border-2 border-[var(--accent-soft)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-soft)] text-[#1a1a1a]"
               style={{ fontFamily: 'Inter, "Noto Sans Devanagari", sans-serif' }}
             />
           );
@@ -192,7 +192,7 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
                     <div
                       onMouseDown={header.getResizeHandler()}
                       onTouchStart={header.getResizeHandler()}
-                      className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none ${header.column.getIsResizing() ? "bg-blue-400" : "bg-[#d0d0d0] hover:bg-blue-300"}`}
+                      className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none ${header.column.getIsResizing() ? "bg-[var(--accent)]" : "bg-[#d0d0d0] hover:bg-[var(--accent)]"}`}
                     />
                   </th>
                 ))}

@@ -39,11 +39,11 @@ function bandConfig(band: CrossValidationResult["band"]) {
       return {
         icon: "ℹ️",
         title: "Cross-validation skipped — no numeric data to compare",
-        border: "border-sky-400/30",
+        border: "border-[var(--accent-soft)]",
         bg: "bg-[rgba(56,189,248,0.08)]",
-        text: "text-sky-100",
-        accent: "text-sky-300",
-        dot: "bg-sky-400",
+        text: "text-[var(--accent)]",
+        accent: "text-[var(--accent)]",
+        dot: "bg-[var(--accent)]",
       };
   }
 }

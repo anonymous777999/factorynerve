@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { Upload } from "lucide-react";
 
 import type { OcrVerificationRecord } from "@/lib/ocr";
 import { cn } from "@/lib/utils";
@@ -92,10 +93,7 @@ export function UploadBox({
       >
         <div className="mx-auto flex max-w-xl flex-col items-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--card-strong)] text-[var(--accent)]">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-7 w-7">
-              <path d="M12 16V5m0 0L7.75 9.25M12 5l4.25 4.25" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M4.5 16.5v1A2.5 2.5 0 0 0 7 20h10a2.5 2.5 0 0 0 2.5-2.5v-1" strokeLinecap="round" />
-            </svg>
+            <Upload className="h-7 w-7" strokeWidth={1.8} />
           </div>
           <h1 className="mt-6 text-[2rem] font-semibold tracking-tight text-[var(--text)] md:text-[2.35rem]">
             Upload image

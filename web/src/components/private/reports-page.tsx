@@ -712,7 +712,7 @@ export default function ReportsPage() {
               {t("reports.hero.subtitle", "Pull the reporting window, confirm trust, and queue the format that needs to leave the factory next.")}
             </p>
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-cyan-400/25 bg-[rgba(34,211,238,0.08)] px-3 py-1 text-cyan-100">
+              <span className="rounded-full border border-[var(--accent-soft)] bg-[rgba(197,109,45,0.08)] px-3 py-1 text-[var(--accent)]">
                 {t("reports.hero.trusted_outputs", "Trusted outputs only")}
               </span>
               <span className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[var(--muted)]">
@@ -958,10 +958,10 @@ export default function ReportsPage() {
           <div className="mt-4 space-y-6">
             <ReportInsightsBoard insights={insights} loading={loadingInsights} role={user.role} steelOverview={steelOverview} />
             {ocrSummary ? (
-              <Card className="border-cyan-400/20 bg-[rgba(18,24,36,0.92)]">
+              <Card className="border-[var(--accent-soft)] bg-[rgba(18,24,36,0.92)]">
                 <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <div className="text-sm uppercase tracking-header text-cyan-200">OCR Trust</div>
+                    <div className="text-sm uppercase tracking-header text-[var(--accent)]">OCR Trust</div>
                     <CardTitle className="mt-2 text-xl">Approved OCR is reporting-safe</CardTitle>
                     <div className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
                       {ocrSummary.trust_note}
@@ -977,12 +977,12 @@ export default function ReportsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-4">
-                  <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(6,14,22,0.55)] p-4">
-                    <div className="text-xs uppercase tracking-caption text-cyan-100/80">Approved Docs</div>
+                  <div className="rounded-2xl border border-[var(--accent-soft)] bg-[rgba(6,14,22,0.55)] p-4">
+                    <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Approved Docs</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.trusted_documents}</div>
                   </div>
-                  <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(6,14,22,0.55)] p-4">
-                    <div className="text-xs uppercase tracking-caption text-cyan-100/80">Trusted Rows</div>
+                  <div className="rounded-2xl border border-[var(--accent-soft)] bg-[rgba(6,14,22,0.55)] p-4">
+                    <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Trusted Rows</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.trusted_rows}</div>
                   </div>
                   <div className="rounded-2xl border border-amber-400/20 bg-[rgba(28,20,8,0.42)] p-4">

@@ -213,7 +213,7 @@ export default function EmailSummaryPage() {
         value: `${ocrSummary?.trusted_documents ?? 0} docs`,
         tone:
           (ocrSummary?.pending_documents ?? 0) === 0
-            ? "border-cyan-400/25 bg-[rgba(34,211,238,0.08)] text-cyan-50"
+            ? "border-[var(--accent-soft)] bg-[rgba(197,109,45,0.08)] text-[var(--accent)]"
             : "border-amber-400/25 bg-[rgba(245,158,11,0.08)] text-amber-50",
         detail:
           (ocrSummary?.pending_documents ?? 0) === 0
@@ -378,7 +378,7 @@ export default function EmailSummaryPage() {
               Pull the range, check trust, and open a leadership-ready draft in your own mail client.
             </p>
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-cyan-400/25 bg-[rgba(34,211,238,0.08)] px-3 py-1 text-cyan-100">
+              <span className="rounded-full border border-[var(--accent-soft)] bg-[rgba(197,109,45,0.08)] px-3 py-1 text-[var(--accent)]">
                 Trust before send
               </span>
               <span className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[var(--muted)]">
@@ -552,11 +552,11 @@ export default function EmailSummaryPage() {
                         {summary.totals.manpower_present} present / {summary.totals.manpower_absent} absent
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] p-4 md:col-span-2">
+                    <div className="rounded-2xl border border-[var(--accent-soft)] bg-[rgba(197,109,45,0.08)] p-4 md:col-span-2">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <div className="text-sm text-cyan-100/80">Verified OCR Feed</div>
-                          <div className="mt-1 text-xl font-semibold text-cyan-50">
+                          <div className="text-sm text-[var(--accent)]">Verified OCR Feed</div>
+                          <div className="mt-1 text-xl font-semibold text-[var(--accent)]">
                             {ocrSummary?.trusted_documents ?? 0} trusted docs / {ocrSummary?.pending_documents ?? 0} pending
                           </div>
                         </div>
@@ -566,15 +566,15 @@ export default function EmailSummaryPage() {
                       </div>
                       <div className="mt-3 grid gap-3 md:grid-cols-3">
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-3">
-                          <div className="text-xs uppercase tracking-caption text-cyan-100/80">Trusted rows</div>
+                          <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Trusted rows</div>
                           <div className="mt-1 text-lg font-semibold text-white">{ocrSummary?.trusted_rows ?? 0}</div>
                         </div>
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-3">
-                          <div className="text-xs uppercase tracking-caption text-cyan-100/80">Untrusted docs</div>
+                          <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Untrusted docs</div>
                           <div className="mt-1 text-lg font-semibold text-white">{ocrSummary?.untrusted_documents ?? 0}</div>
                         </div>
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-3">
-                          <div className="text-xs uppercase tracking-caption text-cyan-100/80">Last trusted</div>
+                          <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Last trusted</div>
                           <div className="mt-1 text-sm font-semibold text-white">
                             {ocrSummary?.last_trusted_at
                               ? new Date(ocrSummary.last_trusted_at).toLocaleString("en-IN", {
@@ -587,7 +587,7 @@ export default function EmailSummaryPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-3 text-sm text-cyan-50/85">Use approved OCR only.</div>
+                      <div className="mt-3 text-sm text-[var(--accent)]">Use approved OCR only.</div>
                     </div>
                     {steelOverview ? (
                       <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.08)] p-4 md:col-span-2">

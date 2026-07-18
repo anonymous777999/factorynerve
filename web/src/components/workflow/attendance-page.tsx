@@ -80,8 +80,8 @@ function statusTheme(status?: AttendanceStatus | null) {
       };
     case "completed":
       return {
-        badge: "bg-sky-500/15 text-sky-100 border border-sky-400/25",
-        dot: "bg-sky-400",
+        badge: "bg-[var(--accent-soft)] text-[var(--accent)] border border-[var(--accent-soft)]",
+        dot: "bg-[var(--accent)]",
       };
     default:
       return {

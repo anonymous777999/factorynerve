@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ChevronLeft, ChevronRight, Check, Star, Bell } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { TabButton } from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -60,36 +62,13 @@ function NotificationIcon({ type }: { type: string }) {
   if (type === "approval_bypass") {
     return (
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[rgba(245,158,11,0.2)] bg-[rgba(245,158,11,0.08)]">
-        <svg
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          className="h-[18px] w-[18px] text-amber-300"
-        >
-          <path
-            d="M10 3.8 11.8 7.7l4 .6-2.9 2.9.7 4-3.6-1.9-3.6 1.9.7-4-2.9-2.9 4-.6L10 3.8Z"
-            strokeLinejoin="round"
-          />
-        </svg>
+        <Star className="h-[18px] w-[18px] text-amber-300" strokeWidth={1.6} />
       </div>
     );
   }
   return (
     <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[rgba(8,12,20,0.62)]">
-      <svg
-        viewBox="0 0 20 20"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.6"
-        className="h-[18px] w-[18px] text-sky-300"
-      >
-        <path
-          d="M10 3.4a5.2 5.2 0 0 0-5.2 5.2v1.4c0 .5-.2 1.1-.5 1.5l-.8 1c-.6.8-.2 2.1.8 2.1h11.4c1 0 1.4-1.3.8-2.1l-.8-1c-.3-.4-.5-1-.5-1.5V8.6A5.2 5.2 0 0 0 10 3.4Z"
-          strokeLinejoin="round"
-        />
-        <path d="M7.7 15.2a2.3 2.3 0 0 0 4.6 0" strokeLinecap="round" />
-      </svg>
+      <Bell className="h-[18px] w-[18px] text-[var(--accent)]" strokeWidth={1.6} />
     </div>
   );
 }
@@ -122,19 +101,7 @@ function EmptyState({
   return (
     <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
       <CardContent className="flex min-h-[12rem] flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-        <svg
-          viewBox="0 0 20 20"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          className="h-10 w-10 text-[var(--muted)] opacity-30"
-        >
-          <path
-            d="M10 3.4a5.2 5.2 0 0 0-5.2 5.2v1.4c0 .5-.2 1.1-.5 1.5l-.8 1c-.6.8-.2 2.1.8 2.1h11.4c1 0 1.4-1.3.8-2.1l-.8-1c-.3-.4-.5-1-.5-1.5V8.6A5.2 5.2 0 0 0 10 3.4Z"
-            strokeLinejoin="round"
-          />
-          <path d="M7.7 15.2a2.3 2.3 0 0 0 4.6 0" strokeLinecap="round" />
-        </svg>
+        <Bell className="h-10 w-10 text-[var(--muted)] opacity-30" strokeWidth={1.4} />
         <div className="text-xl font-semibold text-[var(--text)]">{msg.title}</div>
         <div className="max-w-md text-sm leading-6 text-[var(--muted)]">{msg.body}</div>
         <div className="flex flex-wrap gap-3">
@@ -178,16 +145,16 @@ function PaginationBar({
         {totalItems} notification{totalItems !== 1 ? "s" : ""}
       </div>
       <div className="flex items-center gap-1.5">
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Previous page"
           disabled={page <= 1}
           onClick={() => onPageChange(page - 1)}
-          className="ui-no-select ui-no-callout inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-xs font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.28)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-8 w-8"
         >
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-            <path d="m12 5.8-4.2 4.2 4.2 4.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
         {pages.map((p, i) =>
           p === "..." ? (
             <span key={`ellipsis-${i}`} className="px-1 text-xs text-[var(--muted)]">
@@ -201,24 +168,24 @@ function PaginationBar({
               className={cn(
                 "ui-no-select ui-no-callout inline-flex h-8 w-8 items-center justify-center rounded-lg text-xs font-semibold transition",
                 p === page
-                  ? "border border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.14)] text-[var(--text)]"
-                  : "border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-[var(--muted)] hover:border-[rgba(62,166,255,0.28)] hover:text-[var(--text)]",
+                  ? "border border-[rgba(197,109,45,0.34)] bg-[rgba(197,109,45,0.14)] text-[var(--text)]"
+                  : "border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-[var(--muted)] hover:border-[rgba(197,109,45,0.28)] hover:text-[var(--text)]",
               )}
             >
               {p}
             </button>
           ),
         )}
-        <button
-          type="button"
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label="Next page"
           disabled={page >= totalPages}
           onClick={() => onPageChange(page + 1)}
-          className="ui-no-select ui-no-callout inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-xs font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.28)] disabled:cursor-not-allowed disabled:opacity-40"
+          className="h-8 w-8"
         >
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-            <path d="m8 5.8 4.2 4.2-4.2 4.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
@@ -423,26 +390,19 @@ export default function NotificationsPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex gap-1 rounded-xl border border-[var(--border)] bg-[rgba(8,12,20,0.62)] p-1">
             {TABS.map((tab) => (
-              <button
+              <TabButton
                 key={tab.key}
-                type="button"
+                label={tab.label}
+                active={activeTab === tab.key}
                 onClick={() => handleTabChange(tab.key)}
-                className={cn(
-                  "ui-no-select ui-no-callout rounded-lg px-4 py-2 text-xs font-semibold uppercase tracking-label transition",
-                  activeTab === tab.key
-                    ? "bg-[rgba(62,166,255,0.14)] text-[var(--text)]"
-                    : "text-[var(--muted)] hover:text-[var(--text)]",
-                )}
-              >
-                {tab.label}
-              </button>
+              />
             ))}
           </div>
 
           <select
             value={typeFilter}
             onChange={(e) => handleTypeFilterChange(e.target.value)}
-            className="h-9 rounded-xl border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-medium text-[var(--text)] outline-none transition focus:border-[rgba(62,166,255,0.34)]"
+            className="h-9 rounded-xl border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-medium text-[var(--text)] outline-none transition focus:border-[rgba(197,109,45,0.34)]"
             aria-label="Filter by type"
           >
             {NOTIFICATION_TYPES.map((opt) => (
@@ -473,10 +433,10 @@ export default function NotificationsPage() {
                 key={notification.id}
                 href={`/notifications/${notification.id}`}
                 className={cn(
-                  "group relative flex gap-4 rounded-2xl border p-5 transition hover:bg-[rgba(62,166,255,0.04)]",
+                  "group relative flex gap-4 rounded-2xl border p-5 transition hover:bg-[rgba(197,109,45,0.04)]",
                   notification.is_read
                     ? "border-[var(--border)] bg-[rgba(20,24,36,0.6)]"
-                    : "border-[rgba(62,166,255,0.18)] bg-[rgba(62,166,255,0.06)]",
+                    : "border-[rgba(197,109,45,0.18)] bg-[rgba(197,109,45,0.06)]",
                 )}
               >
                 <NotificationIcon type={notification.notification_type} />
@@ -503,8 +463,9 @@ export default function NotificationsPage() {
 
                 <div className="flex shrink-0 flex-col items-center justify-center gap-1">
                   {!notification.is_read ? (
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
+                      size="icon"
                       aria-label="Mark as read"
                       title="Mark as read"
                       onClick={(e) => {
@@ -513,32 +474,16 @@ export default function NotificationsPage() {
                         void handleMarkRead(notification.id);
                       }}
                       disabled={markingIds[notification.id]}
-                      className="ui-no-select ui-no-callout inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-[var(--muted)] transition hover:border-[rgba(62,166,255,0.28)] hover:text-[var(--accent)] disabled:opacity-50"
+                      className="h-8 w-8 text-[var(--muted)] hover:text-[var(--accent)]"
                     >
                       {markingIds[notification.id] ? (
                         <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)]" />
                       ) : (
-                        <svg
-                          viewBox="0 0 20 20"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          className="h-4 w-4"
-                        >
-                          <path d="m6 10 2.5 2.5 5.5-5.5" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
+                        <Check className="h-4 w-4" />
                       )}
-                    </button>
+                    </Button>
                   ) : null}
-                  <svg
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.6"
-                    className="h-4 w-4 text-[var(--muted)] opacity-0 transition group-hover:opacity-60"
-                  >
-                    <path d="m8.5 6 3.5 4-3.5 4" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  <ChevronRight className="h-4 w-4 text-[var(--muted)] opacity-0 transition group-hover:opacity-60" strokeWidth={1.6} />
                 </div>
               </Link>
             ))}

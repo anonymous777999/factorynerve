@@ -1,10 +1,11 @@
 import { painPoints } from "./data";
+import { FileText, MessageSquare, Clock } from "lucide-react";
 
 function PainIcon({ type }: { type: string }) {
   const cls = "h-6 w-6 text-amber-400/80";
-  if (type === "file") return <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round" /><polyline points="14 2 14 8 20 8" strokeLinecap="round" strokeLinejoin="round" /><line x1="16" y1="13" x2="8" y2="13" strokeLinecap="round" /><line x1="16" y1="17" x2="8" y2="17" strokeLinecap="round" /></svg>;
-  if (type === "message") return <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-  return <svg viewBox="0 0 24 24" className={cls} fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  if (type === "file") return <FileText className={cls} strokeWidth={1.8} />;
+  if (type === "message") return <MessageSquare className={cls} strokeWidth={1.8} />;
+  return <Clock className={cls} strokeWidth={1.8} />;
 }
 
 export default function ProblemSection() {

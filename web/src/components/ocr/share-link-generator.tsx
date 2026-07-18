@@ -46,7 +46,7 @@ export function ShareLinkGenerator({
       <div className="mt-3 flex gap-2">
         <button
           type="button"
-          className="flex-1 rounded-full border border-[#d9e1e8] bg-[#f9fbfd] px-4 py-2 text-sm font-medium text-[#344054] transition hover:border-[#185FA5]/35 hover:text-[#185FA5] disabled:opacity-45"
+          className="flex-1 rounded-full border border-[#d9e1e8] bg-[#f9fbfd] px-4 py-2 text-sm font-medium text-[#344054] transition hover:border-[#8c4218]/35 hover:text-[#8c4218] disabled:opacity-45"
           disabled={busy}
           onClick={onGenerate}
         >
@@ -55,7 +55,7 @@ export function ShareLinkGenerator({
         {link ? (
           <button
             type="button"
-            className="rounded-full bg-[#185FA5] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#164f8a]"
+            className="rounded-full bg-[#8c4218] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#164f8a]"
             onClick={onCopy}
           >
             Copy

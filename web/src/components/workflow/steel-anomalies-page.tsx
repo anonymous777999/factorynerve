@@ -18,7 +18,7 @@ function severityBadge(severity: string) {
   if (severity === "critical") return "border-rose-400/35 bg-rose-400/12 text-rose-200";
   if (severity === "high") return "border-orange-400/35 bg-orange-400/12 text-orange-200";
   if (severity === "warning") return "border-amber-400/35 bg-amber-400/12 text-amber-200";
-  return "border-blue-400/35 bg-blue-400/12 text-blue-200";
+  return "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]";
 }
 
 function typeIcon(type: string) {

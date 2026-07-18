@@ -17,6 +17,7 @@ import { CrossValidationBanner } from "@/components/ocr/cross-validation-banner"
 import { ShareLinkGenerator } from "@/components/ocr/share-link-generator";
 import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
+import { TabButton } from "@/components/shared";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { USE_TANSTACK_TABLE } from "@/config/featureFlags";
@@ -1726,9 +1727,9 @@ export default function OcrScanPage() {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>{status}</span>
                 {statusTone === "error" ? (
-                  <button
-                    type="button"
-                    className="rounded-full border border-current/20 px-3 py-1.5 text-xs font-medium"
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={() => {
                       if (step === "upload") {
                         uploadInputRef.current?.click();
@@ -1738,7 +1739,7 @@ export default function OcrScanPage() {
                     }}
                   >
                     {step === "upload" ? "Upload again" : "Try another image"}
-                  </button>
+                  </Button>
                 ) : null}
               </div>
             </div>
@@ -1757,14 +1758,14 @@ export default function OcrScanPage() {
                     <div className="text-sm font-medium text-[#101828]">Recent uploads</div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {recentRecords.slice(0, 4).map((record) => (
-                        <button
+                        <Button
                           key={record.id}
-                          type="button"
-                          className="rounded-full border border-[#dbe3eb] bg-[#f8fafc] px-3 py-1.5 text-xs text-[#344054]"
+                          variant="outline"
+                          size="sm"
                           onClick={() => void openRecentRecord(record.id)}
                         >
                           {record.source_filename || `Document #${record.id}`}
-                        </button>
+                        </Button>
                       ))}
                     </div>
                   </div>
@@ -1793,7 +1794,7 @@ export default function OcrScanPage() {
           ) : null}
 
           {step === "preview" && resultPreview?.cached && (
-            <div className={`rounded-[22px] border-2 px-5 py-4 text-sm shadow-sm ${resultPreview.cacheTrust === "low" ? "border-amber-400/60 bg-amber-50/80 text-amber-900" : "border-cyan-400/60 bg-cyan-50/80 text-cyan-900"}`}>
+            <div className={`rounded-[22px] border-2 px-5 py-4 text-sm shadow-sm ${resultPreview.cacheTrust === "low" ? "border-amber-400/60 bg-amber-50/80 text-amber-900" : "border-[var(--accent-soft)] bg-[var(--accent-soft)] text-[var(--accent)]"}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{resultPreview.cacheTrust === "low" ? "⚠️" : "⚡"}</span>
@@ -1810,9 +1811,9 @@ export default function OcrScanPage() {
                     </div>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="rounded-full border-2 border-current/30 bg-white/60 px-4 py-2 text-xs font-semibold transition hover:bg-white hover:shadow-sm"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     if (resultPreview.userCorrected) {
                       if (window.confirm("You have manually edited this result. Rescanning will replace your edits. Continue?")) {
@@ -1825,7 +1826,7 @@ export default function OcrScanPage() {
                   disabled={busy}
                 >
                   🔄 Scan Fresh
-                </button>
+                </Button>
               </div>
             </div>
           )}
@@ -1875,20 +1876,22 @@ export default function OcrScanPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054]"
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label="Zoom out"
                         onClick={() => setZoom((value) => Math.max(0.8, value - 0.1))}
                       >
                         -
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054]"
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        aria-label="Zoom in"
                         onClick={() => setZoom((value) => Math.min(2.2, value + 0.1))}
                       >
                         +
-                      </button>
+                      </Button>
                     </div>
                   </div>
                   <div className="relative grid place-items-center overflow-auto bg-[#f7f9fb] p-3 max-h-[70vh]">
@@ -1925,7 +1928,7 @@ export default function OcrScanPage() {
                         />
                         {boundingBox ? (
                           <div
-                            className="pointer-events-none absolute border-2 border-[#185FA5] bg-[#185FA5]/12 shadow-[0_0_0_6px_rgba(24,95,165,0.12)] transition duration-150"
+                            className="pointer-events-none absolute border-2 border-[#8c4218] bg-[#8c4218]/12 shadow-[0_0_0_6px_rgba(24,95,165,0.12)] transition duration-150"
                             style={boundingBox}
                           />
                         ) : null}
@@ -1953,27 +1956,16 @@ export default function OcrScanPage() {
 
                     {/* View mode toggle */}
                     <div className="flex gap-2">
-                      <button
-                        type="button"
-                        className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${viewMode === "spreadsheet"
-                          ? "bg-[#185FA5] text-white"
-                          : "border border-[#d9e1e8] bg-white text-[#344054] hover:bg-[#f8fafc]"
-                          }`}
+                      <TabButton
+                        active={viewMode === "spreadsheet"}
                         onClick={() => setViewMode("spreadsheet")}
-                      >
-                        Spreadsheet
-                      </button>
-                      <button
-                        type="button"
-                        className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${viewMode === "raw"
-                          ? "bg-[#185FA5] text-white"
-                          : "border border-[#d9e1e8] bg-white text-[#344054] hover:bg-[#f8fafc]"
-                          }`}
+                        label="Spreadsheet"
+                      />
+                      <TabButton
+                        active={viewMode === "raw"}
                         onClick={() => setViewMode("raw")}
-                        title="Show raw OCR data for debugging"
-                      >
-                        Raw
-                      </button>
+                        label="Raw"
+                      />
                     </div>
                   </div>
 
@@ -2033,7 +2025,7 @@ export default function OcrScanPage() {
                                       return (
                                       <tr
                                         key={`sheet-row-${rowIndex}`}
-                                        className={totalRow ? "border-t-2 border-t-[#185FA5]/30 bg-[#f8fafc] font-semibold" : undefined}
+                                        className={totalRow ? "border-t-2 border-t-[#8c4218]/30 bg-[#f8fafc] font-semibold" : undefined}
                                       >
                                         {row.map((cell, columnIndex) => (
                                           <td
@@ -2201,14 +2193,15 @@ export default function OcrScanPage() {
                               <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
                               <option value="claude-opus-4-7">Claude Opus 4.7</option>
                             </Select>
-                            <button
-                              type="button"
-                              className="mt-3 w-full rounded-full bg-[#185FA5] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.16)] transition hover:bg-[#164f8a] disabled:cursor-not-allowed disabled:bg-[#98a2b3] disabled:shadow-none"
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              className="mt-3 w-full"
                               disabled={busy || !canRerunWithSelectedModel}
                               onClick={() => handleRerunWithSelectedModel()}
                             >
                               Re-run with {MODEL_LABELS[selectedModel]}
-                            </button>
+                            </Button>
                             {!canRerunWithSelectedModel ? (
                               <p className="mt-2 text-xs text-[#667085]">
                                 Re-run is only available while the uploaded source file is still in this session.
@@ -2233,24 +2226,24 @@ export default function OcrScanPage() {
                             ))}
                           </div>
                           <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                            <Button
+                              variant="outline"
+                              size="sm"
                               disabled={!activeCell}
                               onClick={handleDeleteSelectedRow}
                             >
                               Delete row
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
                               onClick={resetFlow}
                             >
                               Try another image
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-full border border-emerald-600/40 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-800 shadow-[0_16px_36px_rgba(5,150,105,0.12)] transition hover:bg-emerald-100"
+                            </Button>
+                            <Button
+                              variant="secondary"
+                              size="sm"
                               disabled={busy || savingDraft}
                               onClick={async () => {
                                 setStatus("Saving draft before sending for review...");
@@ -2275,10 +2268,10 @@ export default function OcrScanPage() {
                               }}
                             >
                               Send for review
-                            </button>
-                            <button
-                              type="button"
-                              className="rounded-full bg-[#185FA5] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.2)] transition hover:bg-[#164f8a]"
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
                               onClick={async () => {
                                 if (draftDirty) {
                                   await persistStructuredDraft();
@@ -2287,7 +2280,7 @@ export default function OcrScanPage() {
                               }}
                             >
                               Continue to export
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       ) : null}
@@ -2319,34 +2312,34 @@ export default function OcrScanPage() {
                     }
                   />
                   <div className="mt-4 flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => setStep("preview")}
                     >
                       Back to edit
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => void handleDownloadPdf()}
                     >
                       Download PDF
-                    </button>
+                    </Button>
                     {savedId ? (
-                      <Link href={`/ocr/verify?verification_id=${savedId}`}>
-                        <span className="inline-flex rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]">
+                      <Button asChild variant="outline" size="sm">
+                        <Link href={`/ocr/verify?verification_id=${savedId}`}>
                           Open review workflow
-                        </span>
-                      </Link>
+                        </Link>
+                      </Button>
                     ) : null}
-                    <button
-                      type="button"
-                      className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={resetFlow}
                     >
                       Scan another image
-                    </button>
+                    </Button>
                   </div>
                 </div>
               ) : null}
@@ -2357,4 +2350,3 @@ export default function OcrScanPage() {
     </>
   );
 }
-
