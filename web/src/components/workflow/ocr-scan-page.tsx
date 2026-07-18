@@ -1928,7 +1928,7 @@ export default function OcrScanPage() {
                         />
                         {boundingBox ? (
                           <div
-                            className="pointer-events-none absolute border-2 border-[#8c4218] bg-[#8c4218]/12 shadow-[0_0_0_6px_rgba(24,95,165,0.12)] transition duration-150"
+                            className="pointer-events-none absolute border-2 border-[#8c4218] bg-[#8c4218]/12 shadow-[0_0_0_6px_rgba(140,66,24,0.12)] transition duration-150"
                             style={boundingBox}
                           />
                         ) : null}

@@ -35,7 +35,7 @@ function ActionCard({
       className={cn(
         "rounded-[24px] border px-5 py-5 text-left transition duration-200 disabled:cursor-not-allowed disabled:opacity-60",
         primary
-          ? "border-[#8c4218] bg-[#8c4218] text-white shadow-[0_20px_42px_rgba(24,95,165,0.24)] hover:bg-[#164f8a]"
+          ? "border-[#8c4218] bg-[#8c4218] text-white shadow-[0_20px_42px_rgba(140,66,24,0.24)] hover:bg-[#743512]"
           : "border-[#dfe6ed] bg-white text-[#101828] hover:border-[#8c4218]/35 hover:shadow-[0_14px_30px_rgba(15,23,42,0.06)]",
       )}
     >

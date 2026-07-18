@@ -360,7 +360,7 @@ export function DataTableGrid({
                             "flex h-10 w-full items-center gap-2 rounded-[14px] border px-3 text-sm text-[#101828] outline-none transition duration-150",
                             alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                             isSelected
-                              ? "border-[#8c4218] bg-[#f4f9ff] shadow-[inset_0_0_0_1px_rgba(24,95,165,0.12)]"
+                              ? "border-[#8c4218] bg-[#f9f4ef] shadow-[inset_0_0_0_1px_rgba(140,66,24,0.12)]"
                               : "border-[#eef2f6] bg-[#fbfcfd] hover:border-[#d8e1ea] hover:bg-white",
                           )}
                           onClick={() => {

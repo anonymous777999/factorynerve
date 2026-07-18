@@ -55,7 +55,7 @@ export function ShareLinkGenerator({
         {link ? (
           <button
             type="button"
-            className="rounded-full bg-[#8c4218] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#164f8a]"
+            className="rounded-full bg-[#8c4218] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#743512]"
             onClick={onCopy}
           >
             Copy
