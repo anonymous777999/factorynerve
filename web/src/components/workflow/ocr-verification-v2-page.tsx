@@ -74,19 +74,6 @@ function fallbackHeaders(columnCount: number, template?: OcrTemplate | null) {
   });
 }
 
-function getStepLabel(step: OcrVerifyStep) {
-  switch (step) {
-    case 1:
-      return "Select a queue document or start a new intake draft.";
-    case 2:
-      return "Upload the OCR source and create a durable draft before review.";
-    case 3:
-      return "Correct OCR rows in the draft-backed review workspace.";
-    default:
-      return "Submit, approve, reject, or export the current draft.";
-  }
-}
-
 function buildVerificationPayload(input: {
   activeRecord: OcrVerificationRecord | null;
   selectedTemplateId: string;
@@ -875,42 +862,6 @@ if (loading) {
               ? "processing"
               : "result"
       }
-      sideContent={
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Route state</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div>Draft: {route.id ?? "new intake"}</div>
-              <div>Step: {route.step}</div>
-              <div>{getStepLabel(route.step)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Queue filters</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Input
-                value={route.search}
-                onChange={(event) => route.setSearch(event.target.value)}
-                placeholder="Search OCR queue"
-              />
-              <Select
-                value={route.status}
-                onChange={(event) => route.setStatus(event.target.value as OcrVerifyStatusFilter)}
-              >
-                <option value="all">All documents</option>
-                <option value="draft">Drafts</option>
-                <option value="pending">Pending approval</option>
-                <option value="rejected">Rejected</option>
-                <option value="approved">Approved</option>
-              </Select>
-            </CardContent>
-          </Card>
-        </div>
-      }
     >
       <div className="space-y-4">
         {localError || queueError || detailError || templatesError ? (
@@ -957,7 +908,7 @@ if (loading) {
           </Button>
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
+        <div className="grid gap-4 xl:grid-cols-[20rem_minmax(0,1fr)]">
           {/* ── Queue sidebar ── */}
           <Card className="xl:sticky xl:top-6 xl:self-start">
             <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -967,6 +918,21 @@ if (loading) {
               </Button>
             </CardHeader>
             <CardContent className="space-y-3">
+              <Input
+                value={route.search}
+                onChange={(event) => route.setSearch(event.target.value)}
+                placeholder="Search OCR queue"
+              />
+              <Select
+                value={route.status}
+                onChange={(event) => route.setStatus(event.target.value as OcrVerifyStatusFilter)}
+              >
+                <option value="all">All documents</option>
+                <option value="draft">Drafts</option>
+                <option value="pending">Pending approval</option>
+                <option value="rejected">Rejected</option>
+                <option value="approved">Approved</option>
+              </Select>
 {queueQuery.isLoading ? (
                  <div className="space-y-3">
                    {[1, 2, 3].map((i) => (
@@ -1314,7 +1280,7 @@ if (loading) {
                         </div>
 
                         {/* ── 2-column layout: issues + fix ── */}
-                        <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+                        <section className="grid gap-4 2xl:grid-cols-[minmax(0,1fr)_22rem]">
                           {/* Left: Issues panel */}
                           <div className={cn("min-w-0 space-y-4", mobileTab !== "issues" && "hidden xl:block")}>
                             <Card className="border-[var(--border-strong)]">

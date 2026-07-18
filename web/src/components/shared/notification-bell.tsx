@@ -48,6 +48,9 @@ export function NotificationBell({ className }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [markingAll, setMarkingAll] = useState(false);
+  const [panelPos, setPanelPos] = useState<{ top: number; left: number; width: number } | null>(
+    null,
+  );
   const panelRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
 
@@ -76,6 +79,34 @@ export function NotificationBell({ className }: NotificationBellProps) {
     setNotifications(items);
     setLoading(false);
   }, [open]);
+
+  // ── Position the panel inside the viewport ──
+  // The trigger can live in the left sidebar or the top bar, so a plain
+  // `right-0` dropdown overflows off-screen. Anchor a fixed-position panel to
+  // the trigger and clamp it to the viewport (with a gutter) instead.
+  const updatePosition = useCallback(() => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const gutter = 8;
+    const width = Math.min(window.innerWidth - gutter * 2, 448); // 28rem cap
+    // Prefer right-aligning the panel to the trigger, then clamp.
+    let left = rect.right - width;
+    left = Math.min(Math.max(left, gutter), window.innerWidth - width - gutter);
+    const top = rect.bottom + gutter;
+    setPanelPos({ top, left, width });
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [open, updatePosition]);
 
   // ── Close on outside click ──
   useEffect(() => {
@@ -149,8 +180,14 @@ await markAllNotificationsRead();
           ref={panelRef}
           role="dialog"
           aria-label="Notifications"
+          style={
+            panelPos
+              ? { top: panelPos.top, left: panelPos.left, width: panelPos.width }
+              : undefined
+          }
           className={cn(
-            "absolute right-0 top-full z-50 mt-2 w-[min(calc(100vw-2rem),28rem)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[rgba(14,18,28,0.98)] shadow-[0_24px_64px_rgba(3,8,20,0.45)] backdrop-blur-xl",
+            "fixed z-50 max-h-[calc(100vh-5rem)] overflow-hidden rounded-2xl border border-[var(--border)] bg-[rgba(14,18,28,0.98)] shadow-[0_24px_64px_rgba(3,8,20,0.45)] backdrop-blur-xl",
+            !panelPos && "invisible",
           )}
         >
           {/* Header */}
