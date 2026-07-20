@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { OCRFields } from "@/components/ocr-scan/types";
+import type { OCRFields } from "./types";
 
 type OCRResultFormProps = {
   fields: OCRFields;
@@ -71,4 +71,3 @@ export function OCRResultForm({
     </div>
   );
 }
-

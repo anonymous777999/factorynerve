@@ -1,5 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
-import type { OCRFields } from "@/components/ocr-scan/types";
+import type { OCRFields } from "./types";
 
 function Progress({ value }: { value: number }) {
   return (

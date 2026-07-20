@@ -1,5 +1,5 @@
 import { Input } from "@/components/ui/input";
-import type { OCRFields } from "@/components/ocr-scan/types";
+import type { OCRFields } from "./types";
 
 type OCRPartialResultProps = {
   fields: OCRFields;
@@ -24,4 +24,3 @@ export function OCRPartialResult({ fields, detectingText }: OCRPartialResultProp
     </div>
   );
 }
-
