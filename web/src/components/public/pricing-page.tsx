@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Check, Minus, Shield, Zap, BarChart3, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { getPlans, type AddonInfo } from "@/lib/plans";
 
 /* ───────────────────────────────────────────────
    DATA
@@ -282,6 +284,106 @@ const whatsappPacks = [
 ];
 
 /* ───────────────────────────────────────────────
+   LIVE CATALOG BRIDGE
+   The pricing/quota numbers are owned by the backend (plans.py ->
+   GET /plans). We fetch that catalog and render the add-on packs from it so
+   the marketing page can never drift from what Razorpay actually charges.
+   The hardcoded arrays above stay as a graceful fallback (anonymous visitors
+   still see packs if the API is briefly unreachable), and the overlays below
+   supply pure decoration the backend does not store — badge label and the
+   feature bullet list — keyed by the stable addon id.
+   Adding a new pack in plans.py makes it appear here automatically.
+   ─────────────────────────────────────────────── */
+
+/** Presentation-only decoration for OCR packs, keyed by backend addon id. */
+const ocrPackOverlay: Record<string, { badge: string; features: string[] }> = {
+  ocr_light: {
+    badge: "BEST FOR SMALL TEAMS",
+    features: [
+      "Document OCR & text extraction",
+      "Structured data conversion",
+      "Excel-ready output",
+      "Priority processing queue",
+    ],
+  },
+  ocr_standard: {
+    badge: "POPULAR",
+    features: [
+      "Advanced document extraction",
+      "Bulk document processing",
+      "Template-based workflows",
+      "Faster processing priority",
+    ],
+  },
+  ocr_heavy: {
+    badge: "HIGH VOLUME",
+    features: [
+      "High-volume document processing",
+      "Advanced extraction workflows",
+      "Template intelligence",
+      "Operational reporting support",
+      "Highest priority queue",
+    ],
+  },
+  ocr_plant: {
+    badge: "PLANT SCALE",
+    features: [
+      "Advanced document intelligence",
+      "Complex document support",
+      "Bulk & template processing",
+      "Large-scale digitization workflows",
+      "Highest processing priority",
+    ],
+  },
+};
+
+const OCR_PACK_FALLBACK_BADGE = "OCR PACK";
+const OCR_PACK_FALLBACK_FEATURES = [
+  "Document OCR & text extraction",
+  "Structured data conversion",
+  "Excel-ready output",
+];
+
+/** Format an integer rupee amount as the marketing pages do (₹1,499). */
+function formatRupees(amount: number): string {
+  return `₹${new Intl.NumberFormat("en-IN").format(Math.round(amount))}`;
+}
+
+/** Map a live OCR add-on into OcrPackCard props, layering decoration on top. */
+function ocrCardFromAddon(addon: AddonInfo): OcrPackCardProps {
+  const overlay = ocrPackOverlay[addon.id];
+  const quota = Number(addon.scan_quota || 0);
+  const volume = quota > 0
+    ? `${new Intl.NumberFormat("en-IN").format(quota)} processed documents per month`
+    : "Document processing pack";
+  return {
+    badge: overlay?.badge ?? OCR_PACK_FALLBACK_BADGE,
+    name: addon.name,
+    price: formatRupees(addon.price),
+    priceSuffix: "/ month",
+    volume,
+    description: addon.description ?? "",
+    features: [volume, ...(overlay?.features ?? OCR_PACK_FALLBACK_FEATURES)],
+    cta: `Add ${addon.name}`,
+  };
+}
+
+/** Map a live WhatsApp add-on into WhatsAppPack props. */
+function whatsappCardFromAddon(addon: AddonInfo): WhatsAppPackProps {
+  const quota = Number(addon.message_quota || 0);
+  const volume = quota > 0
+    ? `${new Intl.NumberFormat("en-IN").format(quota)} extra messages`
+    : "Extra messaging capacity";
+  return {
+    name: addon.name,
+    price: formatRupees(addon.price),
+    priceSuffix: "/ month",
+    volume,
+    cta: `Add ${addon.name}`,
+  };
+}
+
+/* ───────────────────────────────────────────────
    FEATURE ROW DEFINITION
    ─────────────────────────────────────────────── */
 
@@ -448,10 +550,32 @@ function BillingToggle({
 }
 
 /* ───────────────────────────────────────────────
+   PLAN CTA DESTINATIONS
+   ─────────────────────────────────────────────── */
+
+/**
+ * Resolve where a plan-tier CTA should take the user.
+ * - Free pilot -> account signup (nothing to pay).
+ * - Sales-only enterprise -> contact sales.
+ * - Paid tiers -> authenticated billing page, pre-selecting the plan and
+ *   billing cycle. The billing page reads ?plan= and ?cycle= from the URL
+ *   (see billing-page.tsx) and pre-fills the Razorpay checkout.
+ *
+ * The pricing toggle uses "annual"; the billing page expects "yearly".
+ */
+function planCtaHref(planId: string, billingCycle: BillingCycle): string {
+  if (planId === "pilot") return "/signup";
+  if (planId === "enterprise") return "/contact";
+  const cycle = billingCycle === "annual" ? "yearly" : "monthly";
+  return `/billing?plan=${encodeURIComponent(planId)}&cycle=${cycle}`;
+}
+
+/* ───────────────────────────────────────────────
    PLAN CARD
    ─────────────────────────────────────────────── */
 
 type PlanCardProps = {
+  id: string;
   badge: string;
   name: string;
   tagline: string;
@@ -469,6 +593,7 @@ type PlanCardProps = {
 };
 
 function PlanCard({
+  id,
   badge,
   name,
   tagline,
@@ -560,10 +685,11 @@ function PlanCard({
 
       {/* CTA Button */}
       <Button
+        asChild
         variant={ctaStyle === "primary" ? "primary" : ctaStyle === "outline" ? "outline" : "ghost"}
         className="w-full rounded-full"
       >
-        {cta}
+        <Link href={planCtaHref(id, billingCycle)}>{cta}</Link>
       </Button>
 
       {/* Subtext */}
@@ -625,8 +751,12 @@ function OcrPackCard({
         ))}
       </div>
 
-      <Button variant="outline" className="mt-6 w-full rounded-full">
-        {cta}
+      {/* Add-on packs are purchased on the billing page, which renders the
+          live backend add-on catalog with authoritative pricing. NOTE: the
+          marketing prices/quantities above do not yet match plans.py — reconcile
+          before deep-linking a specific pack via ?addons=. */}
+      <Button asChild variant="outline" className="mt-6 w-full rounded-full">
+        <Link href="/billing">{cta}</Link>
       </Button>
     </div>
   );
@@ -656,8 +786,9 @@ function WhatsAppPack({ name, price, priceSuffix, volume, cta }: WhatsAppPackPro
 
       <p className="mt-2 text-sm font-medium text-[var(--accent)]">{volume}</p>
 
-      <Button variant="outline" className="mt-6 w-full rounded-full">
-        {cta}
+      {/* Purchased on the billing page (live catalog / authoritative pricing). */}
+      <Button asChild variant="outline" className="mt-6 w-full rounded-full">
+        <Link href="/billing">{cta}</Link>
       </Button>
     </div>
   );
@@ -669,6 +800,34 @@ function WhatsAppPack({ name, price, priceSuffix, volume, cta }: WhatsAppPackPro
 
 export default function PricingPage() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
+  // Live add-on catalog from the backend (single source of truth for pricing).
+  // Starts null; falls back to the hardcoded arrays until/unless it loads.
+  const [liveAddons, setLiveAddons] = useState<AddonInfo[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getPlans()
+      .then((payload) => {
+        if (!cancelled) setLiveAddons(payload.addons ?? []);
+      })
+      .catch(() => {
+        // Anonymous visitor or API briefly down: keep the hardcoded fallback.
+        if (!cancelled) setLiveAddons(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Prefer the live catalog; fall back to the static marketing arrays.
+  const liveOcrPacks = (liveAddons ?? []).filter((a) => a.kind === "ocr_pack");
+  const liveWhatsappPacks = (liveAddons ?? []).filter((a) => a.kind === "whatsapp_pack");
+  const ocrPacksToRender = liveOcrPacks.length
+    ? liveOcrPacks.map(ocrCardFromAddon)
+    : ocrPacks;
+  const whatsappPacksToRender = liveWhatsappPacks.length
+    ? liveWhatsappPacks.map(whatsappCardFromAddon)
+    : whatsappPacks;
 
   return (
     <main className="min-h-screen px-4 py-10 sm:px-6 lg:px-8">
@@ -725,7 +884,7 @@ export default function PricingPage() {
           </div>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {ocrPacks.map((pack) => (
+            {ocrPacksToRender.map((pack) => (
               <OcrPackCard key={pack.name} {...pack} />
             ))}
           </div>
@@ -750,7 +909,7 @@ export default function PricingPage() {
           </div>
 
           <div className="mx-auto grid max-w-4xl gap-6 sm:grid-cols-3">
-            {whatsappPacks.map((pack) => (
+            {whatsappPacksToRender.map((pack) => (
               <WhatsAppPack key={pack.name} {...pack} />
             ))}
           </div>

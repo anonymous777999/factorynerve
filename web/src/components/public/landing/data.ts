@@ -131,5 +131,3 @@ export const sectionIds = {
   pricing: "pricing",
   faq: "faq",
 } as const;
-
-export const COMPANY_NAME = "Factory Nerve Technologies Pvt. Ltd.";

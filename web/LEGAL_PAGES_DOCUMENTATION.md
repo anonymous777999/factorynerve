@@ -108,7 +108,7 @@ Both use the same pattern:
   <Link href="/privacy" className="...">Privacy Policy</Link>
   <Link href="/terms" className="...">Terms of Service</Link>
   ...
-  <a href="mailto:privacy@dpr.ai" className="...">Contact</a>
+  <a href="mailto:legal.factorynerve.online@redvortexorg.me" className="...">Contact</a>
 </div>
 ```
 
@@ -159,15 +159,15 @@ These 9 emails are used across the legal pages. **To change an email in the futu
 
 | Email | Purpose | Pages Used On |
 |-------|---------|--------------|
-| `privacy@dpr.ai` | Privacy inquiries, Data Subject Requests | `/privacy`, `/cookies`, `/data-retention`, `/dpa`, `/compliance` |
-| `dpo@dpr.ai` | Data Protection Officer, GDPR, DPA, sub-processor objections | `/privacy`, `/dpa`, `/compliance`, `/subprocessors`, `/faq` |
-| `legal@dpr.ai` | Legal notices, DPA execution, EULA | `/terms`, `/contact`, `/dpa`, `/acceptable-use`, `/eula` |
-| `support@dpr.ai` | General support, technical issues, data export | `/terms`, `/refunds`, `/contact`, `/data-retention`, `/sla`, `/faq` |
-| `billing@dpr.ai` | Billing inquiries, refunds, SLA credits | `/refunds`, `/contact`, `/sla` |
-| `security@dpr.ai` | Vulnerability reports, security incidents | `/contact`, `/security`, `/dpa`, `/compliance`, `/acceptable-use`, `/faq`, `/disclosure` |
-| `sales@dpr.ai` | Sales inquiries, demos, pricing | `/contact` |
-| `hello@dpr.ai` | Business partnerships, media, integrations | `/contact` |
-| `abuse@dpr.ai` | AUP violations, abuse reporting | `/acceptable-use` |
+| `legal.factorynerve.online@redvortexorg.me` | Privacy inquiries, Data Subject Requests | `/privacy`, `/cookies`, `/data-retention`, `/dpa`, `/compliance` |
+| `legal.factorynerve.online@redvortexorg.me` | Data Protection Officer, GDPR, DPA, sub-processor objections | `/privacy`, `/dpa`, `/compliance`, `/subprocessors`, `/faq` |
+| `legal.factorynerve.online@redvortexorg.me` | Legal notices, DPA execution, EULA | `/terms`, `/contact`, `/dpa`, `/acceptable-use`, `/eula` |
+| `support.factorynerve.online@redvortexorg.me` | General support, technical issues, data export | `/terms`, `/refunds`, `/contact`, `/data-retention`, `/sla`, `/faq` |
+| `billing.factorynerve.online@redvortexorg.me` | Billing inquiries, refunds, SLA credits | `/refunds`, `/contact`, `/sla` |
+| `security.factorynerve.online@redvortexorg.me` | Vulnerability reports, security incidents | `/contact`, `/security`, `/dpa`, `/compliance`, `/acceptable-use`, `/faq`, `/disclosure` |
+| `sales.factorynerve.online@redvortexorg.me` | Sales inquiries, demos, pricing | `/contact` |
+| `hello.factorynerve.online@redvortexorg.me` | Business partnerships, media, integrations | `/contact` |
+| `security.factorynerve.online@redvortexorg.me` | AUP violations, abuse reporting | `/acceptable-use` |
 
 ---
 
@@ -175,7 +175,7 @@ These 9 emails are used across the legal pages. **To change an email in the futu
 
 ### Change an Email Address
 
-1. Search for the old email across all files: `grep -r "old@dpr.ai" app/`
+1. Search for the old email across all files: `grep -r "old@factorynerve.online" app/`
 2. Check both `src/app/` pages AND `src/components/auth-shell.tsx` AND `src/app/login/page.tsx`
 3. Replace all occurrences with the new email
 4. Run `npx tsc --noEmit` to verify

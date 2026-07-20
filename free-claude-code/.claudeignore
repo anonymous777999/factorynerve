@@ -1,0 +1,59 @@
+# Large files that slow down Claude CLI processing
+uv.lock
+*.lock
+
+# Large documentation files (keep smaller reference docs if needed)
+ARCHITECTURE.md
+README.md
+AGENTS.md
+CLAUDE.md
+
+# Build artifacts and distributions
+dist/
+build/
+*.egg-info/
+../.venv/
+.venv/
+__pycache__/
+.pyc
+.pyo
+.pyd
+.Python
+
+# Logs and temporary files
+logs/
+*.log
+tmp/
+temp/
+.cache/
+.coverage
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.hypothesis/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*~
+.*.swp
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Environment files (keep .env.example but ignore actual .env)
+.env
+.env.*
+! .env.example
+
+# Test outputs and reports
+htmlcov/
+.coverage*
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+*.cov

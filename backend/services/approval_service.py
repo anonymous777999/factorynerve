@@ -186,14 +186,19 @@ WORKFLOW_PATTERNS: dict[str, ApprovalPattern] = {
     "invoice.record.edit_pre_dispatch": ApprovalPattern.IP_2,
     "payment.record.create": ApprovalPattern.IP_2,
     "production.batch.variance.approve": ApprovalPattern.IP_2,
-    # IP-3: Sequential two-stage
+    # IP-3: Sequential two-stage — kept ONLY for money-movement actions where a
+    # single person's mistake/fraud is costly (edit an invoice after goods ship,
+    # or move a payment between accounts). Low-risk admin setup actions below were
+    # downgraded to single-stage IP-2 so one manager can do them without a second
+    # approver — the shop floor and routine office work never need two people.
     "invoice.record.edit_post_dispatch": ApprovalPattern.IP_3,
     "payment.record.reallocate": ApprovalPattern.IP_3,
-    "factory.create": ApprovalPattern.IP_3,
-    "user.invite": ApprovalPattern.IP_3,
-    "user.deactivate": ApprovalPattern.IP_3,
+    # Downgraded to single-stage (IP-2): routine admin/setup, done at a desk, rarely.
+    "factory.create": ApprovalPattern.IP_2,
+    "user.invite": ApprovalPattern.IP_2,
+    "user.deactivate": ApprovalPattern.IP_2,
     "user.reactivate": ApprovalPattern.IP_2,
-    "user.membership.assign": ApprovalPattern.IP_3,
+    "user.membership.assign": ApprovalPattern.IP_2,
     # IP-4: Cross-domain/parallel
     "user.role.assign": ApprovalPattern.IP_4,
     "payment.record.reverse": ApprovalPattern.IP_4,
@@ -644,6 +649,19 @@ class ApprovalService:
                 reason="Self-approval is not allowed at any stage.",
             )
 
+        # Two-person separation (IP-3): the person clearing L2 must NOT be the same
+        # person who cleared L1. Without this, one checker could approve both stages
+        # and defeat the two-stage control entirely.
+        if (
+            instance.status == "pending_l2"
+            and instance.l1_approved_by_user_id is not None
+            and instance.l1_approved_by_user_id == actor_user_id
+        ):
+            return ApprovalDecision(
+                result="denied",
+                reason="The L1 approver cannot also approve L2 — a different person must complete the second stage.",
+            )
+
         # IP-4/IP-5 role enforcement: only authorized roles can advance these instances
         pattern = WORKFLOW_PATTERNS.get(instance.workflow_key)
         required_roles = _APPROVER_ROLES_BY_PATTERN.get(pattern)  # type: ignore[arg-type]
@@ -699,7 +717,9 @@ class ApprovalService:
                 instance_id=instance_id,
             )
 
-        # Move to next stage (L1 -> L2, not terminal yet)
+        # Move to next stage (L1 -> L2, not terminal yet). Record who cleared L1 so
+        # the L2 check above can enforce a different second approver.
+        instance.l1_approved_by_user_id = actor_user_id
         instance.approval_stage = "L2"
         instance.status = "pending_l2"
         db.flush()

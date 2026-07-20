@@ -68,7 +68,7 @@ export default function FactoryRequiredPage() {
         </p>
 
         <div className="mt-8 space-y-3">
-          <Link href="mailto:admin@dpr.ai?subject=Factory%20access%20request&body=I%20am%20unable%20to%20access%20my%20workspace.%20Please%20restore%20my%20factory%20access.">
+          <Link href="mailto:support.factorynerve.online@redvortexorg.me?subject=Factory%20access%20request&body=I%20am%20unable%20to%20access%20my%20workspace.%20Please%20restore%20my%20factory%20access.">
             <Button className="w-full rounded-xl bg-[linear-gradient(180deg,#c56d2d,#c56d2d)] px-5 text-sm font-semibold text-[#07131f]">
               Contact your administrator
             </Button>
@@ -86,8 +86,8 @@ export default function FactoryRequiredPage() {
 
         <p className="mt-6 text-xs leading-5 text-slate-500">
           Still having trouble? Reach out to support at{" "}
-          <a href="mailto:support@dpr.ai" className="text-[var(--accent)] underline transition hover:text-[var(--accent)]">
-            support@dpr.ai
+          <a href="mailto:support.factorynerve.online@redvortexorg.me" className="text-[var(--accent)] underline transition hover:text-[var(--accent)]">
+            support.factorynerve.online@redvortexorg.me
           </a>
         </p>
 

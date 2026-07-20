@@ -1,0 +1,1 @@
+{"detail":{"error":"Export blocked by validation gate","blocking_issues":["Document status is 'draft', expected 'approved'","Reviewer notes are empty — add notes before export for audit trail"]}}

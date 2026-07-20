@@ -80,6 +80,9 @@ class ApprovalInstance(Base):
     # Completion metadata
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     approved_by_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # L1 approver (IP-3 two-stage): recorded when the first stage is cleared so the
+    # SAME person cannot also clear L2. Enforces genuine two-person separation.
+    l1_approved_by_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rejected_by_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rejection_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
 

@@ -1,0 +1,31 @@
+HTTP/1.1 200 OK
+Date: Mon, 13 Jul 2026 02:30:47 GMT
+Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+Transfer-Encoding: chunked
+Connection: keep-alive
+Cache-Control: no-store
+content-disposition: attachment; filename="final_account_ledger-draft.xlsx"
+cf-cache-status: DYNAMIC
+content-security-policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src 'self' https://checkout.razorpay.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+cross-origin-resource-policy: same-site
+permissions-policy: geolocation=(), microphone=(), camera=(self)
+pragma: no-cache
+referrer-policy: no-referrer
+rndr-id: 862d2a52-d6fb-44ce
+Server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-export-engine: excel_export_engine_v6
+x-frame-options: DENY
+x-ocr-export-source: draft_review
+x-ocr-review-required: true
+x-ocr-trusted-export: false
+x-ocr-verification-id: 1
+x-render-origin-server: uvicorn
+x-request-id: b993ccf7-de7e-4863-a311-10451fa7ffc7
+x-total-columns: 2
+x-total-rows: 35
+CF-RAY: a1a4de22db06f01d-BOM
+alt-svc: h3=":443"; ma=86400
+

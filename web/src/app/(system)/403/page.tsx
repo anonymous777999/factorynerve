@@ -42,7 +42,7 @@ export default function AccessRestrictedPage() {
             Back to Dashboard
           </Button>
           <Link
-            href="mailto:admin@dpr.ai"
+            href="mailto:support.factorynerve.online@redvortexorg.me"
             className="inline-flex items-center justify-center rounded-xl border border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-[var(--accent-soft)] hover:text-white"
           >
             Contact your administrator

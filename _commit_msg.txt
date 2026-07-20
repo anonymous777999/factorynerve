@@ -1,0 +1,19 @@
+fix(critical): pre-onboarding bug fixes + stabilization
+
+SHIP BLOCKERS:
+- S0-1: Remove invalid taxable_amount= kwarg from SteelSalesInvoiceLine
+- WF-1: Add missing import os + logger to steel.py (dispatch 500 crash)
+- AN-1: Fix SteelStockReconciliation.created_at -> counted_at
+- AN-2: Fix owner dashboard permission key (admin -> production.analytics)
+- WF-5: Fix notifications double prefix (was /notifications/notifications)
+- AI-1: Thread db= into all 5 check_rate_limit call sites (nested session hang)
+
+FIXES:
+- WF-2: Idempotency pruning subquery (forbidden .limit().delete())
+- WF-3: Allow payment_terms_days=0 for cash/advance steel customers
+- WF-6: Graceful fallback when workflow_template_key is inconsistent
+- S0-3: Add missing headers variable to 11 quality intelligence tests
+- S2-2: Cookie auth in all test files (auth_session cookie)
+- render.yaml: Use envVarGroups, fix secrets handling
+
+NEW: BUFFY_SYSTEM_PROMPT.md - enhanced system prompt

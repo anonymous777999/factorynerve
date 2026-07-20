@@ -904,7 +904,7 @@ export function SteelDispatchesPage() {
                   <span className="text-xs text-[var(--muted)] transition group-open:hidden">{dispatches.length} items</span>
                   <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
                 </summary>
-                <ResponsiveScrollArea className="border-t border-[var(--border)]" debugLabel="steel-dispatch-history">
+                <ResponsiveScrollArea className="border-t border-[var(--border)]" debugLabel="steel-dispatch-history" viewportClassName="max-h-[65vh] overflow-y-auto">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">

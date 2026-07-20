@@ -159,7 +159,7 @@ export default function OcrHistoryPage() {
             <div>Updated</div>
             <div className="text-right">Action</div>
           </div>
-          <div className="divide-y divide-[var(--border)]">
+          <div className="max-h-[65vh] divide-y divide-[var(--border)] overflow-y-auto">
             {filteredRecords.length ? (
               filteredRecords.map((record) => (
                 <div

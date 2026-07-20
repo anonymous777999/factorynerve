@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { FnLogo } from "@/components/shared/fn-logo";
-import { COMPANY_NAME } from "./data";
 
 export default function Footer() {
   return (
@@ -12,7 +11,7 @@ export default function Footer() {
               <FnLogo variant="mark" className="h-8 w-8" />
               <span className="text-sm font-semibold text-white">Factory Nerve</span>
             </div>
-            <p className="mt-3 text-xs leading-5 text-slate-500">{COMPANY_NAME}<br />Shillong, Meghalaya, India</p>
+            <p className="mt-3 text-xs leading-5 text-slate-500">Digital daily production reporting for steel factories — turn paper registers into trusted, auditable data.</p>
           </div>
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
             <div>
@@ -34,13 +33,13 @@ export default function Footer() {
               <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-slate-400">Legal</div>
               <ul className="mt-3 space-y-2">
                 <li><span className="text-xs text-slate-600">Privacy &amp; Terms — coming soon</span></li>
-                <li><a href="mailto:support@factorynerve.online" className="text-xs text-slate-500 transition hover:text-[var(--accent)]">support@factorynerve.online</a></li>
+                <li><a href="mailto:support.factorynerve.online@redvortexorg.me" className="text-xs text-slate-500 transition hover:text-[var(--accent)]">support.factorynerve.online@redvortexorg.me</a></li>
               </ul>
             </div>
           </div>
         </div>
         <div className="mt-8 border-t border-white/5 pt-6 text-center text-[11px] text-slate-600">
-          &copy; {new Date().getFullYear()} {COMPANY_NAME}. All rights reserved.
+          &copy; {new Date().getFullYear()} Factory Nerve. All rights reserved.
         </div>
       </div>
     </footer>

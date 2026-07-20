@@ -269,6 +269,7 @@ export function SteelInventoryPage() {
                   <ResponsiveScrollArea
                     className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
                     debugLabel="steel-inventory-board"
+                    viewportClassName="max-h-[65vh] overflow-y-auto"
                   >
                     <table className="min-w-full text-left text-sm">
                       <thead className="text-[var(--muted)]">

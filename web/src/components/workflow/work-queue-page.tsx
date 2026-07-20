@@ -1423,7 +1423,7 @@ export default function WorkQueuePage() {
                       <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
                         More items ({remainingFilteredItems.length})
                       </summary>
-                      <div className="mt-4 space-y-3">
+                      <div className="mt-4 max-h-[60vh] space-y-3 overflow-y-auto pr-1">
                         {remainingFilteredItems.map((item) => (
                           <div key={item.id} className={`rounded-2xl border p-4 ${toneClass(item.tone)}`}>
                             <div className="flex flex-wrap items-start justify-between gap-3">

@@ -545,7 +545,7 @@ export function SteelInvoicesPage() {
                   <span className="text-xs text-[var(--muted)] transition group-open:hidden">{invoices.length} items</span>
                   <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
                 </summary>
-                <ResponsiveScrollArea className="border-t border-[var(--border)]" debugLabel="steel-invoices-history">
+                <ResponsiveScrollArea className="border-t border-[var(--border)]" debugLabel="steel-invoices-history" viewportClassName="max-h-[65vh] overflow-y-auto">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">

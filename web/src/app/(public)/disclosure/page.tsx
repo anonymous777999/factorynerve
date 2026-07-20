@@ -154,7 +154,7 @@ export default function DisclosurePage() {
             <p className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-4 text-emerald-200">
               <ShieldIcon />
               <span>
-                <a href="mailto:security@dpr.ai" className="font-medium text-[var(--accent)] hover:underline">security@dpr.ai</a>
+                <a href="mailto:security.factorynerve.online@redvortexorg.me" className="font-medium text-[var(--accent)] hover:underline">security.factorynerve.online@redvortexorg.me</a>
                 {" \u2014 "}PGP fingerprint: <code className="rounded bg-white/[0.06] px-2 py-0.5 font-mono text-xs text-slate-300">D4E9 F2C1 8A7B 3E5F 91C0  2B6D 7A3E 9F81 C4D2 E5F6</code>
               </span>
             </p>
@@ -298,7 +298,7 @@ export default function DisclosurePage() {
               All vulnerability reports and security-related inquiries should be directed to:
             </p>
             <div className="mt-4 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-sm text-slate-300">
-              <p><strong className="text-slate-200">Security Team:</strong> <a href="mailto:security@dpr.ai" className="text-[var(--accent)] hover:underline">security@dpr.ai</a></p>
+              <p><strong className="text-slate-200">Security Team:</strong> <a href="mailto:security.factorynerve.online@redvortexorg.me" className="text-[var(--accent)] hover:underline">security.factorynerve.online@redvortexorg.me</a></p>
               <p className="mt-1"><strong className="text-slate-200">PGP Key Fingerprint:</strong> <code className="rounded bg-white/[0.06] px-2 py-0.5 font-mono text-xs text-slate-300">D4E9 F2C1 8A7B 3E5F 91C0  2B6D 7A3E 9F81 C4D2 E5F6</code></p>
               <p className="mt-3 text-slate-400">
                 For non-security inquiries, please visit our{" "}

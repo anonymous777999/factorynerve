@@ -1,0 +1,10 @@
+fix(tests): feature gating, premium analytics, whatsapp auth, trends gating
+
+BUG FIXES:
+- Fix /analytics/trends endpoint: use _require_basic_analytics instead of
+  _require_analytics_feature (Pilot plan has analytics:True, was bypassing
+  the Factory-min plan gate that weekly/monthly correctly enforce)
+- Fix test_premium_analytics _set_org_plan: update Subscription.plan (not
+  Organization.plan) — get_effective_plan reads from Subscription first
+- Fix test_whatsapp_standalone_removed: clear http_client cookies before
+  unauthenticated request to prevent test contamination from shared fixture

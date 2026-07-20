@@ -337,13 +337,8 @@ export default function EULAPage() {
               If you have any questions about this EULA, please contact:
             </p>
             <div className="mt-4 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-sm text-slate-300">
-              <p><strong className="text-slate-200">Email:</strong> <a href="mailto:legal@dpr.ai" className="text-[var(--accent)] hover:underline">legal@dpr.ai</a></p>
-              <p className="mt-1"><strong className="text-slate-200">Legal Notices:</strong> <a href="mailto:legal@dpr.ai" className="text-[var(--accent)] hover:underline">legal@dpr.ai</a></p>
-              <p className="mt-3 text-slate-400">
-                DPR.ai Technologies Pvt. Ltd.<br />
-                4th Floor, Tech Tower, Industrial District<br />
-                Shillong, Meghalaya 793001, India
-              </p>
+              <p><strong className="text-slate-200">Email:</strong> <a href="mailto:legal.factorynerve.online@redvortexorg.me" className="text-[var(--accent)] hover:underline">legal.factorynerve.online@redvortexorg.me</a></p>
+              <p className="mt-1"><strong className="text-slate-200">Legal Notices:</strong> <a href="mailto:legal.factorynerve.online@redvortexorg.me" className="text-[var(--accent)] hover:underline">legal.factorynerve.online@redvortexorg.me</a></p>
             </div>
             <p className="mt-4">
               For support-related inquiries, please visit our{" "}

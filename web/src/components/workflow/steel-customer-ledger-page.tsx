@@ -1063,6 +1063,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                 <ResponsiveScrollArea
                   className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
                   debugLabel="steel-customer-ledger-invoices"
+                  viewportClassName="max-h-[60vh] overflow-y-auto"
                 >
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
@@ -1116,6 +1117,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                 <ResponsiveScrollArea
                   className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
                   debugLabel="steel-customer-ledger-payments"
+                  viewportClassName="max-h-[60vh] overflow-y-auto"
                 >
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">

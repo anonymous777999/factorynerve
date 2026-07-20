@@ -33,7 +33,7 @@ os.environ.setdefault("GROQ_API_KEY", "test")
 os.environ.setdefault("EMAIL_VERIFICATION_EXPOSE_LINK", "1")
 os.environ.setdefault("PASSWORD_RESET_EXPOSE_LINK", "1")
 os.environ.setdefault("SMTP_DRY_RUN", "1")
-os.environ.setdefault("DATA_ENCRYPTION_KEY", "dGVzdC1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcy0hIQ==")
+os.environ["DATA_ENCRYPTION_KEY"] = "JNIpD1HUnuaLBG7mXWIUY_sFV-iA9MfpZ_y-jvDF4LM="  # force overwrite
 # Local dev: disable HTTPS-only cookies so they work over HTTP
 os.environ["AUTH_SESSION_SECURE"] = "false"
 os.environ["JWT_COOKIE_SECURE"] = "false"

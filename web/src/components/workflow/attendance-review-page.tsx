@@ -1266,7 +1266,7 @@ export default function AttendanceReviewPage() {
                                 <div className="text-sm text-[var(--muted)]">Critical items stay at the top for faster closure.</div>
                               </CardHeader>
                               <CardContent className="px-0 pb-0">
-                                <ResponsiveScrollArea debugLabel="attendance-review-backlog-table">
+                                <ResponsiveScrollArea debugLabel="attendance-review-backlog-table" viewportClassName="max-h-[70vh] overflow-y-auto">
                                   <table className="min-w-full border-separate border-spacing-0">
                                     <thead>
                                       <tr className="text-left text-xs uppercase tracking-label text-[var(--muted)]">
@@ -1444,7 +1444,7 @@ export default function AttendanceReviewPage() {
                               </div>
                             ) : null}
 
-                            <div className="space-y-4 p-5 lg:hidden">
+                            <div className="max-h-[70vh] space-y-4 overflow-y-auto p-5 lg:hidden">
                               {remainingFilteredItems.map((review) => (
                                 <Card key={review.item.attendance_id} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
                                   <CardContent className="space-y-4 px-5 py-5">

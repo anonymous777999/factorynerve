@@ -1,0 +1,20 @@
+HTTP/1.1 403 Forbidden
+Date: Mon, 13 Jul 2026 02:00:37 GMT
+Transfer-Encoding: chunked
+Connection: keep-alive
+content-security-policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src 'self' https://checkout.razorpay.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+cross-origin-resource-policy: same-site
+permissions-policy: geolocation=(), microphone=(), camera=(self)
+referrer-policy: no-referrer
+rndr-id: b676e84e-6c70-4cf6
+Server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-render-origin-server: uvicorn
+x-request-id: 3be91297-dbbe-472f-99a3-68fddede16ed
+cf-cache-status: DYNAMIC
+CF-RAY: a1a4b1ed9b8240f3-BOM
+alt-svc: h3=":443"; ma=86400
+

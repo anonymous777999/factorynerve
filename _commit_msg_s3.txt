@@ -1,0 +1,7 @@
+fix(s3): excel freeze_panes, number format test, profile CSRF test fix
+
+S3 BUG FIXES:
+- Fix ledger freeze_panes: str(row) -> f"A{row}" (openpyxl requires cell ref, not bare number)
+- Fix Indian number format test: check row 12 instead of row 10 (row 10 is blank)
+- Fix profile phone validation test: add GET /auth/v2/me to populate CSRF cookie before PUT
+  (matches the pattern used by the working test_profile_read_and_update)

@@ -1293,7 +1293,7 @@ if (loading) {
                               </CardHeader>
                               <CardContent className="space-y-4">
                                 {/* Priority counts */}
-                                <div className="grid gap-3 sm:grid-cols-3">
+                                <div className="grid grid-cols-3 gap-2">
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1304,16 +1304,13 @@ if (loading) {
                                       );
                                       if (next) setSelectedIssueKey(next.key);
                                     }}
-                                    className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.1)] px-4 py-4 text-left text-red-100 transition hover:-translate-y-0.5 hover:bg-[rgba(239,68,68,0.14)]"
+                                    className="rounded-xl border border-red-400/30 bg-[rgba(239,68,68,0.1)] px-3 py-2.5 text-left text-red-100 transition hover:border-red-400/50 hover:bg-[rgba(239,68,68,0.14)]"
                                   >
-                                    <div className="text-[11px] uppercase tracking-label">
-                                      Critical
-                                    </div>
-                                    <div className="mt-2 text-2xl font-semibold">
+                                    <div className="text-2xl font-semibold leading-none">
                                       {criticalCount}
                                     </div>
-                                    <div className="mt-2 text-sm text-red-50/80">
-                                      Highest-risk values that can break operations or approvals.
+                                    <div className="mt-1.5 text-[11px] uppercase tracking-label">
+                                      Critical
                                     </div>
                                   </button>
                                   <button
@@ -1326,39 +1323,39 @@ if (loading) {
                                       );
                                       if (next) setSelectedIssueKey(next.key);
                                     }}
-                                    className="rounded-[1.35rem] border border-amber-400/30 bg-[rgba(245,158,11,0.1)] px-4 py-4 text-left text-amber-100 transition hover:-translate-y-0.5 hover:bg-[rgba(245,158,11,0.14)]"
+                                    className="rounded-xl border border-amber-400/30 bg-[rgba(245,158,11,0.1)] px-3 py-2.5 text-left text-amber-100 transition hover:border-amber-400/50 hover:bg-[rgba(245,158,11,0.14)]"
                                   >
-                                    <div className="text-[11px] uppercase tracking-label">
-                                      Warning
-                                    </div>
-                                    <div className="mt-2 text-2xl font-semibold">
+                                    <div className="text-2xl font-semibold leading-none">
                                       {warningCount}
                                     </div>
-                                    <div className="mt-2 text-sm text-amber-50/80">
-                                      Likely readable, but still worth a quick paper check.
+                                    <div className="mt-1.5 text-[11px] uppercase tracking-label">
+                                      Warning
                                     </div>
                                   </button>
-                                  <div className="rounded-[1.35rem] border border-emerald-400/30 bg-[rgba(34,197,94,0.1)] px-4 py-4 text-emerald-100">
-                                    <div className="text-[11px] uppercase tracking-label">
-                                      Checked
-                                    </div>
-                                    <div className="mt-2 text-2xl font-semibold">
+                                  <div className="rounded-xl border border-emerald-400/30 bg-[rgba(34,197,94,0.1)] px-3 py-2.5 text-emerald-100">
+                                    <div className="text-2xl font-semibold leading-none">
                                       {checkedIssueCount}
                                     </div>
-                                    <div className="mt-2 text-sm text-emerald-50/80">
-                                      Fields already reviewed and cleared for this pass.
+                                    <div className="mt-1.5 text-[11px] uppercase tracking-label">
+                                      Checked
                                     </div>
                                   </div>
                                 </div>
 
-                                {/* Issue list */}
+                                {/* Issue list — compact rows, capped height, internal scroll */}
                                 {reviewIssues.length ? (
-                                  <div className="space-y-3">
+                                  <div className="max-h-[26rem] space-y-1.5 overflow-y-auto pr-1 [scrollbar-width:thin]">
                                     {reviewIssues.map((issue) => {
                                       const resolved =
                                         resolvedIssueKeys.includes(issue.key);
                                       const isActive =
                                         activeIssue?.key === issue.key;
+                                      const dotTone =
+                                        issue.tone === "critical"
+                                          ? "bg-red-400"
+                                          : issue.tone === "warning"
+                                            ? "bg-amber-400"
+                                            : "bg-emerald-400";
                                       return (
                                         <button
                                           key={issue.key}
@@ -1367,43 +1364,34 @@ if (loading) {
                                             setSelectedIssueKey(issue.key)
                                           }
                                           className={cn(
-                                            "w-full rounded-[1.35rem] border px-4 py-4 text-left transition",
+                                            "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition",
                                             isActive
                                               ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(197,109,45,0.12),rgba(197,109,45,0.06))]"
-                                              : "border-[var(--border)] bg-[var(--card-strong)] hover:-translate-y-0.5 hover:border-[var(--accent)]/30",
+                                              : "border-[var(--border)] bg-[var(--card-strong)] hover:border-[var(--accent)]/40",
+                                            resolved && !isActive && "opacity-60",
                                           )}
                                         >
-                                          <div className="space-y-2">
-                                            <div className="flex flex-wrap items-center gap-2">
-                                              <span
-                                                className={cn(
-                                                  "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label",
-                                                  signalTone(issue.tone),
-                                                )}
-                                              >
-                                                {issue.tone}
-                                              </span>
-                                              <span
-                                                className={cn(
-                                                  "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label",
-                                                  impactTone(issue.impact),
-                                                )}
-                                              >
-                                                {impactLabel(issue.impact)}
-                                              </span>
-                                              {resolved ? (
-                                                <span className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-emerald-100">
-                                                  Checked
-                                                </span>
-                                              ) : null}
-                                            </div>
-                                            <div className="font-semibold text-[var(--text)]">
-                                              {issue.title}
-                                            </div>
-                                            <div className="text-sm leading-6 text-[var(--muted)]">
-                                              {issue.detail}
-                                            </div>
-                                          </div>
+                                          <span
+                                            className={cn(
+                                              "h-2 w-2 shrink-0 rounded-full",
+                                              resolved
+                                                ? "bg-emerald-400"
+                                                : dotTone,
+                                            )}
+                                            aria-hidden
+                                          />
+                                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--text)]">
+                                            {issue.title}
+                                          </span>
+                                          {resolved ? (
+                                            <span className="shrink-0 text-emerald-400">
+                                              ✓
+                                            </span>
+                                          ) : (
+                                            <span className="shrink-0 text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
+                                              {impactLabel(issue.impact)}
+                                            </span>
+                                          )}
                                         </button>
                                       );
                                     })}

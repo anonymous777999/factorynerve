@@ -583,6 +583,7 @@ export function SteelFraudIntelligencePage() {
                   <ResponsiveScrollArea
                     className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
                     debugLabel="fraud-user-behavior-table"
+                    viewportClassName="max-h-[62vh] overflow-y-auto"
                   >
                     <table className="min-w-full text-left text-sm">
                       <thead className="text-[var(--muted)]">
@@ -648,6 +649,7 @@ export function SteelFraudIntelligencePage() {
                     <span className="inline-flex h-2 w-2 rounded-full bg-rose-400" /> Critical
                     <span className="ml-3 inline-flex h-2 w-2 rounded-full bg-orange-400" /> High
                   </div>
+                  <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-1">
                   {investigationQueue.map((item: FraudInvestigationItem, i: number) => (
                     <div key={`invest-${i}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
                       <div className="flex items-start justify-between gap-3">
@@ -668,6 +670,7 @@ export function SteelFraudIntelligencePage() {
                       </div>
                     </div>
                   ))}
+                  </div>
                 </div>
               ) : (
                 <EmptyState message="No investigation items. Investigation queue populates when critical or high-severity signals are detected across any domain." />
@@ -692,6 +695,7 @@ export function SteelFraudIntelligencePage() {
                     <span className="ml-3 inline-flex h-2 w-2 rounded-full bg-amber-400" /> Acknowledged
                     <span className="ml-3 inline-flex h-2 w-2 rounded-full bg-[var(--accent)]" /> Investigating
                   </div>
+                  <div className="max-h-[62vh] space-y-4 overflow-y-auto pr-1">
                   {alerts.map((alert: FraudAlert) => (
                     <div key={alert.id} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
                       <div className="flex items-start justify-between gap-3">
@@ -758,6 +762,7 @@ export function SteelFraudIntelligencePage() {
                       </div>
                     </div>
                   ))}
+                  </div>
                 </div>
               ) : (
                 <EmptyState message="No active fraud alerts. Critical/high signals from the fraud intelligence scan will appear here automatically." />

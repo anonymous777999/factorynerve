@@ -349,7 +349,7 @@ export function AuthShell({
           <Link href="/eula" className="transition hover:text-[var(--accent)] hover:underline">
             EULA
           </Link>
-          <a href="mailto:privacy@dpr.ai" className="transition hover:text-[var(--accent)] hover:underline">
+          <a href="mailto:legal.factorynerve.online@redvortexorg.me" className="transition hover:text-[var(--accent)] hover:underline">
             Contact
           </a>
         </div>

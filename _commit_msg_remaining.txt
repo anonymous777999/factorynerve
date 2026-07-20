@@ -1,0 +1,8 @@
+fix(remaining): S1-3 attendance, BILL-1 templates leak, S3 Windows rename, S2-3 auth tests
+
+BUG FIXES:
+- S1-3: Add ATTENDANCE role to attendance.self.* permissions (scoped to 3 entries, not global _OPERATOR_PLUS)
+- S2-3: Fix auth test response shape (test_auth_e2e register flow, test_auth_google cookie name)
+- BILL-1: Fix free Pilot plan leaking paid templates — replace org_has_ocr_access bypass with direct OrgSubscriptionAddon query for active ocr_pack addons only
+- S3: Fix Windows atomic rename in ocr_jobs.py — Path.rename() -> os.replace() (atomic overwrite on Windows)
+- S3: Fix test_unstructured_document_detection.py assertion drift — 'running balance' -> 'balance_check'

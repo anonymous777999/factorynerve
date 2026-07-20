@@ -272,7 +272,7 @@ export default function ContactPage() {
             {/* General Support */}
             <ContactCard
               title="General Support"
-              email="support@factorynerve.online"
+              email="support.factorynerve.online@redvortexorg.me"
               subtitle="Response within 24 hours on business days"
               icon={<HeadsetIcon />}
               border="border-[var(--accent-soft)]"
@@ -288,7 +288,7 @@ export default function ContactPage() {
             {/* Sales */}
             <ContactCard
               title="Sales Inquiries"
-              email="sales@factorynerve.online"
+              email="sales.factorynerve.online@redvortexorg.me"
               subtitle="We typically respond within 4 hours"
               icon={<DollarIcon />}
               border="border-emerald-400/20"
@@ -339,7 +339,7 @@ export default function ContactPage() {
           {/* Legal & Privacy */}
           <ContactCard
             title="Legal &amp; Privacy"
-            email="legal@factorynerve.online"
+            email="legal.factorynerve.online@redvortexorg.me"
             subtitle="Legal inquiries handled within 2 business days"
             icon={<ShieldIcon />}
             border="border-amber-400/20"
@@ -355,7 +355,7 @@ export default function ContactPage() {
           {/* Security */}
           <ContactCard
             title="Security &amp; Vulnerabilities"
-            email="security@factorynerve.online"
+            email="security.factorynerve.online@redvortexorg.me"
             subtitle="For responsible disclosure of security issues"
             icon={<LockIcon />}
             border="border-red-400/20"
@@ -371,7 +371,7 @@ export default function ContactPage() {
           {/* Business & Partnerships */}
           <ContactCard
             title="Business &amp; Partnerships"
-            email="hello@factorynerve.online"
+            email="hello.factorynerve.online@redvortexorg.me"
             subtitle="We reply to partnership inquiries within 3 business days"
             icon={<HandshakeIcon />}
             border="border-purple-400/20"
@@ -387,7 +387,7 @@ export default function ContactPage() {
           {/* Billing */}
           <ContactCard
             title="Billing"
-            email="billing@factorynerve.online"
+            email="billing.factorynerve.online@redvortexorg.me"
             subtitle="Payment and invoice questions answered quickly"
             icon={<DollarIcon />}
             border="border-[var(--accent-soft)]"
@@ -408,15 +408,14 @@ export default function ContactPage() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300">
                 <PinIcon />
               </div>
-              <h3 className="text-base font-semibold text-white">Mailing Address</h3>
+              <h3 className="text-base font-semibold text-white">How to reach us</h3>
             </div>
             <div className="mt-4 text-sm leading-7 text-slate-300">
-              <p className="font-medium text-white">Factory Nerve Technologies Pvt. Ltd.</p>
-              <p>4th Floor, Tech Tower</p>
-              <p>Industrial District</p>
-              <p className="flex items-center gap-2">
-                <span>Shillong, Meghalaya 793001, India</span>
-                <CopyButton text="4th Floor, Tech Tower, Industrial District, Shillong, Meghalaya 793001, India" />
+              <p className="font-medium text-white">Factory Nerve</p>
+              <p>We&apos;re an online-first product — the fastest way to reach us is email, and we respond within one business day.</p>
+              <p className="mt-1 flex items-center gap-2">
+                <a href="mailto:support.factorynerve.online@redvortexorg.me" className="text-[var(--accent)] hover:underline">support.factorynerve.online@redvortexorg.me</a>
+                <CopyButton text="support.factorynerve.online@redvortexorg.me" />
               </p>
             </div>
           </div>
@@ -434,7 +433,7 @@ export default function ContactPage() {
                 <p className="mt-2 text-sm leading-7 text-slate-300">
                   Enterprise SLA customers have 24/7 access to our critical incident response team.
                   For all other customers, email{" "}
-                  <a href="mailto:support@factorynerve.online" className="text-[var(--accent)] hover:underline">support@factorynerve.online</a>{" "}
+                  <a href="mailto:support.factorynerve.online@redvortexorg.me" className="text-[var(--accent)] hover:underline">support.factorynerve.online@redvortexorg.me</a>{" "}
                   with <strong>[URGENT]</strong> in the subject line.
                 </p>
               </div>
@@ -444,7 +443,7 @@ export default function ContactPage() {
 
         {/* Footer */}
         <div className="border-t border-white/10 pt-6 text-center text-xs text-slate-500">
-          <p>&copy; {new Date().getFullYear()} Factory Nerve Technologies Pvt. Ltd. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} Factory Nerve. All rights reserved.</p>
           <p className="mt-1 flex items-center justify-center gap-4">
             <Link href="/" className="text-[var(--accent)] hover:underline">Return to Factory Nerve</Link>
           </p>
