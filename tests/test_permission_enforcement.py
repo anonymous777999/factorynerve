@@ -404,13 +404,13 @@ class TestSteelDispatchPermissions:
             cookies=_cookies(operator_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
-    def test_create_dispatch_supervisor_blocked(self, http_client: httpx.Client, supervisor_user: dict) -> None:
-        """Supervisor does NOT have dispatch.record.create."""
+    def test_create_dispatch_supervisor_allowed(self, http_client: httpx.Client, supervisor_user: dict) -> None:
+        """Supervisor now HAS dispatch.record.create."""
         resp = http_client.post("/steel/dispatches",
             json={"invoice_id": 1, "dispatch_date": "2026-01-01", "truck_number": "MP09AB1234",
                   "driver_name": "Test", "lines": [{"invoice_line_id": 1, "weight_kg": 100}]},
             cookies=_cookies(supervisor_user))
-        assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
+        assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_dispatch_manager_allowed(self, http_client: httpx.Client, manager_user: dict) -> None:
         resp = http_client.post("/steel/dispatches",
@@ -469,12 +469,12 @@ class TestSteelInvoicePermissions:
             cookies=_cookies(attendance_user))
         assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
 
-    def test_create_invoice_accountant_blocked(self, http_client: httpx.Client, accountant_user: dict) -> None:
-        """Accountant does NOT have invoice.record.create (manager+ only)."""
+    def test_create_invoice_accountant_allowed(self, http_client: httpx.Client, accountant_user: dict) -> None:
+        """Accountant now HAS invoice.record.create."""
         resp = http_client.post("/steel/invoices",
             json={"invoice_date": "2026-01-01", "lines": [{"item_id": 1, "weight_kg": 100, "rate_per_kg": 50}]},
             cookies=_cookies(accountant_user))
-        assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
+        assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_create_invoice_manager_allowed(self, http_client: httpx.Client, manager_user: dict) -> None:
         resp = http_client.post("/steel/invoices",

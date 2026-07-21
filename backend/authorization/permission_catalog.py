@@ -452,7 +452,7 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         label="Create invoices",
         description="Create steel sales invoices.",
         scope_level=ScopeLevel.FACTORY,
-        default_roles=_MANAGER_PLUS,
+        default_roles=_FINANCIAL_ROLES,
     ),
     "invoice.record.edit": PermissionDef(
         key="invoice.record.edit",
@@ -483,7 +483,7 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         label="Create dispatches",
         description="Create steel dispatch records.",
         scope_level=ScopeLevel.FACTORY,
-        default_roles=_MANAGER_PLUS,
+        default_roles=_SUPERVISOR_PLUS,
     ),
     "dispatch.record.update": PermissionDef(
         key="dispatch.record.update",

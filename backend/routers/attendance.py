@@ -1826,7 +1826,7 @@ def get_attendance_review_queue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceReviewResponse:
-    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.report.view")
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.record.approve")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     local_now = _factory_now(factory)
@@ -1975,7 +1975,7 @@ def approve_attendance_review(
         raise HTTPException(status_code=404, detail="Attendance review record not found.")
 
     # Step 2: Approval service initiation (maker-checker — replaces assert_not_self_approval)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=record.user_id,
         workflow_key="attendance.review.approve",
@@ -2303,7 +2303,7 @@ def reject_attendance_review(
         raise HTTPException(status_code=404, detail="Attendance review record not found.")
 
     # Step 2: Approval service initiation (maker-checker — replaces assert_not_self_approval)
-    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
         subject_user_id=record.user_id,
         workflow_key="attendance.review.reject",
