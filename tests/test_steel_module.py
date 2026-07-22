@@ -268,7 +268,8 @@ def test_steel_inventory_item_rejects_email_like_item_code(http_client):
     assert "Item code cannot be an email address." in response.text
 
 
-def test_steel_overview_redacts_owner_financials_for_manager(http_client):
+def test_steel_overview_financials_for_manager(http_client):
+    """MANAGER can now view financial data (FINANCIAL_ROLES)."""
     user = register_user(http_client, role="manager")
     _promote_factory_to_steel(user["email"])
 
@@ -276,18 +277,18 @@ def test_steel_overview_redacts_owner_financials_for_manager(http_client):
 
     assert overview.status_code == HTTPStatus.OK, overview.text
     payload = overview.json()
-    assert payload["financial_access"] is False
-    assert payload["profit_summary"] is None
-    assert payload["anomaly_summary"]["total_estimated_leakage_value_inr"] is None
+    assert payload["financial_access"] is True
+    assert payload["profit_summary"] is not None
 
 
-def test_steel_overview_financials_require_owner_role(http_client):
+def test_steel_overview_financials_for_admin_and_owner(http_client):
+    """ADMIN can now view financial data (FINANCIAL_ROLES). OWNER also can."""
     user = register_user(http_client, role="admin")
     _promote_factory_to_steel(user["email"])
 
     admin_overview = http_client.get("/steel/overview")
     assert admin_overview.status_code == HTTPStatus.OK, admin_overview.text
-    assert admin_overview.json()["financial_access"] is False
+    assert admin_overview.json()["financial_access"] is True
 
     _set_user_role(user["email"], "owner")
     owner_overview = http_client.get("/steel/overview")

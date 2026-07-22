@@ -871,13 +871,15 @@ class TestOCRPermissions:
 class TestFeedbackPermissions:
     """feedback.submit, feedback.manage permissions."""
 
-    def test_submit_feedback_attendance_blocked(self, http_client: httpx.Client, attendance_user: dict) -> None:
+    def test_submit_feedback_attendance_allowed(self, http_client: httpx.Client, attendance_user: dict) -> None:
+        """ATTENDANCE can now submit feedback (feedback.submit permission granted)."""
         resp = http_client.post(
             "/feedback",
             json={"type": "bug", "message": "Test bug report"},
             cookies=_cookies(attendance_user),
         )
-        assert resp.status_code == HTTPStatus.FORBIDDEN, resp.text
+        # Expect non-403 (permission passes); may get 422 due to validation
+        assert resp.status_code != HTTPStatus.FORBIDDEN, resp.text
 
     def test_submit_feedback_operator_allowed(self, http_client: httpx.Client, operator_user: dict) -> None:
         resp = http_client.post(

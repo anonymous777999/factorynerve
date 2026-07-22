@@ -26,7 +26,7 @@ function normalizedRole(role?: string | null): AppNavRole | "" {
 export function getHomeDestination(role?: string | null, accessibleFactories = 0) {
   switch (normalizedRole(role)) {
     case "attendance":
-      return "/attendance";
+      return "/dashboard";
     case "operator":
       return "/dashboard";
     case "supervisor":
@@ -49,17 +49,17 @@ export function getRolePrimaryHrefs(role?: string | null) {
     case "attendance":
       return ["/attendance", "/profile"];
     case "operator":
-      return ["/dashboard", "/work-queue", "/entry", "/ocr/scan", "/attendance"];
+      return ["/dashboard", "/work-queue", "/entry", "/ocr/scan", "/attendance", "/reports"];
     case "supervisor":
-      return ["/approvals", "/work-queue", "/ocr/verify", "/attendance/review", "/steel/reconciliations", "/steel/dispatches", "/reports"];
+      return ["/dashboard", "/approvals", "/work-queue", "/ocr/verify", "/attendance/review", "/steel/reconciliations", "/steel/dispatches", "/reports", "/workforce", "/ai", "/email-summary"];
     case "accountant":
-      return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
+      return ["/dashboard", "/reports", "/analytics", "/attendance/reports", "/email-summary", "/ai", "/steel/customers", "/steel/invoices", "/steel/dispatches", "/workforce"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/workforce", "/work-queue"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/workforce", "/ai", "/work-queue"];
     case "admin":
-      return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/dashboard", "/steel/production/machines", "/workforce"];
+      return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/dashboard", "/steel/production/machines", "/workforce", "/ai"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/reports", "/ai", "/email-summary", "/steel/charts", "/steel/dispatches", "/steel/production/machines", "/workforce"];
+      return ["/premium/dashboard", "/control-tower", "/reports", "/ai", "/email-summary", "/steel/charts", "/steel/dispatches", "/steel/production/machines", "/steel/financial-intelligence", "/workforce"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -72,13 +72,13 @@ export function getRoleDefaultFavoriteHrefs(role?: string | null) {
     case "operator":
       return ["/dashboard", "/entry", "/ocr/scan", "/attendance", "/work-queue"];
     case "supervisor":
-      return ["/approvals", "/ocr/verify", "/attendance/review", "/steel/dispatches", "/steel/reconciliations", "/reports"];
+      return ["/dashboard", "/approvals", "/ocr/verify", "/attendance/review", "/steel/dispatches", "/steel/reconciliations", "/reports", "/workforce", "/ai"];
     case "accountant":
-      return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
+      return ["/dashboard", "/reports", "/analytics", "/attendance/reports", "/email-summary", "/ai", "/steel/customers", "/steel/invoices", "/workforce"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/workforce"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/workforce", "/ai"];
     case "admin":
-      return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/steel/production/machines", "/workforce"];
+      return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/dashboard", "/steel/production/machines", "/workforce", "/ai"];
     case "owner":
       return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary", "/ai", "/steel/dispatches", "/steel/production/machines", "/workforce"];
     default:
@@ -93,13 +93,13 @@ export function getRoleMobileNavHrefs(role?: string | null) {
     case "operator":
       return ["/dashboard", "/work-queue", "/ocr/scan", "/entry", "/attendance"];
     case "supervisor":
-      return ["/approvals", "/work-queue", "/ocr/verify", "/steel/dispatches", "/steel/reconciliations", "/reports"];
+      return ["/dashboard", "/approvals", "/work-queue", "/ocr/verify", "/steel/dispatches", "/steel/reconciliations", "/reports"];
     case "accountant":
-      return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/profile"];
+      return ["/dashboard", "/reports", "/attendance/reports", "/email-summary", "/ai", "/profile"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/workforce"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/workforce", "/ai"];
     case "admin":
-      return ["/settings", "/reports", "/approvals", "/analytics", "/profile"];
+      return ["/settings", "/reports", "/approvals", "/analytics", "/profile", "/ai"];
     case "owner":
       return ["/premium/dashboard", "/reports", "/control-tower", "/ai", "/email-summary", "/steel/dispatches", "/workforce"];
     default:
@@ -114,11 +114,11 @@ export function getRoleDesktopQuickLinkHrefs(role?: string | null) {
     case "operator":
       return ["/work-queue", "/ocr/scan", "/attendance"];
     case "supervisor":
-      return ["/approvals", "/ocr/verify", "/reports"];
+      return ["/approvals", "/ocr/verify", "/reports", "/workforce", "/ai"];
     case "accountant":
-      return ["/reports", "/attendance/reports", "/email-summary"];
+      return ["/reports", "/attendance/reports", "/email-summary", "/ai", "/analytics"];
     case "manager":
-      return ["/approvals", "/reports", "/analytics", "/workforce"];
+      return ["/approvals", "/reports", "/analytics", "/workforce", "/ai"];
     case "admin":
       return ["/settings", "/settings/attendance", "/reports"];
     case "owner":
@@ -145,15 +145,30 @@ export function getRoleAllowedNavHrefs(role?: string | null, industryType?: stri
         "/ocr/scan",
         "/ocr/history",
         "/attendance",
+        "/notifications",
       ].forEach((href) => base.add(href));
       break;
     case "supervisor":
       [
+        "/dashboard",
         "/work-queue",
+        "/attendance",
         "/attendance/review",
+        "/attendance/reports",
         "/ocr/verify",
         "/ocr/history",
+        "/notifications",
+        "/tasks",
+        "/steel",
+        "/steel/inventory",
         "/steel/dispatches",
+        "/steel/batches",
+        "/steel/production/record",
+        "/steel/production/lines",
+        "/steel/production/machines",
+        "/email-summary",
+        "/workforce",
+        "/ai",
       ].forEach((href) => base.add(href));
       if (normalizedIndustry === "steel") {
         base.add("/steel/reconciliations");
@@ -161,37 +176,100 @@ export function getRoleAllowedNavHrefs(role?: string | null, industryType?: stri
       break;
     case "accountant":
       [
+        "/dashboard",
+        "/work-queue",
+        "/attendance",
         "/attendance/reports",
+        "/ocr/history",
+        "/notifications",
+        "/tasks",
+        "/steel",
+        "/steel/inventory",
         "/steel/customers",
         "/steel/invoices",
+        "/steel/dispatches",
+        "/steel/vendors",
+        "/steel/expenses",
+        "/steel/batches",
+        "/steel/charts",
+        "/steel/reconciliations",
         "/email-summary",
+        "/workforce",
+        "/ai",
       ].forEach((href) => base.add(href));
       break;
     case "manager":
       [
         "/dashboard",
         "/work-queue",
+        "/attendance",
+        "/attendance/review",
+        "/attendance/reports",
         "/ocr/history",
+        "/notifications",
+        "/tasks",
         "/steel",
         "/steel/inventory",
         "/steel/inventory/transactions",
         "/steel/production/record",
         "/steel/production/machines",
+        "/steel/production/lines",
         "/steel/production-intelligence",
         "/steel/machine-alerts",
+        "/steel/batches",
+        "/steel/charts",
+        "/steel/quality",
+        "/steel/anomalies",
+        "/steel/inventory-intelligence",
+        "/steel/sales-intelligence",
+        "/steel/financial-intelligence",
+        "/steel/vendors",
+        "/steel/expenses",
         "/steel/customers",
         "/steel/invoices",
         "/steel/dispatches",
+        "/steel/reconciliations",
         "/email-summary",
         "/workforce",
+        "/ai",
       ].forEach((href) => base.add(href));
       break;
     case "admin":
       [
         "/dashboard",
+        "/work-queue",
+        "/attendance",
+        "/attendance/review",
+        "/attendance/reports",
+        "/ocr/scan",
+        "/ocr/verify",
         "/ocr/history",
+        "/notifications",
+        "/tasks",
+        "/steel",
+        "/steel/inventory",
+        "/steel/inventory/transactions",
+        "/steel/production/record",
         "/steel/production/machines",
+        "/steel/production/lines",
+        "/steel/production-intelligence",
+        "/steel/machine-alerts",
+        "/steel/batches",
+        "/steel/charts",
+        "/steel/quality",
+        "/steel/anomalies",
+        "/steel/inventory-intelligence",
+        "/steel/sales-intelligence",
+        "/steel/financial-intelligence",
+        "/steel/vendors",
+        "/steel/expenses",
+        "/steel/customers",
+        "/steel/invoices",
+        "/steel/dispatches",
+        "/steel/reconciliations",
+        "/email-summary",
         "/workforce",
+        "/ai",
       ].forEach((href) => base.add(href));
       break;
     case "owner":

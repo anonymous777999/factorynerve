@@ -344,11 +344,10 @@ class TestSteelCorporateEndToEnd:
         assert approve.json()["reconciliation"]["status"] == "approved"
 
         # ── Step 10: Verify financial data access control ───────────────────
-        # MANAGER should not see financials in overview
+        # MANAGER can now see financials in overview (FINANCIAL_ROLES)
         manager_overview = http_client.get("/steel/overview", headers=manager_headers)
         assert manager_overview.status_code == HTTPStatus.OK, manager_overview.text
-        assert manager_overview.json()["financial_access"] is False
-        assert manager_overview.json()["profit_summary"] is None
+        assert manager_overview.json()["financial_access"] is True
 
         # OWNER should see financials
         owner_overview = http_client.get("/steel/overview", headers=owner_headers)
@@ -522,15 +521,16 @@ class TestSteelRoleHierarchySecurity:
 
     # ── Financial Data Redaction ──────────────────────────────────────────
 
-    @pytest.mark.parametrize("role_name", ["attendance", "operator", "supervisor", "accountant", "manager", "admin"])
-    def test_financial_data_redacted_for_non_owner_roles(
+    @pytest.mark.parametrize("role_name", ["attendance", "operator", "supervisor"])
+    def test_financial_data_redacted_for_low_roles(
         self,
         http_client: httpx.Client,
         headers: dict[str, dict[str, str]],
         seed_data: dict,
         role_name: str,
     ) -> None:
-        """Only OWNER role can see financial data in steel overview."""
+        """ATTENDANCE, OPERATOR, and SUPERVISOR cannot see financial data.
+        MANAGER, ACCOUNTANT, ADMIN, and OWNER now have financial access."""
         role_headers = headers[role_name]
         resp = http_client.get("/steel/overview", headers=role_headers)
 
@@ -549,6 +549,27 @@ class TestSteelRoleHierarchySecurity:
             assert payload["anomaly_summary"].get("total_estimated_leakage_value_inr") is None, (
                 f"Role '{role_name}' should NOT see leakage value"
             )
+
+    @pytest.mark.parametrize("role_name", ["accountant", "manager", "admin"])
+    def test_financial_data_visible_to_financial_roles(
+        self,
+        http_client: httpx.Client,
+        headers: dict[str, dict[str, str]],
+        seed_data: dict,
+        role_name: str,
+    ) -> None:
+        """ACCOUNTANT, MANAGER, and ADMIN can now see financial data."""
+        role_headers = headers[role_name]
+        resp = http_client.get("/steel/overview", headers=role_headers)
+
+        if resp.status_code == HTTPStatus.FORBIDDEN:
+            return  # Role blocked entirely from overview
+
+        assert resp.status_code == HTTPStatus.OK, resp.text
+        payload = resp.json()
+        assert payload["financial_access"] is True, (
+            f"Role '{role_name}' should have financial_access"
+        )
 
     def test_owner_sees_financials(
         self,

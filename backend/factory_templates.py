@@ -105,6 +105,18 @@ STEEL_TRACEABILITY_SECTION = TemplateSection(
     ),
 )
 
+STEEL_PRODUCTION_SPEC_SECTION = TemplateSection(
+    key="steel_production_specs",
+    label="Steel Production Specifications",
+    description="Steel grade, machine assignment, and order references for the shift.",
+    fields=(
+        _field("grade_of_steel", "Grade of Steel", "text", True, "e.g. TMT 500, HR Coil, CR Sheet, GI, angle bar, channel"),
+        _field("machine_or_line", "Machine / Line", "text", False, "Machine or production line that processed this shift's output"),
+        _field("customer_order_ref", "Customer Order Ref", "text", False, "Reference to the customer purchase order or work order"),
+        _field("production_order_ref", "Production Order Ref", "text", False, "Internal production order or job reference"),
+    ),
+)
+
 CHEMICAL_SAFETY_SECTION = TemplateSection(
     key="chemical_safety",
     label="Process Safety Check",
@@ -133,9 +145,9 @@ WORKFLOW_TEMPLATES: dict[str, WorkflowTemplate] = {
         key="steel-core-pack",
         label="Steel Core Pack",
         industry_type="steel",
-        description="Steel starter template focused on production traceability, scrap, and quality release readiness.",
-        modules=("dpr", "quality", "traceability", "scrap", "certificates"),
-        sections=(COMMON_DPR_SECTION, COMMON_QUALITY_SECTION, STEEL_TRACEABILITY_SECTION),
+        description="Steel starter template focused on production traceability, scrap, quality release, and material specifications.",
+        modules=("dpr", "quality", "traceability", "scrap", "certificates", "materials"),
+        sections=(COMMON_DPR_SECTION, COMMON_QUALITY_SECTION, STEEL_TRACEABILITY_SECTION, STEEL_PRODUCTION_SPEC_SECTION),
         pack_level="industry",
         is_default=True,
     ),

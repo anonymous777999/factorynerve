@@ -86,6 +86,13 @@ const TRACEABILITY_FIELDS = [
   },
 ] as const;
 
+const STEEL_SPEC_FIELDS = [
+  { key: "grade_of_steel", label: "Grade of Steel", inputType: "text", placeholder: "e.g. TMT 500, HR Coil" },
+  { key: "machine_or_line", label: "Machine / Line", inputType: "text", placeholder: "e.g. RM-01, Line 3" },
+  { key: "customer_order_ref", label: "Customer Order Ref", inputType: "text", placeholder: "Optional customer PO ref" },
+  { key: "production_order_ref", label: "Production Order Ref", inputType: "text", placeholder: "Optional internal order ref" },
+] as const;
+
 const BUILT_IN_TEMPLATE_FIELDS = new Set([
   "date",
   "shift",
@@ -135,6 +142,10 @@ function defaultTemplateFields(): TemplateFieldMap {
     lot_number: "",
     scrap_kg: null,
     certificate_reference: "",
+    grade_of_steel: "",
+    machine_or_line: "",
+    customer_order_ref: "",
+    production_order_ref: "",
   };
 }
 
@@ -172,6 +183,12 @@ function normalizeTemplateFields(
   };
 
   TRACEABILITY_FIELDS.forEach((field) => {
+    if (current[field.key] !== undefined) {
+      next[field.key] = current[field.key];
+    }
+  });
+
+  STEEL_SPEC_FIELDS.forEach((field) => {
     if (current[field.key] !== undefined) {
       next[field.key] = current[field.key];
     }

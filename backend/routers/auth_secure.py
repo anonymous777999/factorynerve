@@ -844,7 +844,7 @@ def _build_me_permissions(auth_user: User) -> PermissionsSchema:
         can_manage_users=bool(role and role_rank(role) >= role_rank(UserRole.MANAGER)),
         can_view_analytics=bool(role and role_rank(role) >= role_rank(UserRole.SUPERVISOR)),
         can_approve_entries=bool(role and role_rank(role) >= role_rank(UserRole.SUPERVISOR)),
-        can_export_data=role not in {UserRole.ATTENDANCE, UserRole.OPERATOR},
+        can_export_data=role not in {UserRole.ATTENDANCE},
         can_manage_billing=role == UserRole.OWNER,
         can_view_admin_panel=role_value == "superadmin",
     )

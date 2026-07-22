@@ -1386,7 +1386,8 @@ STEEL_FINANCIAL_BATCH_KEYS = {
 
 
 def _can_view_steel_financials(user: User) -> bool:
-    return user.role == UserRole.OWNER
+    from backend.authorization.permission_catalog import PermissionCatalog
+    return PermissionCatalog.has_permission(user.role, "production.fraud_financial.view")
 
 
 def _redact_steel_batch_financials(batch: dict[str, Any] | None) -> dict[str, Any] | None:

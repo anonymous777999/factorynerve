@@ -183,7 +183,7 @@ export default function DashboardHome() {
     if (!user) return;
     setDashboardLoading(true);
     setError("");
-    const workerMode = user.role === "operator";
+    const workerMode = user.role === "operator" || user.role === "attendance";
 
     const tasks: Array<Promise<unknown>> = [
       getTodayEntries(),
@@ -356,6 +356,7 @@ export default function DashboardHome() {
     !state.alerts.length &&
     !state.weekly.length;
   const isOperatorHome = user?.role === "operator";
+  const isAttendanceHome = user?.role === "attendance";
   const canReview = ["supervisor", "manager", "admin", "owner"].includes(user?.role || "");
   const canSeeControlTower = ["manager", "admin", "owner"].includes(user?.role || "");
   const canUseSteel = ["owner", "manager"].includes(user?.role || "");
@@ -363,15 +364,17 @@ export default function DashboardHome() {
     activeFactory?.industry_type === "steel" &&
     ["accountant", "manager", "admin", "owner"].includes(user?.role || "");
   const headerEyebrow =
-    user?.role === "accountant"
-      ? "Reporting Desk"
-      : user?.role === "admin"
-        ? "System Oversight"
-        : user?.role === "owner"
-          ? "Owner Review"
-          : user?.role === "supervisor"
-            ? "Review Control"
-            : t("dashboard.section.operations_board", "Operations Board");
+    user?.role === "attendance"
+      ? "Attendance Desk"
+      : user?.role === "accountant"
+        ? "Reporting Desk"
+        : user?.role === "admin"
+          ? "System Oversight"
+          : user?.role === "owner"
+            ? "Owner Review"
+            : user?.role === "supervisor"
+              ? "Review Control"
+              : t("dashboard.section.operations_board", "Operations Board");
   const headerTitle =
     user?.role === "operator"
       ? `${t("dashboard.header.operator_ready", "Ready for the shift")}, ${user.name}`
@@ -382,8 +385,9 @@ export default function DashboardHome() {
           : user?.role === "manager"
             ? `Decision view is ready, ${user.name}`
             : user?.role === "admin"
-              ? `System control is ready, ${user.name}`
-        : user?.role === "owner"
+              ? `System control is ready, ${user.name}`          : user?.role === "attendance"
+            ? `Attendance desk is open, ${user.name}`
+          : user?.role === "owner"
           ? `${t("dashboard.header.owner_ready", "Owner review is ready")}, ${user.name}`
           : `${t("dashboard.header.default", "Good to see you")}, ${user?.name || t("dashboard.header.there", "there")}`;
   const headerCopy =
@@ -402,8 +406,9 @@ export default function DashboardHome() {
           : user?.role === "manager"
             ? "Start from the next decision, then jump into reports, review load, and factory control without opening extra screens."
             : user?.role === "admin"
-              ? "Start from settings, access, and workflow health. Use reports and approvals when live issues need proof."
-        : user?.role === "owner"
+              ? "Start from settings, access, and workflow health. Use reports and approvals when live issues need proof."          : user?.role === "attendance"
+            ? "Punch in, check your shift status, and see today's production summary in one place."
+          : user?.role === "owner"
           ? t(
               "dashboard.copy.owner",
               "Track profit, loss, stock trust, and dispatch exposure from one board without digging through admin screens.",
@@ -1081,6 +1086,9 @@ export default function DashboardHome() {
     weeklyAverage,
   ]);
   const usagePrimaryAction = useMemo(() => {
+    if (user?.role === "attendance") {
+      return { href: "/attendance", label: "Punch In / Out" };
+    }
     if (user?.role === "supervisor") {
       return { href: "/approvals", label: "Open Review Queue" };
     }
@@ -1369,6 +1377,147 @@ export default function DashboardHome() {
 
   if (showInitialSkeleton) {
     return <DashboardPageSkeleton />;
+  }
+
+  if (isAttendanceHome) {
+    return (
+      <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-6 lg:py-8">
+        <div className="mx-auto max-w-6xl space-y-4">
+          {status ? (
+            <div className="rounded-[20px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+              {status}
+            </div>
+          ) : null}
+          {error || sessionError ? (
+            <div className="rounded-[20px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+              {error || sessionError}
+            </div>
+          ) : null}
+
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,25,40,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.48)]">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-base font-semibold text-slate-100">
+                  {activeFactory?.name || user.factory_name || "-"}
+                </div>
+                <span
+                  className={`rounded-full border px-3 py-1 text-xs ${
+                    online
+                      ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100"
+                      : "border-amber-400/20 bg-amber-500/10 text-amber-100"
+                  }`}
+                >
+                  {online ? "Online" : "Offline"}
+                </span>
+              </div>
+
+              <div className="mt-8">
+                <div className="text-xl font-semibold md:text-2xl">{t("dashboard.attendance.title", "Attendance")}</div>
+                <div className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-header ${workerStatus.tone}`}>
+                  <span className="h-2.5 w-2.5 rounded-full bg-current opacity-80" />
+                  {t("dashboard.attendance.status_label", "Status:")} {workerStatus.label}
+                </div>
+                <div className="mt-5 text-2xl font-semibold md:text-3xl">{workerShiftLabel} Shift</div>
+                <div className="mt-2 text-sm text-slate-300">{workerStatus.detail}</div>
+              </div>
+
+              <div className="mt-8">
+                <div className="text-xs uppercase tracking-caption text-slate-400">{t("dashboard.attendance.main_action", "Main Action")}</div>
+                <Link
+                  href="/attendance"
+                  className="mt-3 inline-flex h-20 w-full items-center justify-center rounded-[28px] bg-emerald-500 px-6 text-xl font-semibold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-soft)] focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]"
+                >
+                  {t("dashboard.attendance.punch_action", "Punch In / Out")}
+                </Link>
+                <div className="mt-3 text-sm text-slate-300">{t("dashboard.attendance.punch_hint", "Open the attendance page to start or end your shift.")}</div>
+              </div>
+
+              <div className="mt-8">
+                <div className="text-xs uppercase tracking-caption text-slate-400">{t("dashboard.attendance.quick_actions", "Quick Actions")}</div>
+                <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <Link
+                    href="/attendance/reports"
+                    className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center transition hover:border-[var(--accent-soft)] hover:bg-white/8"
+                  >
+                    <div className="text-base font-semibold text-white">{t("dashboard.attendance.my_history", "My History")}</div>
+                    <div className="mt-1 text-xs text-slate-400">{t("common.view", "View")}</div>
+                  </Link>
+                  <Link
+                    href="/entry"
+                    className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center transition hover:border-[var(--accent-soft)] hover:bg-white/8"
+                  >
+                    <div className="text-base font-semibold text-white">{t("dashboard.attendance.shift_entry", "Shift Entry")}</div>
+                    <div className="mt-1 text-xs text-slate-400">{t("common.open", "Open")}</div>
+                  </Link>
+                </div>
+              </div>
+
+              <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
+                <div className="text-xs uppercase tracking-caption text-slate-400">{t("dashboard.attendance.today_summary", "Today Summary")}</div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[20px] border border-white/10 bg-[#0E1524]/80 px-4 py-3">
+                    <div className="text-xs text-slate-400">{t("dashboard.attendance.completed_shifts", "Completed Shifts")}</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{completedShifts}</div>
+                  </div>
+                  <div className="rounded-[20px] border border-white/10 bg-[#0E1524]/80 px-4 py-3">
+                    <div className="text-xs text-slate-400">{t("dashboard.attendance.worked", "Worked")}</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{formatMinutes(state.attendanceToday?.worked_minutes || 0)}</div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <aside className="space-y-4">
+              <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(14,21,36,0.96),rgba(11,15,25,0.98))] p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
+                <div className="text-xs uppercase tracking-caption text-slate-400">{t("dashboard.attendance.shift_status", "Shift Status")}</div>
+                <div className="mt-4 space-y-3">
+                  {todayShiftCards.map(({ shift, entry }) => (
+                    <div
+                      key={shift}
+                      className={`flex items-center justify-between rounded-[20px] border px-4 py-3 ${
+                        entry
+                          ? "border-emerald-400/20 bg-emerald-500/10"
+                          : "border-white/10 bg-[#0E1524]/80"
+                      }`}
+                    >
+                      <span className="text-sm font-medium text-white">{formatShift(shift)}</span>
+                      <span className={`text-xs font-semibold uppercase tracking-caption ${entry ? "text-emerald-100" : "text-slate-400"}`}>
+                        {entry ? "Done" : "Pending"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
+                <div className="text-xs uppercase tracking-caption text-slate-400">Alerts</div>
+                {workerAlerts.length ? (
+                  <div className="mt-4 space-y-3">
+                    {workerAlerts.slice(0, 2).map((alert) => (
+                      <div key={alert.id} className={`rounded-[20px] border px-4 py-3 ${severityTone(alert.severity)}`}>
+                        <div className="text-sm font-medium">{alert.message}</div>
+                        <div className="mt-2 text-xs opacity-70">{formatDateTime(alert.created_at, locale)}</div>
+                        <button
+                          type="button"
+                          className="mt-3 text-xs font-semibold underline underline-offset-4"
+                          onClick={() => handleMarkAlertRead(alert.id)}
+                        >
+                          Mark done
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-[20px] border border-emerald-400/15 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                    No alerts right now.
+                  </div>
+                )}
+              </div>
+            </aside>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   if (isOperatorHome) {

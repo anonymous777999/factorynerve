@@ -199,7 +199,10 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         label="View attendance",
         description="View attendance records.",
         scope_level=ScopeLevel.FACTORY,
-        default_roles=_OPERATOR_PLUS,
+        default_roles=_roles(
+            UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER,
+            UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER,
+        ),
     ),
     "attendance.record.approve": PermissionDef(
         key="attendance.record.approve",
@@ -545,14 +548,20 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         label="AI natural language queries",
         description="Ask natural language questions about production data.",
         scope_level=ScopeLevel.FACTORY,
-        default_roles=_SUPERVISOR_PLUS,
+        default_roles=_roles(
+            UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT,
+            UserRole.ADMIN, UserRole.OWNER,
+        ),
     ),
     "ai.executive.view": PermissionDef(
         key="ai.executive.view",
         label="AI executive summary",
         description="Generate AI-powered executive summaries.",
         scope_level=ScopeLevel.FACTORY,
-        default_roles=_SUPERVISOR_PLUS,
+        default_roles=_roles(
+            UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT,
+            UserRole.ADMIN, UserRole.OWNER,
+        ),
     ),
     "ai.usage.view": PermissionDef(
         key="ai.usage.view",
@@ -582,7 +591,10 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         label="View operations analytics",
         description="View operations analytics (weekly, monthly, trends, manager).",
         scope_level=ScopeLevel.FACTORY,
-        default_roles=_SUPERVISOR_PLUS,
+        default_roles=_roles(
+            UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT,
+            UserRole.ADMIN, UserRole.OWNER,
+        ),
     ),
     "audit.log.view": PermissionDef(
         key="audit.log.view",
@@ -810,7 +822,10 @@ PERMISSION_CATALOG: dict[str, PermissionDef] = {
         label="Submit feedback",
         description="Submit bug reports and feature requests.",
         scope_level=ScopeLevel.FACTORY,
-        default_roles=_EVERYONE_BUT_ATTENDANCE,
+        default_roles=_roles(
+            UserRole.ATTENDANCE, UserRole.OPERATOR, UserRole.SUPERVISOR,
+            UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER,
+        ),
     ),
     "feedback.manage": PermissionDef(
         key="feedback.manage",
