@@ -18,6 +18,7 @@ export type PlanInfo = {
     smart: number;
   };
   unlimited_limits?: string[];
+  extra_user_price?: number;
   features: Record<string, boolean>;
 };
 

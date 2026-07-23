@@ -24,7 +24,7 @@ const plans = [
     ctaStyle: "outline" as const,
     subtext: "Verified business email required to activate pilot",
     limits: {
-      users: "Up to 7",
+      users: "Up to 30",
       workspace: "1",
       ocrScans: "150 pages",
       aiOperations: "100 actions",

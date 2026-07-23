@@ -72,8 +72,9 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "monthly_price": 0,
         "display_price": "₹0",
         "badge": "FREE PILOT",
-        "user_limit": 7,
+        "user_limit": 30,
         "factory_limit": 1,
+        "extra_user_price": 199,
         "limits": {"ocr": 150, "summary": 50, "email": 50, "smart": 100, "nlq": 10},
         "unlimited_limits": [],
         "features": {
@@ -99,6 +100,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "badge": "ESSENTIAL",
         "user_limit": 10,
         "factory_limit": 1,
+        "extra_user_price": 199,
         "limits": {"ocr": 0, "summary": 30, "email": 30, "smart": 100},
         "unlimited_limits": [],
         "features": {
@@ -124,6 +126,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "badge": "MOST POPULAR",
         "user_limit": 30,
         "factory_limit": 3,
+        "extra_user_price": 199,
         "limits": {"ocr": 0, "summary": 150, "email": 150, "smart": 600, "nlq": 30},
         "unlimited_limits": [],
         "features": {
@@ -149,6 +152,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "badge": "SCALE OPERATIONS",
         "user_limit": 75,
         "factory_limit": 8,
+        "extra_user_price": 199,
         "limits": {"ocr": 0, "summary": 500, "email": 500, "smart": 2000, "nlq": 200},
         "unlimited_limits": [],
         "features": {
@@ -174,6 +178,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "badge": "ENTERPRISE READY",
         "user_limit": 200,
         "factory_limit": 20,
+        "extra_user_price": 199,
         "limits": {"ocr": 0, "summary": 0, "email": 0, "smart": 0, "nlq": 0},
         "unlimited_limits": ["summary", "email", "smart", "nlq"],
         "features": {
@@ -201,6 +206,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "badge": "CUSTOM SOLUTION",
         "user_limit": 0,
         "factory_limit": 0,
+        "extra_user_price": 0,
         "limits": {"ocr": 0, "summary": 0, "email": 0, "smart": 0, "nlq": 0},
         "unlimited_limits": ["ocr", "summary", "email", "smart", "nlq"],
         "features": {

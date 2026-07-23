@@ -94,7 +94,7 @@ export const pricingTiers = [
     price: "₹0",
     period: "",
     tagline: "Full access. Your real data. No time limit during pilot.",
-    features: ["Up to 7 users", "1 factory workspace", "OCR scanning & extraction", "Attendance tracking", "Production reporting", "Inventory & dispatch tracking", "AI-powered insights", "WhatsApp alerts", "Personal onboarding support"],
+    features: ["Up to 30 users", "1 factory workspace", "OCR scanning & extraction", "Attendance tracking", "Production reporting", "Inventory & dispatch tracking", "AI-powered insights", "WhatsApp alerts", "Personal onboarding support"],
     cta: "Start your pilot",
     highlight: true,
   },

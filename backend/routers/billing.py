@@ -358,6 +358,7 @@ def _activate_paid_order(
                 existing_sub.status == "active"
                 and period_end is not None
                 and period_end > now
+                and not addon_quantities
             ):
                 logger.info(
                     "Idempotency guard: subscription for org_id=%s is already active "
@@ -651,22 +652,21 @@ def _resolve_checkout_quote(
     multiplier = 1 if cycle == "monthly" else int(PRICING_META.get("yearly_multiplier", 12) or 12)
     included_users = int(plan_info.get("user_limit", 0) or 0)
     included_factories = int(plan_info.get("factory_limit", 0) or 0)
+    extra_user_price = int(plan_info.get("extra_user_price", 0) or 0)
 
+    # Hard cap check for factories (no per-factory overage pricing yet)
     if plan_has_hard_caps():
-        if included_users > 0 and requested_users and requested_users > included_users:
-            raise HTTPException(
-                status_code=400,
-                detail=f"{plan_info.get('name', 'This plan')} supports up to {included_users} users. Choose a higher plan.",
-            )
         if included_factories > 0 and requested_factories and requested_factories > included_factories:
             raise HTTPException(
                 status_code=400,
                 detail=f"{plan_info.get('name', 'This plan')} supports up to {included_factories} factories. Choose a higher plan.",
             )
 
-    extra_users = 0
+    # Calculate extra user overage — users beyond the plan limit are priced at extra_user_price each
+    # Overage pricing works independently of the hard-cap toggle (pricing and cap-enforcement are separate)
+    extra_users = max(0, (requested_users or 0) - included_users) if extra_user_price > 0 and included_users > 0 else 0
     extra_factories = 0
-    extra_user_monthly = 0
+    extra_user_monthly = extra_users * extra_user_price if extra_user_price > 0 else 0
     extra_factory_monthly = 0
     org_id = resolve_org_id(current_user)
     active_addon_quantities = get_org_addon_quantity_map(db, org_id=org_id)
@@ -716,6 +716,7 @@ def _resolve_checkout_quote(
         "extra_factories": extra_factories,
         "extra_user_monthly": extra_user_monthly,
         "extra_factory_monthly": extra_factory_monthly,
+        "extra_user_price": extra_user_price,
         "selected_addon_ids": list(selected_addon_quantities.keys()),
         "selected_addon_quantities": selected_addon_quantities,
         "chargeable_addon_ids": [item["id"] for item in chargeable_addons],

@@ -262,7 +262,7 @@ function BillingPageInner() {
               id: "pilot",
               name: "Factory Pilot",
               monthly_price: 0,
-              user_limit: 7,
+              user_limit: 30,
               factory_limit: 1,
               limits: { ocr: 0, summary: 10, email: 0, smart: 30 },
               features: {},
