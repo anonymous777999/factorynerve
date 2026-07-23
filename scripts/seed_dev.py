@@ -171,7 +171,7 @@ def seed():
             role=UserRole.OWNER, factory_name=TEST_FACTORY,
             factory_code="QA001", phone_number="+919999999999",
             phone_e164="+919999999999", is_active=True,
-            email_verified_at=_now(), auth_provider="local",
+            email_verified_at=_now(), is_email_verified=True, auth_provider="local",
         )
         db.add(user)
         db.flush()

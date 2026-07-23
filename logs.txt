@@ -1,0 +1,16 @@
+2026-07-24 00:05:40,189 | INFO | backend.middleware.rls_context | - | RLS checkout event registered on engine Engine(sqlite:///dpr_ai.db)
+2026-07-24 00:05:40,190 | INFO | backend.main | - | RLS checkout event registered on database engine.
+2026-07-24 00:05:40,198 | INFO | backend.main | - | Dev router and failure injection middleware registered (development mode).
+INFO:     Started server process [13088]
+INFO:     Waiting for application startup.
+2026-07-24 00:05:40,198 | INFO | backend.main | - | Starting backend initialization.
+2026-07-24 00:05:43,144 | INFO | backend.main | - | startup_validation passed.
+2026-07-24 00:05:43,384 | INFO | alembic.runtime.plugins | - | setup plugin alembic.autogenerate.schemas
+2026-07-24 00:05:43,385 | INFO | alembic.runtime.plugins | - | setup plugin alembic.autogenerate.tables
+2026-07-24 00:05:43,385 | INFO | alembic.runtime.plugins | - | setup plugin alembic.autogenerate.types
+2026-07-24 00:05:43,386 | INFO | alembic.runtime.plugins | - | setup plugin alembic.autogenerate.constraints
+2026-07-24 00:05:43,386 | INFO | alembic.runtime.plugins | - | setup plugin alembic.autogenerate.defaults
+2026-07-24 00:05:43,386 | INFO | alembic.runtime.plugins | - | setup plugin alembic.autogenerate.comments
+INFO  [alembic.runtime.migration] Context impl SQLiteImpl.
+INFO  [alembic.runtime.migration] Will assume non-transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 20260327_01, Add org-level usage tracking tables.

@@ -16,7 +16,7 @@ Pages audited:
 2. About page (http://localhost:3000/about) - PUBLIC
    - Viewed: Placeholder page ("We're working on this page and it will be available soon")
    - Screenshots taken: desktop and mobile
-   - Console issues: 
+   - Console issues:
      * Multiple i18n warning messages about missing translations (shell.close_sidebar_overlay, shell.hide_sidebar, shell.pinned)
      * Many 500 Internal Server Error failures (22 times total)
      * Overflow audit showing 10 issues on the page (app-shell component overflow: scrollWidth 452px > clientWidth 405px by 47px)

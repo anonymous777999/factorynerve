@@ -795,4 +795,3 @@ Update this file when a change adds or meaningfully changes:
 Docs-only changes to this file do not require a semver bump. Production code
 changes still follow the versioning rules in [AGENTS.md](AGENTS.md) and
 [CLAUDE.md](CLAUDE.md).
-

@@ -143,7 +143,25 @@ FEEDBACK_TRANSLATION_TIMEOUT_SECONDS=4
 
 ## More context
 
-See [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) for a detailed AI and engineer handoff guide.
+## Documentation
+
+All project documentation is centralized under the `docs/` directory.
+
+👉 **[Open the Documentation Index →](./docs/INDEX.md)**
+
+Key documentation at a glance:
+
+| Category | Location |
+|----------|----------|
+| Customer onboarding & training | [`docs/1-customer-facing/`](./docs/1-customer-facing/) |
+| System architecture | [`docs/2-architecture/`](./docs/2-architecture/) |
+| Setup, testing & troubleshooting | [`docs/3-reference/`](./docs/3-reference/) |
+| Implementation plans & audits | [`docs/internal/implementation/`](./docs/internal/implementation/) |
+| Bug reports & readiness | [`docs/internal/audits/`](./docs/internal/audits/) |
+| Simulation reports | [`docs/internal/reports/`](./docs/internal/reports/) |
+| Workflow maps | [`docs/internal/workflow-maps/`](./docs/internal/workflow-maps/) |
+| Engineer handoff guide | [`docs/internal/implementation/PROJECT_CONTEXT.md`](./docs/internal/implementation/PROJECT_CONTEXT.md) |
+| OCR pipeline | [`docs/OCR_SYSTEM/`](./docs/OCR_SYSTEM/) |
 
 ## Disaster Recovery
 
@@ -185,6 +203,7 @@ pg_restore --clean --if-exists -d "$DATABASE_URL" ./restore.dump
 
 ## Deployment help
 
-- HTTPS / production deployment: [docs/HTTPS_DEPLOYMENT_PLAYBOOK.md](./docs/HTTPS_DEPLOYMENT_PLAYBOOK.md)
-- Render backend deployment: [docs/RENDER_SETUP.md](./docs/RENDER_SETUP.md)
-- Mobile APK path: [docs/MOBILE_APK_SHIPPING_CHECKLIST.md](./docs/MOBILE_APK_SHIPPING_CHECKLIST.md)
+- HTTPS / production deployment: [`docs/HTTPS_DEPLOYMENT_PLAYBOOK.md`](./docs/HTTPS_DEPLOYMENT_PLAYBOOK.md)
+- Render backend deployment: [`docs/RENDER_SETUP.md`](./docs/RENDER_SETUP.md)
+- Mobile APK path: [`docs/MOBILE_APK_SHIPPING_CHECKLIST.md`](./docs/MOBILE_APK_SHIPPING_CHECKLIST.md)
+- Full documentation index: [`docs/INDEX.md`](./docs/INDEX.md)

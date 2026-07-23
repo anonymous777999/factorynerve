@@ -43,4 +43,3 @@ export function OCRUploader({ onPick, cameraInputRef, galleryInputRef }: OCRUplo
     </div>
   );
 }
-

@@ -1,325 +1,186 @@
-# 📑 DPR.ai Component Redesign - Complete Documentation Index
+# 📚 FactoryNerve — Documentation Central Index
 
-**Project**: Desktop Component Structure Implementation from Stitch Reference
-**Status**: Phase 1 Ready, Comprehensive Documentation Complete
-**Total Pages**: 34 (organized in 5 phases)
-**Date**: 2026-06-04
+> **Single source of truth for all project documentation.**
+> Last updated: July 2026
 
 ---
 
-## 🚀 START HERE
+## 📂 Docs Structure
 
-### For Executives / Overview
-**Read This First**: `DELIVERY_SUMMARY.md`
-- Project status overview
-- What you now have
-- Immediate next steps
-- Timeline and metrics
-
-### For Implementation
-**Read Next**: `REDESIGN_COMPLETE_ROADMAP.md`
-- Phase-by-phase implementation guide
-- 3 immediate action items with code
-- Complete timeline for all 34 pages
-- Success criteria
-
-### For Reference During Coding
-**Use These**:
-- `COMPONENT_STRUCTURE_GUIDE.md` - When you need to understand the design system
-- `IMPLEMENTATION_TEMPLATES.md` - When you need code to copy
-- `REDESIGN_ACTION_ITEMS.md` - When you need specific task details
-
----
-
-## 📚 All Documentation Files
-
-| File | Purpose | Read Time | Use When |
-|------|---------|-----------|----------|
-| **DELIVERY_SUMMARY.md** | Project overview | 10 min | Starting the project |
-| **REDESIGN_COMPLETE_ROADMAP.md** | Implementation guide | 15 min | Planning work |
-| **COMPONENT_STRUCTURE_GUIDE.md** | Design system reference | 20 min | Need design guidance |
-| **IMPLEMENTATION_TEMPLATES.md** | Code templates | 15 min | Writing code |
-| **REDESIGN_ACTION_ITEMS.md** | Task breakdown | 25 min | Need specific tasks |
-| **INDEX.md** (this file) | Navigation guide | 5 min | Finding resources |
-
----
-
-## 🎯 Quick Navigation by Task
-
-### "I want to understand the project"
-1. Read: `DELIVERY_SUMMARY.md` (10 min)
-2. Read: `REDESIGN_COMPLETE_ROADMAP.md` (15 min)
-3. View: `stitch_iteration_tracker/login_desktop_refined/screen.png`
-
-### "I'm ready to implement pages"
-1. Read: `REDESIGN_COMPLETE_ROADMAP.md` Priority sections
-2. Copy code from: `IMPLEMENTATION_TEMPLATES.md`
-3. Reference example: `web/src/components/ui/login-1.tsx`
-4. Check visual: `stitch_iteration_tracker/[PAGE]/code.html`
-
-### "I need to know what to do today"
-1. Check: `REDESIGN_ACTION_ITEMS.md` → PHASE 1 section
-2. Read: `REDESIGN_COMPLETE_ROADMAP.md` → IMMEDIATE ACTION ITEMS
-3. Open: File listed in action items
-4. Follow: Step-by-step instructions
-
-### "I'm stuck on a specific page"
-1. Check: `REDESIGN_ACTION_ITEMS.md` → Find page status
-2. Reference: `COMPONENT_STRUCTURE_GUIDE.md` → Find layout type
-3. Copy: `IMPLEMENTATION_TEMPLATES.md` → Template for that layout
-4. Compare: `stitch_iteration_tracker/[PAGE]/code.html` → Visual reference
-5. Example: `web/src/components/ui/login-1.tsx` → Working implementation
-
-### "I need the design system"
-1. Colors: `COMPONENT_STRUCTURE_GUIDE.md` → COLOR SYSTEM section
-2. Typography: `COMPONENT_STRUCTURE_GUIDE.md` → Typography section
-3. Spacing: `COMPONENT_STRUCTURE_GUIDE.md` → Spacing section
-4. Components: `IMPLEMENTATION_TEMPLATES.md` → Component examples
-
----
-
-## 📋 Phase Overview
-
-### Phase 1: Authentication (4 pages) - IN PROGRESS
-- Login ✅ DONE
-- Register 🔄 IN PROGRESS (30 min remaining)
-- Verify Email 📋 NEXT (20 min remaining)
-- Forgot Password 📋 NEXT (15 min remaining)
-- **Total Time Remaining**: ~65 minutes
-- **Status**: 75% complete
-
-**Where to Find Instructions**: `REDESIGN_COMPLETE_ROADMAP.md` → Priority 1, 2, 3
-
-### Phase 2: Dashboard Pages (4 pages) - NOT STARTED
-- Main Dashboard, Attendance, Shift Entry, Live Monitoring
-- **Pattern**: OperationalCommandCenter layout
-- **Time**: 4-8 hours total
-- **Where to Learn**: `IMPLEMENTATION_TEMPLATES.md` → Template 3
-
-### Phase 3: Operations Pages (7 pages) - NOT STARTED
-- Customer Ledger, Inventory, Invoices, Approvals, Work Queue, etc.
-- **Pattern**: OperationalCommandCenter with data tables
-- **Time**: 7-10.5 hours total
-- **Where to Learn**: `IMPLEMENTATION_TEMPLATES.md` → Template 3
-
-### Phase 4: OCR & Reports (5 pages) - NOT STARTED
-- OCR Upload, Processing, Review, Export, Reports
-- **Pattern**: Workflow stages + data visualization
-- **Time**: 7.5-10 hours total
-- **Where to Learn**: `IMPLEMENTATION_TEMPLATES.md` → Template 3 variants
-
-### Phase 5: Admin & Advanced (14 pages) - NOT STARTED
-- Admin settings, User governance, Advanced dashboards
-- **Pattern**: Complex layouts with multiple panels
-- **Time**: 14-28 hours total
-- **Where to Learn**: `IMPLEMENTATION_TEMPLATES.md` → Advanced patterns
-
----
-
-## 🔍 Component Template Index
-
-Located in: `IMPLEMENTATION_TEMPLATES.md`
-
-| Template | Use For | Layout |
-|----------|---------|--------|
-| Template 1: AuthSplitLayout | Login, Forgot Password | 2-column split |
-| Template 2: RegistrationLayout | Register pages | 2-column with guidelines |
-| Template 3: OperationalCommandCenter | Dashboard, Operations | Sidebar + main |
-| Template 4: FormFieldWithIcon | All form inputs | Standard pattern |
-| Template 5: FormSection | Form field groups | With divider |
-| Template 6: WorkflowSteps | Progress/steps display | Numbered flow |
-| Template 7: StatusPanel | Security/status info | With glow effects |
-
----
-
-## 🎨 Design System Quick Reference
-
-### Colors (Use These Exact Class Names)
 ```
-Primary CTA:        bg-primary hover:bg-primary-container text-on-primary
-Secondary Button:   bg-surface-raised border border-border-default
-Text Primary:       text-text-primary
-Text Secondary:     text-text-secondary
-Text Muted:         text-text-muted
-Borders:            border-border-default or border-border-strong
-Success/Accent:     text-tertiary-container
-```
-
-### Typography (Use These Exact Classes)
-```
-Page Title:   text-2xl font-bold text-text-primary
-Section Hdr:  text-xs font-medium text-text-secondary uppercase
-Body Text:    text-sm text-text-secondary
-Labels:       text-xs font-medium text-text-secondary uppercase
-Helper Text:  text-xs text-text-muted
-```
-
-### Spacing (Always Use Tailwind)
-```
-Padding:   px-8 (horizontal), py-6 (vertical)
-Gaps:      gap-8 (between columns), gap-4 (between items)
-Borders:   border-l, border-r, border-b (with border-color)
-Margins:   mt-8, mb-6 (use for spacing blocks)
+docs/
+├── 1-customer-facing/          # Sales, onboarding, user training
+├── 2-architecture/             # System architecture & technical design
+├── 3-reference/                # Installation, setup, testing, troubleshooting
+├── OCR_SYSTEM/                 # OCR pipeline — stabilization, plans, workflows
+├── public/                     # Deployment guides
+├── archive/                    # Historical artifacts, diffs, certificates
+├── audit-screenshots/          # Visual audit evidence (dated folders)
+├── tab-screenshots/            # Screenshot captures (dated folders)
+└── internal/                   # Internal development documentation
+    ├── architecture/           # Component hierarchy, layout maps
+    ├── audits/                 # Bug reports, readiness, UX audits
+    ├── authorization/          # Role/workflow matrices, RBAC specs
+    ├── implementation/         # Phase plans, validation plans, fix plans
+    ├── product/                # DPR AI product documentation
+    ├── refactoring/            # Redesign roadmaps
+    ├── reports/                # Simulation reports, billing analysis
+    └── workflow-maps/          # Workflow catalogs & groups
 ```
 
 ---
 
-## 📂 File References
+## 📑 Complete File Index
 
-### Implementation Files
-- `web/src/components/ui/login-1.tsx` - ✅ Perfect example (STUDY THIS)
-- `web/src/app/register/page.tsx` - 🔄 Needs enhancement
-- `web/src/components/verify-email-page.tsx` - 📋 Needs enhancement
-- `web/src/app/forgot-password/page.tsx` - 📋 Needs verification
+### 🏢 1. Customer-Facing (Sales & Onboarding)
 
-### Reference Files
-- `stitch_iteration_tracker/login_desktop_refined/code.html` - Login reference
-- `stitch_iteration_tracker/register_desktop_refined/code.html` - Register reference
-- `stitch_iteration_tracker/verify_email_desktop_refined/code.html` - Verify email reference
-- `stitch_iteration_tracker/forgot_password_desktop_refined/code.html` - Forgot password reference
-- `stitch_iteration_tracker/dashboard_full_operational_report_refinement/code.html` - Dashboard reference
-- ... (30 more references)
+| File | Description |
+|------|-------------|
+| [`1-customer-facing/FACTORYNERVE_SALES_ONBOARDING_PROPOSAL.md`](./1-customer-facing/FACTORYNERVE_SALES_ONBOARDING_PROPOSAL.md) | **Sales proposal** — Complete pitch, pricing plans (₹10k/₹20k/₹35k), Day 1-30 onboarding timeline, role-by-role explanation, what's included vs what's not |
+| [`1-customer-facing/QUICK_START_GUIDE.md`](./1-customer-facing/QUICK_START_GUIDE.md) | **1-page Quick Start** — Login → Dashboard → Attendance → Inventory → Approvals → PDF → AI. With screenshot placeholders |
+| [`1-customer-facing/QUICK_START_GUIDE_HINDI.md`](./1-customer-facing/QUICK_START_GUIDE_HINDI.md) | **हिंदी Quick Start** — Same guide in simple Hinglish for floor operators |
+| [`1-customer-facing/ROLE_TRAINING_GUIDE.md`](./1-customer-facing/ROLE_TRAINING_GUIDE.md) | **Role-by-role training** — Owner, Operator, Supervisor, Accountant, Store Keeper, Security Guard. Step-by-step daily tasks with field-by-field explanations |
+| [`1-customer-facing/STEEL_FACTORY_ONBOARDING_CHECKLIST.md`](./1-customer-facing/STEEL_FACTORY_ONBOARDING_CHECKLIST.md) | **Onboarding checklist** — Pre-go-live setup steps for a steel factory |
 
 ---
 
-## ✅ Success Checklist
+### 🏗️ 2. Architecture & Technical Design
 
-Before considering a page "complete":
-
-- [ ] Header is 48px with correct styling
-- [ ] Layout matches design pattern
-- [ ] All colors use Tailwind classes
-- [ ] Typography hierarchy is correct
-- [ ] All inputs have icons (where applicable)
-- [ ] Buttons have hover/focus states
-- [ ] Spacing is consistent
-- [ ] Mobile responsive (col-span-12 on sm)
-- [ ] All borders use correct classes
-- [ ] Icons are correct sizes
-- [ ] Matches stitch reference visually
-- [ ] Code formatted properly
-- [ ] No hardcoded colors or sizes
+| File | Description |
+|------|-------------|
+| [`2-architecture/ARCHITECTURE.md`](./2-architecture/ARCHITECTURE.md) | **System architecture** — Component diagram, data flow, module boundaries |
+| [`2-architecture/FACTORYNERVE_ENTERPRISE_ARCHITECTURE_REPORT.md`](./2-architecture/FACTORYNERVE_ENTERPRISE_ARCHITECTURE_REPORT.md) | **Enterprise-grade analysis** — Complete factory operations mapped to software: actors, business objects, material journey, department workflows, state machines, decision matrix, gap analysis, future evolution |
+| [`2-architecture/FACTORYNERVE_CHAOS_TEST_REPORT.md`](./2-architecture/FACTORYNERVE_CHAOS_TEST_REPORT.md) | **Chaos testing results** — System resilience under failure scenarios |
+| [`2-architecture/FACTORY_NERVE_BACKEND_AUDIT_REPORT.md`](./2-architecture/FACTORY_NERVE_BACKEND_AUDIT_REPORT.md) | **Backend audit** — Database schema, API endpoints, code quality assessment |
 
 ---
 
-## 🆘 Troubleshooting Guide
+### 📖 3. Reference (Dev Setup, Testing, Troubleshooting)
 
-### Problem: Colors not appearing
-**Solution**: Check `tailwind.config.ts` for correct color token names
-
-### Problem: Layout broken on desktop
-**Solution**: Verify `grid grid-cols-12 gap-8` structure, check col-span values
-
-### Problem: Icons missing
-**Solution**: Import from `lucide-react`, verify icon name
-
-### Problem: Text too small/large
-**Solution**: Use exact typography classes from `COMPONENT_STRUCTURE_GUIDE.md`
-
-### Problem: Spacing looks off
-**Solution**: Use Tailwind spacing (px-8, py-6, gap-8), not pixel-specific values
-
-### Problem: Button styling wrong
-**Solution**: Copy exact button classes from `login-1.tsx` example
+| File | Description |
+|------|-------------|
+| [`3-reference/INSTALLATION.md`](./3-reference/INSTALLATION.md) | **Installation guide** — Full setup from scratch |
+| [`3-reference/LOCAL_DEV_SETUP.md`](./3-reference/LOCAL_DEV_SETUP.md) | **Local development** — Environment config, seed data, running locally |
+| [`3-reference/MCP_SETUP.md`](./3-reference/MCP_SETUP.md) | **MCP setup** — Model Context Protocol configuration |
+| [`3-reference/TESTING_GUIDE.md`](./3-reference/TESTING_GUIDE.md) | **Testing guide** — How to run tests, testing philosophy |
+| [`3-reference/TROUBLESHOOTING.md`](./3-reference/TROUBLESHOOTING.md) | **Troubleshooting** — Common issues and fixes |
 
 ---
 
-## 📞 Quick Support
+### 🔧 4. Internal Development
 
-| Question | Answer Location |
-|----------|-----------------|
-| What colors to use? | `COMPONENT_STRUCTURE_GUIDE.md` → COLOR SYSTEM |
-| How do I structure X page? | `IMPLEMENTATION_TEMPLATES.md` → Template X |
-| What should I do today? | `REDESIGN_ACTION_ITEMS.md` → Priority list |
-| Show me an example | `web/src/components/ui/login-1.tsx` |
-| What's the overall plan? | `REDESIGN_COMPLETE_ROADMAP.md` |
+#### 📋 Implementation Plans
 
----
+| File | Description |
+|------|-------------|
+| [`internal/implementation/PHASE_1_ENTERPRISE_PLAN.md`](./internal/implementation/PHASE_1_ENTERPRISE_PLAN.md) | **Phase 1 enterprise plan** — First enterprise-ready milestone |
+| [`internal/implementation/2WEEK_VALIDATION_PLAN.md`](./internal/implementation/2WEEK_VALIDATION_PLAN.md) | **2-week validation** — Quick validation sprint plan |
+| [`internal/implementation/PLAN_P0_OCR_FIXES.md`](./internal/implementation/PLAN_P0_OCR_FIXES.md) | **P0 OCR fixes** — Critical OCR pipeline fixes plan |
 
-## 🎓 Learning Resources
+#### 🔍 Audits & Bug Reports
 
-### To Understand the Design System
-1. Read: `COMPONENT_STRUCTURE_GUIDE.md` (20 min)
-2. Compare: Two pages in `stitch_iteration_tracker/` (10 min)
-3. Study: `web/src/components/ui/login-1.tsx` (15 min)
+| File | Description |
+|------|-------------|
+| [`internal/audits/BUG_REPORT.md`](./internal/audits/BUG_REPORT.md) | **Bug report** — Comprehensive bug inventory |
+| [`internal/audits/BUG_REPORT_PRE_ONBOARDING.md`](./internal/audits/BUG_REPORT_PRE_ONBOARDING.md) | **Pre-onboarding bugs** — Issues to fix before first customer |
+| [`internal/audits/FINAL_BUG_AUDIT.md`](./internal/audits/FINAL_BUG_AUDIT.md) | **Final bug audit** — Consolidated audit before launch |
+| [`internal/audits/DPR_AI_BRUTAL_ASSESSMENT.md`](./internal/audits/DPR_AI_BRUTAL_ASSESSMENT.md) | **Brutal assessment** — Honest evaluation of DPR AI quality |
+| [`internal/audits/UI_UX_AUDIT_REPORT.md`](./internal/audits/UI_UX_AUDIT_REPORT.md) | **UI/UX audit** — Frontend design & usability assessment |
+| [`internal/audits/PROJECT_READINESS_REPORT.md`](./internal/audits/PROJECT_READINESS_REPORT.md) | **Project readiness** — Overall production readiness score |
+| [`internal/audits/P0_HIGH_REMAINING_ISSUES.md`](./internal/audits/P0_HIGH_REMAINING_ISSUES.md) | **P0 remaining issues** — Critical unfixed items |
 
-### To Implement Your First Page
-1. Choose: A page from Phase 1 auth pages
-2. Read: Instructions from `REDESIGN_COMPLETE_ROADMAP.md`
-3. Find: Template in `IMPLEMENTATION_TEMPLATES.md`
-4. Copy: Code and adjust for your page
-5. Reference: Visual from `stitch_iteration_tracker/`
-6. Compare: With working example `login-1.tsx`
-7. Test: In browser
-8. Commit: Your changes
+#### 📊 Reports & Simulations
 
-### To Implement Multiple Pages Efficiently
-1. Complete Phase 1 (4 pages) - establishes patterns
-2. Apply Phase 2 template to all 4 dashboard pages
-3. Apply Phase 3 template to all 7 operations pages
-4. Follow same pattern for Phases 4-5
+| File | Description |
+|------|-------------|
+| [`internal/reports/30_DAY_FACTORY_SIMULATION_REPORT.md`](./internal/reports/30_DAY_FACTORY_SIMULATION_REPORT.md) | **30-day simulation** — Full factory simulation results |
+| [`internal/reports/STEEL_FACTORY_SIMULATION_REPORT.md`](./internal/reports/STEEL_FACTORY_SIMULATION_REPORT.md) | **Steel factory simulation** — Steel-specific test outcomes |
 
----
+#### 🔄 Workflow Maps
 
-## 🚦 Project Status
+| File | Description |
+|------|-------------|
+| [`internal/workflow-maps/WORKFLOW_CATALOG.md`](./internal/workflow-maps/WORKFLOW_CATALOG.md) | **Workflow catalog** — Complete list of all system workflows |
+| [`internal/workflow-maps/WORKFLOW_GROUPS.md`](./internal/workflow-maps/WORKFLOW_GROUPS.md) | **Workflow groups** — Logical grouping of workflows by department |
 
-```
-DOCUMENTATION: ████████████████████ 100% ✅
-ANALYSIS: ████████████████████ 100% ✅
-TEMPLATES: ████████████████████ 100% ✅
-PHASE 1 (AUTH): ████████░░░░░░░░░░░░  50%  (1/4 done, 3 in progress)
-PHASE 2 (DASH): ░░░░░░░░░░░░░░░░░░░░    0%  (Not started)
-PHASE 3 (OPS): ░░░░░░░░░░░░░░░░░░░░    0%  (Not started)
-PHASE 4 (OCR): ░░░░░░░░░░░░░░░░░░░░    0%  (Not started)
-PHASE 5 (ADM): ░░░░░░░░░░░░░░░░░░░░    0%  (Not started)
-```
+#### 🛠️ Operations & Handoff
 
----
+| File | Description |
+|------|-------------|
+| [`internal/FACTORYNERVE_OPERATIONAL_PLAYBOOK.md`](./internal/FACTORYNERVE_OPERATIONAL_PLAYBOOK.md) | **Operations playbook** — Day-to-day operational procedures |
+| [`internal/FACTORYNERVE_OPERATIONS_MANUAL.md`](./internal/FACTORYNERVE_OPERATIONS_MANUAL.md) | **Operations manual** — Detailed ops reference |
+| [`internal/INTERNAL_HANDOFF_NOTES.md`](./internal/INTERNAL_HANDOFF_NOTES.md) | **Handoff notes** — Developer handoff documentation |
 
-## 📈 Metrics
+#### 🏛️ Architecture (Internal)
 
-- **Documentation Files Created**: 5
-- **Code Templates**: 7
-- **Pages Planned**: 34
-- **Phase 1 Completion**: 50% (1/4 pages + 3 in progress)
-- **Estimated Total Time**: 40-60 hours
-- **Current Phase Time Remaining**: ~65 minutes
-- **Design System Coverage**: 100%
-- **Template Coverage**: 100%
+*See `docs/internal/architecture/` for component hierarchy and layout maps.*
+
+#### 🔐 Authorization
+
+*See `docs/internal/authorization/` for role/workflow matrices and RBAC specs.*
+
+#### 📦 Product
+
+*See `docs/internal/product/` for DPR AI product documentation.*
+
+#### 🧹 Refactoring
+
+*See `docs/internal/refactoring/` for redesign roadmaps.*
 
 ---
 
-## 🎯 Your Next Action
+### 📸 5. Screenshots & Visual Evidence
 
-1. **Open**: `DELIVERY_SUMMARY.md`
-2. **Read**: ~10 minutes
-3. **Then Open**: `REDESIGN_COMPLETE_ROADMAP.md`
-4. **Read Priority 1**: ~5 minutes
-5. **Open File**: `web/src/app/register/page.tsx`
-6. **Implement**: Priority 1 from roadmap (~30 minutes)
-7. **Test**: In browser
-8. **Commit**: Your changes
+| Directory | Description |
+|-----------|-------------|
+| [`audit-screenshots/`](./audit-screenshots/) | Visual UI audit captures (dated subdirectories) |
+| [`tab-screenshots/`](./tab-screenshots/) | Tab/browser screenshots (dated subdirectories) |
 
-**Total Time to Complete First Task**: ~45 minutes
+### 🗂️ 6. Archive (Historical)
 
----
+| Directory | Description |
+|-----------|-------------|
+| [`archive/`](./archive/) | Old git diffs, project certificates, zip files, historical artifacts |
 
-## ✨ You're All Set!
+### 🖥️ 7. OCR System
 
-All documentation is ready. Every template is provided. Every instruction is clear.
+| Directory | Description |
+|-----------|-------------|
+| [`OCR_SYSTEM/`](./OCR_SYSTEM/) | OCR pipeline — technical docs, stabilization reports, implementation plans, workflows |
 
-**Everything you need to redesign all 34 pages is documented.**
+### 🌐 8. Public / Deployment
 
-Start with `DELIVERY_SUMMARY.md` → `REDESIGN_COMPLETE_ROADMAP.md` → Get to work!
-
----
-
-**Questions? Refer to the appropriate document above.**
-
-**Ready? Let's redesign! 🚀**
+| Directory | Description |
+|-----------|-------------|
+| [`public/`](./public/) | Deployment QA guide, production readiness |
 
 ---
 
-Index Created: 2026-06-04
-Documentation Status: Complete ✅
-Ready for Implementation: Yes ✅
+## 🧭 Quick Navigation
+
+### I'm a... → Start here
+
+| Who | Open This First |
+|-----|----------------|
+| **Customer / Factory Owner** | [`1-customer-facing/FACTORYNERVE_SALES_ONBOARDING_PROPOSAL.md`](./1-customer-facing/FACTORYNERVE_SALES_ONBOARDING_PROPOSAL.md) |
+| **New User (English)** | [`1-customer-facing/QUICK_START_GUIDE.md`](./1-customer-facing/QUICK_START_GUIDE.md) |
+| **New User (हिंदी)** | [`1-customer-facing/QUICK_START_GUIDE_HINDI.md`](./1-customer-facing/QUICK_START_GUIDE_HINDI.md) |
+| **Operator / Worker** | [`1-customer-facing/ROLE_TRAINING_GUIDE.md`](./1-customer-facing/ROLE_TRAINING_GUIDE.md) |
+| **Developer (new to project)** | [`3-reference/INSTALLATION.md`](./3-reference/INSTALLATION.md) |
+| **Developer (setting up locally)** | [`3-reference/LOCAL_DEV_SETUP.md`](./3-reference/LOCAL_DEV_SETUP.md) |
+| **Developer (running tests)** | [`3-reference/TESTING_GUIDE.md`](./3-reference/TESTING_GUIDE.md) |
+| **Developer (architecture)** | [`2-architecture/ARCHITECTURE.md`](./2-architecture/ARCHITECTURE.md) |
+| **Project Manager** | [`internal/implementation/PHASE_1_ENTERPRISE_PLAN.md`](./internal/implementation/PHASE_1_ENTERPRISE_PLAN.md) |
+| **QA Tester** | [`internal/audits/BUG_REPORT.md`](./internal/audits/BUG_REPORT.md) |
+| **Enterprise Architect** | [`2-architecture/FACTORYNERVE_ENTERPRISE_ARCHITECTURE_REPORT.md`](./2-architecture/FACTORYNERVE_ENTERPRISE_ARCHITECTURE_REPORT.md) |
+
+---
+
+## ⚠️ Navigation Note
+
+> **Original root-level `.md` files have been moved here for centralization.**
+> If you reached this file via a bookmarked path, please update your bookmark to point to the new location under `docs/`. All original files at the project root now contain a redirect notice pointing here.
+
+---
+
+*Maintained by the FactoryNerve team. Add new docs to the appropriate subdirectory and update this index.*

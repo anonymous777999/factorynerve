@@ -1,10 +1,10 @@
-# FactoryNerve – 2‑Week Real‑Client Validation Plan  
+# FactoryNerve – 2‑Week Real‑Client Validation Plan
 
-**Purpose:** Simulate two weeks of production use by exercising every role and every core workflow, confirming functional completeness, reliability, performance, data integrity, UX quality, observability, and security before handing the system to a paying client.  
+**Purpose:** Simulate two weeks of production use by exercising every role and every core workflow, confirming functional completeness, reliability, performance, data integrity, UX quality, observability, and security before handing the system to a paying client.
 
----  
+---
 
-## 1. Goals & Success Criteria  
+## 1. Goals & Success Criteria
 
 | Goal | Success Metric (must be met for go‑live) |
 |------|------------------------------------------|
@@ -16,11 +16,11 @@
 | **Observability** | Logs contain no new ERROR/WARN spikes > 5 % above baseline; Prometheus metrics stay within defined SLO ranges. |
 | **Rollback safety** | Ability to restore a clean DB snapshot after the test and verify that no test data persists unintentionally. |
 
-If any criterion fails, the test is extended until the issue is resolved and re‑tested.  
+If any criterion fails, the test is extended until the issue is resolved and re‑tested.
 
----  
+---
 
-## 2. Test Environment  
+## 2. Test Environment
 
 | Component | Version / Config | Notes |
 |-----------|------------------|-------|
@@ -35,11 +35,11 @@ If any criterion fails, the test is extended until the issue is resolved and re�
 | **Test Tooling** | Playwright (Chromium) for UI flows, pytest for API/backend, custom Python scripts for data validation. |
 | **Monitoring** | Grafana‑lite dashboard (local) showing request rate, error rate, 95th‑latency, DB connections, queue length. |
 
-*The environment is reset each night (DB restore, container restart) to simulate a clean production start‑day.*  
+*The environment is reset each night (DB restore, container restart) to simulate a clean production start‑day.*
 
----  
+---
 
-## 3. Roles & Personas  
+## 3. Roles & Personas
 
 | Role | Primary Responsibilities | Typical Daily Actions (≈ 2‑4 hrs) |
 |------|--------------------------|----------------------------------|
@@ -50,11 +50,11 @@ If any criterion fails, the test is extended until the issue is resolved and re�
 | **Quality / Compliance** | Audit steel quality, traceability, SLA compliance. | Run quality inspections, view SLA reports, verify subprocessors, maintain compliance documentation. |
 | **Support / Help‑desk** (optional) | Troubleshoot user issues, raise internal tickets. | Use the ticketing/work‑flow system, monitor notifications, respond to user‑submitted issues. |
 
-Each role will be exercised by at least one dedicated tester (can be the same person switching contexts).  
+Each role will be exercised by at least one dedicated tester (can be the same person switching contexts).
 
----  
+---
 
-## 4. Test Scenarios (End‑to‑End Flows)  
+## 4. Test Scenarios (End‑to‑End Flows)
 
 | ID | Scenario (Title) | Role(s) | Steps (high‑level) | Expected Outcome |
 |----|------------------|---------|--------------------|------------------|
@@ -81,9 +81,9 @@ Each role will be exercised by at least one dedicated tester (can be the same pe
 | **F2** | **Offline‑Sync & Retry Simulation** | Operator | 1. Disable network (devtools → offline) → 2. Attempt to punch in/out or upload OCR file → 3. See offline queue indicator → 4. Re‑enable network → 5. System automatically retries and syncs → 6. Verify data persisted. | Offline actions stored locally and synced upon reconnection; no data loss. |
 | **F3** | **Error Boundary & Graceful Degradation** | Any user | 1. Trigger a known error (e.g., submit OCR with corrupted file) → 2. Error boundary shows friendly message + retry button → 3. Retry succeeds or gives clear guidance. | No stack trace leaked to user; recovery path available. |
 
----  
+---
 
-## 5. Two‑Week Execution Schedule  
+## 5. Two‑Week Execution Schedule
 
 | Day | Morning (~3 h) | Afternoon (~3 h) | Evening (~1 h) | Focus |
 |-----|----------------|------------------|----------------|-------|
@@ -103,16 +103,16 @@ Each role will be exercised by at least one dedicated tester (can be the same pe
 | **13** | **UX polishing** – verify loading skeletons, empty states, toast consistency, keyboard navigation, help‑tooltips, model‑selector labels. | Conduct short “think‑aloud” session with a tester acting as a new user; note confusion. | Iterate on any UI friction spotted. | Usability readiness. |
 | **14** | **Final Sign‑Off**: <br> • Re‑run all core scenarios (A1‑F3) in a single automated Playwright suite. <br> • Verify no regressions vs. Day‑0 baseline. <br> • Export final metrics report (latency, error, throughput). <br> • Stakeholder walk‑through (Product owner, QA lead, Dev lead) reviewing the report and signing off. | Archive test artifacts (logs, screenshots, videos). | Restore DB to clean state (post‑test snapshot) and ensure no test data leaks. | Release readiness decision. |
 
-*Notes:*  
+*Notes:*
 
-- Each day’s morning/afternoon blocks can be split among multiple testers (e.g., one focuses on Auth, another on Attendance).  
-- The evening slot is reserved for quick health checks, log review, and capturing defects for the next day.  
-- Automated regression scripts (Playwright + pytest) are run at the start and end of each day to catch breakages early.  
-- Where a scenario requires data prep (e.g., creating a test OCR fixture), a small Python helper script is used to keep the process repeatable.  
+- Each day’s morning/afternoon blocks can be split among multiple testers (e.g., one focuses on Auth, another on Attendance).
+- The evening slot is reserved for quick health checks, log review, and capturing defects for the next day.
+- Automated regression scripts (Playwright + pytest) are run at the start and end of each day to catch breakages early.
+- Where a scenario requires data prep (e.g., creating a test OCR fixture), a small Python helper script is used to keep the process repeatable.
 
----  
+---
 
-## 6. Test Data & Fixtures  
+## 6. Test Data & Fixtures
 
 | Fixture | Description | Source / Preparation |
 |---------|-------------|----------------------|
@@ -124,11 +124,11 @@ Each role will be exercised by at least one dedicated tester (can be the same pe
 | **Notification webhook mock** | Endpoint `http://localhost:9999/webhook` logs payloads. | Started via `python -m http.server 9999` in background (optional). |
 | **Audit‑log extractor** | Script to pull all `audit_log` rows for a given time window and output CSV. | `scripts/export_audit_log.py`. |
 
-All fixtures are version‑controlled under `tests/fixtures/` and re‑loaded each night from a clean DB snapshot.  
+All fixtures are version‑controlled under `tests/fixtures/` and re‑loaded each night from a clean DB snapshot.
 
----  
+---
 
-## 7. Metrics Collection & Reporting  
+## 7. Metrics Collection & Reporting
 
 | Metric | Tool | Target | Collection Frequency |
 |--------|------|--------|----------------------|
@@ -142,11 +142,11 @@ All fixtures are version‑controlled under `tests/fixtures/` and re‑loaded ea
 | **Test execution success** | Playwright test runner | 100 % pass | After each scenario batch |
 | **User‑reported issues** | Manual tester log (shared sheet) | 0 critical, ≤ 2 minor per day | End of each day |
 
-A daily summary (email/Slack) will be sent to the test lead with the above numbers and any deviations highlighted.  
+A daily summary (email/Slack) will be sent to the test lead with the above numbers and any deviations highlighted.
 
----  
+---
 
-## 8. Risk Mitigation & Contingency  
+## 8. Risk Mitigation & Contingency
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
@@ -159,24 +159,24 @@ A daily summary (email/Slack) will be sent to the test lead with the above numbe
 | **Accessibility regressions** | Low | Medium | Run axe‑core on Day 12; treat any WCAG AA violation as a blocker; fix before sign‑off. |
 | **Incorrect billing (tax, proration)** | Low | Medium | Verify invoices against known test data; use sandbox payment gateway to confirm state transitions. |
 
-If any risk materialises and cannot be resolved within the day’s allocated time, the test schedule will be extended by 1‑2 days to address the blocker before proceeding.  
+If any risk materialises and cannot be resolved within the day’s allocated time, the test schedule will be extended by 1‑2 days to address the blocker before proceeding.
 
----  
+---
 
-## 9. Deliverables  
+## 9. Deliverables
 
-1. **Test Execution Log** – chronological record of every step taken, outcomes, timestamps, and deviations.  
-2. **Automated Test Suite** – Playwright & pytest scripts (committed under `tests/e2e/` and `tests/unit/`).  
-3. **Metrics Report** – CSV/JSON of daily Prometheus queries, Grafana snapshots, Lighthouse scores.  
-4. **UX Audit Summary** – checklist results, screenshots of any issues, remediation notes.  
-5. **Accessibility Report** – axe‑core output with pass/fail per page.  
-6. **Security Scan Report** – OWASP ZAP findings (if any).  
-7. **Final Sign‑Off Document** – signed by Product Owner, QA Lead, Dev Lead stating that the system meets the success criteria for a two‑week real‑client usage simulation.  
-8. **Clean‑State DB Snapshot** – post‑test validation that the database can be returned to the original seed state with no test data left.  
+1. **Test Execution Log** – chronological record of every step taken, outcomes, timestamps, and deviations.
+2. **Automated Test Suite** – Playwright & pytest scripts (committed under `tests/e2e/` and `tests/unit/`).
+3. **Metrics Report** – CSV/JSON of daily Prometheus queries, Grafana snapshots, Lighthouse scores.
+4. **UX Audit Summary** – checklist results, screenshots of any issues, remediation notes.
+5. **Accessibility Report** – axe‑core output with pass/fail per page.
+6. **Security Scan Report** – OWASP ZAP findings (if any).
+7. **Final Sign‑Off Document** – signed by Product Owner, QA Lead, Dev Lead stating that the system meets the success criteria for a two‑week real‑client usage simulation.
+8. **Clean‑State DB Snapshot** – post‑test validation that the database can be returned to the original seed state with no test data left.
 
----  
+---
 
-## 10. Go/No‑Go Decision Matrix  
+## 10. Go/No‑Go Decision Matrix
 
 | Criterion | Pass? (Y/N) | Comments / Evidence |
 |-----------|-------------|---------------------|
@@ -190,12 +190,12 @@ If any risk materialises and cannot be resolved within the day’s allocated tim
 | Observability shows no new error spikes > 5 % baseline |  |  |
 | Ability to restore clean DB snapshot after test |  |  |
 
-*If any row is **N**, the issue must be resolved and the affected day(s) re‑executed before sign‑off.*  
+*If any row is **N**, the issue must be resolved and the affected day(s) re‑executed before sign‑off.*
 
----  
+---
 
-### Closing Note  
+### Closing Note
 
-Executing this plan will give you confidence that FactoryNerve behaves like a production‑grade SaaS when real users perform their day‑to‑day tasks across all roles.  The combination of scripted end‑to‑end flows, exploratory testing, performance/load checks, accessibility, and security validation covers the dimensions that matter most to a paying customer who expects the platform to be stable, usable, and trustworthy for at least several months of continuous operation.  
+Executing this plan will give you confidence that FactoryNerve behaves like a production‑grade SaaS when real users perform their day‑to‑day tasks across all roles.  The combination of scripted end‑to‑end flows, exploratory testing, performance/load checks, accessibility, and security validation covers the dimensions that matter most to a paying customer who expects the platform to be stable, usable, and trustworthy for at least several months of continuous operation.
 
 **Proceed to Day 0 preparation once the six previously‑timing‑out routes (`/ocr`, `/register`, `/reset-password`, `/signup`, `/sla`, `/subprocessors`) have been verified to return a response within 2 seconds.** After that, launch the two‑week validation schedule as outlined above. Good luck!

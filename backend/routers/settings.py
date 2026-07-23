@@ -63,7 +63,11 @@ from backend.services.user_code_service import (
     next_user_code,
 )
 from backend.services.email_verification_service import build_verification_link, create_verification_token
-from backend.services.password_reset_service import build_reset_link, create_reset_token
+from backend.auth_security.tokens import build_reset_token as sign_reset_token, expires_at as reset_expires_at, generate_token as generate_reset_token, hash_token as hash_reset_token
+from backend.models.auth_password_reset import AuthPasswordReset
+from backend.models.auth_user import AuthUser
+from backend.services.password_reset_service import build_reset_link
+from backend.auth_security.passwords import hash_password as hash_password_argon2
 from backend.services.user_service import validate_factory_role_assignment
 from backend.utils import generate_company_code
 
@@ -1010,9 +1014,37 @@ def invite_user(
             )
         )
     verification_token = create_verification_token(db, user=user, ttl_hours=EMAIL_VERIFICATION_TTL_HOURS)
-    reset_token = create_reset_token(db, user=user, ttl_minutes=PASSWORD_RESET_TTL_MINUTES)
     verification_link = build_verification_link(verification_token)
-    reset_link = build_reset_link(reset_token)
+
+    # Generate password reset token using the consolidated auth system (AuthPasswordReset table)
+    # so the reset link works with auth_secure.py's /password/reset/validate endpoint.
+    raw = generate_reset_token(32)
+    token_hash = hash_reset_token(raw)
+    auth_user_record = db.query(AuthUser).filter(AuthUser.email == user.email).first()
+    if not auth_user_record:
+        now = datetime.now(timezone.utc)
+        auth_user_record = AuthUser(
+            id=str(user.id),
+            email=user.email,
+            password_hash=hash_password_argon2(secrets.token_urlsafe(32)),
+            is_active=True,
+            is_email_verified=True,
+            password_changed_at=now,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(auth_user_record)
+        db.flush()
+    reset_record = AuthPasswordReset(
+        auth_user_id=auth_user_record.id,
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=reset_expires_at(PASSWORD_RESET_TTL_MINUTES),
+    )
+    db.add(reset_record)
+    db.flush()
+    signed_token = sign_reset_token({"uid": str(user.id), "token": raw})
+    reset_link = build_reset_link(signed_token)
     if delivery_mode == "email":
         try:
             queue_and_send_email(
