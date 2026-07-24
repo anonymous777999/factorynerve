@@ -1304,22 +1304,28 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                     amount = _extract_amount(data)
                     cycle = _extract_billing_cycle(data) or _resolve_billing_cycle(plan, amount)
                     addon_quantities = _extract_addon_quantities(data)
-                    if not plan or not user_id:
-                        order_entity = _fetch_order_entity(_extract_order_id(data))
-                        if order_entity:
-                            if not plan:
-                                plan_note = (order_entity.get("notes", {}) or {}).get("plan")
-                                if plan_note:
-                                    plan = normalize_plan(plan_note)
-                            if not user_id:
-                                user_id = _user_id_from_receipt(str(order_entity.get("receipt") or ""))
-                            if amount is None:
-                                amount = order_entity.get("amount") if isinstance(order_entity.get("amount"), int) else amount
-                            if not cycle:
-                                cycle = _resolve_billing_cycle(plan, amount)
-                            if not addon_quantities:
-                                notes = order_entity.get("notes", {}) or {}
-                                addon_quantities = _extract_addon_quantities_from_notes(notes)
+                    # Always fetch the original order entity from Razorpay to get the
+                    # authoritative addon quantities (the payment entity may only have
+                    # addon_ids without quantity info, defaulting to qty=1).
+                    order_entity = _fetch_order_entity(_extract_order_id(data))
+                    if order_entity:
+                        if not plan:
+                            plan_note = (order_entity.get("notes", {}) or {}).get("plan")
+                            if plan_note:
+                                plan = normalize_plan(plan_note)
+                        if not user_id:
+                            user_id = _user_id_from_receipt(str(order_entity.get("receipt") or ""))
+                        if amount is None:
+                            amount = order_entity.get("amount") if isinstance(order_entity.get("amount"), int) else amount
+                        if not cycle:
+                            cycle = _resolve_billing_cycle(plan, amount)
+                        # Always prefer order-entity notes for addon quantities — they
+                        # contain the full chargeable_addon_quantities JSON set by the
+                        # backend during create_order.
+                        order_notes = order_entity.get("notes", {}) or {}
+                        order_addon_quantities = _extract_addon_quantities_from_notes(order_notes)
+                        if order_addon_quantities:
+                            addon_quantities = order_addon_quantities
                     if plan and user_id and not was_paid:
                         if org_id is None:
                             user = db.query(User).filter(User.id == user_id).first()

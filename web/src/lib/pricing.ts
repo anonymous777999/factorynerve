@@ -108,9 +108,8 @@ export function planSupportsSelection(
   selection: PricingSelection,
 ) {
   const requiredFeatures = selection.requiredFeatures || [];
-  if (safeLimit(plan.user_limit) > 0 && selection.users > safeLimit(plan.user_limit)) {
-    return false;
-  }
+  // Users are NOT hard-capped — overage is priced via extra_user_price.
+  // Only factories are hard-capped because there is no factory overage pricing yet.
   if (safeLimit(plan.factory_limit) > 0 && selection.factories > safeLimit(plan.factory_limit)) {
     return false;
   }

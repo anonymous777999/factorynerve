@@ -570,6 +570,7 @@ function BillingPageInner() {
           requested_users: String(requestedUsers),
           requested_factories: String(requestedFactories),
           addon_ids: (order.quote?.chargeable_addon_ids || []).join(","),
+          addon_quantities: JSON.stringify(order.quote?.chargeable_addon_quantities || {}),
         },
         handler: async () => {
           try {
@@ -906,6 +907,16 @@ function BillingPageInner() {
                     {(checkoutPlanInfo?.factory_limit || 0) > 0 ? checkoutPlanInfo?.factory_limit : "Unlimited"}
                   </span>
                 </div>
+                {checkoutEstimate && checkoutEstimate.extraUsers > 0 ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--muted)]">
+                    <span className="overflow-safe-text">
+                      Extra users: {checkoutEstimate.extraUsers} × {formatAmount(checkoutEstimate.plan.extra_user_price || 0, billingConfig?.currency || "INR")}
+                    </span>
+                    <span>
+                      {formatAmount(checkoutEstimate.extraUserCost, billingConfig?.currency || "INR")}
+                    </span>
+                  </div>
+                ) : null}
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>Billable add-ons</span>
                   <span>{formatAmount(checkoutEstimate?.addonMonthlyCost || 0, billingConfig?.currency || "INR")}</span>
