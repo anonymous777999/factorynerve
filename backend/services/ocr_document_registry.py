@@ -1,0 +1,131 @@
+from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import Callable, Any
+from enum import Enum
+
+
+class DocumentCategory(Enum):
+    FINANCIAL = "financial"  # Invoice, Credit Note, Receipt
+    LOGISTICS = "logistics"  # Delivery Note, Packing List, Gate Entry
+    PRODUCTION = "production"  # Production Log, Work Order, Job Card
+    QUALITY = "quality"  # Test Certificate, Inspection Report
+    INVENTORY = "inventory"  # Stock Transfer, Material Receipt
+    ACCOUNTING = "accounting"  # Ledger, Bank Statement, Voucher
+    GENERAL = "general"  # Handwritten forms, chat transcripts, unstructured docs
+
+
+@dataclass
+class ExtractionPrompt:
+    system: str
+    user: str
+    schema: dict  # JSON schema for structured output
+    few_shot_examples: list[dict] = field(default_factory=list)
+
+
+@dataclass
+class ValidationRule:
+    name: str
+    fn: Callable[[dict], list[str]]  # Returns list of error messages
+    severity: str = "error"  # error | warning | info
+
+
+@dataclass
+class ExportFormat:
+    name: str
+    mime_type: str
+    generator: Callable[[dict], bytes]  # Returns file bytes
+    filename_template: str
+
+
+@dataclass
+class DownstreamAction:
+    key: str
+    label: str
+    description: str
+    handler: Callable[[dict, str], Any]  # (verified_data, org_id) -> result
+    required_permissions: list[str] = field(default_factory=list)
+    confirmation_required: bool = True
+
+
+@dataclass
+class DocumentTypeConfig:
+    # ── Required fields (no defaults) ──────────────────────────────────────
+    type_id: str  # "gst_invoice", "delivery_note", etc.
+    display_name: str  # "GST Invoice"
+    category: DocumentCategory
+    icon: str  # Lucide icon name
+    description: str
+    extraction_prompt: ExtractionPrompt
+    classifier_keywords: list[str]
+    ui_component: str  # Frontend component name
+
+    # ── Optional fields (with defaults) ────────────────────────────────────
+    classifier_weight: float = 1.0
+    preview_fields: list[str] = field(default_factory=list)
+    validation_rules: list[ValidationRule] = field(default_factory=list)
+    export_formats: list[ExportFormat] = field(default_factory=list)
+    default_export: str = "pdf"
+    downstream_actions: list[DownstreamAction] = field(default_factory=list)
+    min_confidence_auto_approve: float = 0.90
+    min_confidence_review: float = 0.60
+    block_below_confidence: float = 0.40
+
+
+# Global registry
+_DOCUMENT_TYPES: dict[str, DocumentTypeConfig] = {}
+
+
+def register_document_type(config: DocumentTypeConfig) -> None:
+    _DOCUMENT_TYPES[config.type_id] = config
+
+
+def get_document_type(type_id: str) -> DocumentTypeConfig | None:
+    return _DOCUMENT_TYPES.get(type_id)
+
+
+def list_document_types(category: DocumentCategory | None = None) -> list[DocumentTypeConfig]:
+    types = list(_DOCUMENT_TYPES.values())
+    if category:
+        types = [t for t in types if t.category == category]
+    return sorted(types, key=lambda t: t.display_name)
+
+
+def serialize_document_type_config(type_id: str | None) -> dict | None:
+    """Turn a registered DocumentTypeConfig into the JSON shape the frontend's
+    DocumentTypeAdapter expects (see OcrPreviewResult.document_type_config in
+    web/src/lib/ocr.ts). Returns None when type_id is missing/unregistered so
+    callers can safely fall back to the generic table view."""
+    if not type_id:
+        return None
+    config = get_document_type(type_id)
+    if config is None:
+        return None
+    return {
+        "type_id": config.type_id,
+        "display_name": config.display_name,
+        "category": config.category.value,
+        "icon": config.icon,
+        "description": config.description,
+        "ui_component": config.ui_component,
+        "preview_fields": list(config.preview_fields),
+        "confidence_thresholds": {
+            "auto_approve": config.min_confidence_auto_approve,
+            "review": config.min_confidence_review,
+            "block": config.block_below_confidence,
+        },
+        "export_formats": [
+            {"name": fmt.name, "mime_type": fmt.mime_type} for fmt in config.export_formats
+        ],
+        "downstream_actions": [
+            {
+                "key": action.key,
+                "label": action.label,
+                "description": action.description,
+                "confirmation_required": action.confirmation_required,
+            }
+            for action in config.downstream_actions
+        ],
+        "validation_rules": [
+            {"name": rule.name, "severity": rule.severity} for rule in config.validation_rules
+        ],
+    }

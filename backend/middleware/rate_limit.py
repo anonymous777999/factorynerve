@@ -10,9 +10,7 @@ from typing import Any, Callable
 
 from fastapi import HTTPException, Request
 
-from backend.auth_cookies import get_access_cookie
 from backend.middleware.rate_limit_middleware import extract_client_ip
-from backend.security import decode_access_token
 
 try:
     from slowapi import Limiter
@@ -34,26 +32,46 @@ _fallback_last_prune = 0.0
 
 
 def authenticated_user_key(request: Request) -> str:
-    token = None
-    auth_header = request.headers.get("authorization") or ""
-    if auth_header.lower().startswith("bearer "):
-        token = auth_header.split(" ", 1)[1].strip()
-    if not token:
-        token = get_access_cookie(request)
-    if not token:
-        return "anonymous"
-    try:
-        payload = decode_access_token(token)
-    except HTTPException:
-        return "anonymous"
-    return str(payload.get("sub") or "anonymous")
+    return extract_client_ip(request)
 
 
 def webhook_ip_key(request: Request) -> str:
     return extract_client_ip(request)
 
 
-limiter = Limiter(key_func=authenticated_user_key, headers_enabled=True) if Limiter else None
+# Environment-variable-backed rate limits, resolved per-request so that
+# configuration changes take effect without a server restart.
+_ENV_LIMIT_CACHE: dict[str, str] = {}
+_ENV_LIMIT_LOCK = threading.Lock()
+
+
+def resolve_rate_limit(env_var: str, default: str) -> str:
+    """Read a rate-limit string from an env var, cached per var name."""
+    with _ENV_LIMIT_LOCK:
+        cached = _ENV_LIMIT_CACHE.get(env_var)
+        if cached is not None:
+            return cached
+        import os as _os
+        value = (_os.getenv(env_var) or default).strip()
+        _ENV_LIMIT_CACHE[env_var] = value
+        return value
+
+
+def invalidate_rate_limit_cache() -> None:
+    """Force re-read of env vars on next resolve_rate_limit call."""
+    with _ENV_LIMIT_LOCK:
+        _ENV_LIMIT_CACHE.clear()
+
+
+# headers_enabled must stay False: slowapi's header injection requires the
+# decorated endpoint to either return a starlette.Response or declare a
+# `response: Response` parameter. Our rate-limited endpoints return plain
+# dicts (FastAPI serializes them), so with headers_enabled=True slowapi
+# raised "parameter `response` must be an instance of ...Response" and turned
+# every call to those routes — including the Razorpay payment webhook — into a
+# 500. Nothing consumes the X-RateLimit-* response headers, so disabling them
+# removes the fault with no behavioral loss. The 429 enforcement is unaffected.
+limiter = Limiter(key_func=authenticated_user_key, headers_enabled=False) if Limiter else None
 
 
 def _parse_limit(limit_value: str) -> tuple[int, int]:

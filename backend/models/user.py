@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from sqlalchemy import Boolean, DateTime, Enum as SqlEnum, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.database import Base
+from backend.database import Base, EncryptedString
 from backend.models.phone_verification import PhoneVerificationStatus
 
 
@@ -21,6 +21,22 @@ class UserRole(str, Enum):
     MANAGER = "manager"
     ADMIN = "admin"
     OWNER = "owner"
+
+
+_ROLE_ORDER = {
+    UserRole.ATTENDANCE: 0,
+    UserRole.OPERATOR: 1,
+    UserRole.SUPERVISOR: 2,
+    UserRole.ACCOUNTANT: 2,
+    UserRole.MANAGER: 3,
+    UserRole.ADMIN: 4,
+    UserRole.OWNER: 5,
+}
+
+
+def role_rank(role: UserRole) -> int:
+    """Return numeric rank for a role. Higher = more privileged."""
+    return _ROLE_ORDER.get(role, 0)
 
 
 class User(Base):
@@ -67,6 +83,37 @@ class User(Base):
         nullable=False,
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
+
+    # ── Auth consolidation fields (migrated from AuthUser) ────────────────
+    password_hash_version: Mapped[str] = mapped_column(
+        String(16), nullable=False, default="bcrypt"
+    )
+    password_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
+    mfa_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    mfa_secret_encrypted: Mapped[str | None] = mapped_column(
+        EncryptedString, nullable=True
+    )
+    failed_login_attempts: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    locked_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    is_email_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    # ──────────────────────────────────────────────────────────────────────
+
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -80,6 +127,11 @@ class User(Base):
     organization = relationship("Organization", back_populates="users")
     factory_roles = relationship("UserFactoryRole", back_populates="user")
     refresh_tokens = relationship("RefreshToken", back_populates="user")
+
+
+# Late import ensures RefreshToken model is loaded before SQLAlchemy resolves
+# the User.refresh_tokens relationship reference during mapper configuration.
+from backend.models.refresh_token import RefreshToken as _RefreshToken  # noqa: F401,E402
 
 
 class UserBaseSchema(BaseModel):
@@ -99,7 +151,6 @@ class UserCreateSchema(UserBaseSchema):
 
 class UserUpdateSchema(BaseModel):
     name: str | None = Field(default=None, min_length=2, max_length=120)
-    role: UserRole | None = None
     factory_name: str | None = Field(default=None, min_length=2, max_length=255)
     is_active: bool | None = None
     phone_number: str | None = Field(default=None, max_length=32)

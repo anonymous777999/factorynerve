@@ -65,7 +65,7 @@ def test_checkout_quote_only_charges_new_ocr_pack_quantities(http_client):
         quote = _resolve_checkout_quote(
             db,
             current_user=persisted_user,
-            plan="free",
+            plan="operator",
             billing_cycle="monthly",
             requested_users=3,
             requested_factories=1,
@@ -74,11 +74,11 @@ def test_checkout_quote_only_charges_new_ocr_pack_quantities(http_client):
     finally:
         db.close()
 
-    assert quote["addon_monthly_total"] == 2499
+    assert quote["addon_monthly_total"] == 4999
     assert quote["already_active_addon_ids"] == ["ocr_standard"]
     assert quote["chargeable_addon_quantities"] == {"ocr_heavy": 1}
-    assert quote["monthly_total"] == 2499
-    assert quote["amount_paise"] == 249900
+    assert quote["monthly_total"] == 8498  # 3499 (operator base) + 4999 (ocr_heavy addon)
+    assert quote["amount_paise"] == 849800
 
 
 def test_free_plan_ocr_pack_unlocks_template_access(http_client):

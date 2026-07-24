@@ -14,6 +14,7 @@ class SteelCustomerPaymentAllocation(Base):
     __tablename__ = "steel_customer_payment_allocations"
     __table_args__ = (
         Index("ix_steel_customer_payment_allocations_factory_id", "factory_id"),
+        Index("uq_steel_customer_payment_allocations_payment_invoice", "payment_id", "invoice_id", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

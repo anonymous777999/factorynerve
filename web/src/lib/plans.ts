@@ -18,6 +18,7 @@ export type PlanInfo = {
     smart: number;
   };
   unlimited_limits?: string[];
+  extra_user_price?: number;
   features: Record<string, boolean>;
 };
 
@@ -35,6 +36,7 @@ export type AddonInfo = {
   feature_key?: string;
   kind?: string;
   scan_quota?: number;
+  message_quota?: number;
   quantity_allowed?: boolean;
   sort_order?: number;
   included_in?: string[];

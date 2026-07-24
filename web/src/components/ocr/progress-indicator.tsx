@@ -1,3 +1,4 @@
+import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ProcessingStage =
@@ -28,15 +29,13 @@ const STAGES: Array<{
 function iconForState(state: "pending" | "active" | "done") {
   if (state === "done") {
     return (
-      <span className="grid h-6 w-6 place-items-center rounded-full bg-[#185FA5] text-white">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
-          <path d="m3.2 8.1 2.7 2.7 6-6" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+      <span className="grid h-6 w-6 place-items-center rounded-full bg-[#8c4218] text-white">
+        <Check className="h-3.5 w-3.5" strokeWidth={2} />
       </span>
     );
   }
   if (state === "active") {
-    return <span className="h-6 w-6 rounded-full border-2 border-[#185FA5] border-t-transparent animate-spin" />;
+    return <span className="h-6 w-6 rounded-full border-2 border-[#8c4218] border-t-transparent animate-spin" />;
   }
   return <span className="h-6 w-6 rounded-full border border-[#d5dde6] bg-white" />;
 }
@@ -48,7 +47,7 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
   return (
     <div className="mx-auto grid max-w-6xl gap-6 rounded-[32px] border border-[#e3e8ef] bg-white p-5 shadow-[0_28px_80px_rgba(15,23,42,0.08)] lg:grid-cols-[minmax(18rem,22rem)_minmax(0,1fr)] lg:p-8">
       <div className="overflow-hidden rounded-[28px] border border-[#e6ebf1] bg-[#f7f9fb]">
-        <div className="border-b border-[#e6ebf1] px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+        <div className="border-b border-[#e6ebf1] px-4 py-3 text-[11px] font-semibold uppercase tracking-label text-[#667085]">
           Current image
         </div>
         <div className="grid min-h-[18rem] place-items-center bg-[linear-gradient(180deg,#f9fbfd_0%,#f3f6f9_100%)] p-4">
@@ -62,7 +61,7 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
       </div>
 
       <div className="flex flex-col">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+        <div className="text-[11px] font-semibold uppercase tracking-label text-[#667085]">
           Processing
         </div>
         <h2 className="mt-3 text-[2rem] font-semibold tracking-tight text-[#101828]">
@@ -70,7 +69,7 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
         </h2>
         <div className="mt-5 h-2 overflow-hidden rounded-full bg-[#eaf0f5]">
           <div
-            className="h-full rounded-full bg-[#185FA5] transition-[width] duration-300"
+            className="h-full rounded-full bg-[#8c4218] transition-[width] duration-300"
             style={{ width: `${activeStage.progress}%` }}
           />
         </div>

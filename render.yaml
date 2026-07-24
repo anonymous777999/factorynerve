@@ -1,19 +1,37 @@
+# ── Render Blueprint ──────────────────────────────────────────
+# Infrastructure-as-code for DPR.ai backend.
+#
+# ⚠  MAINTENANCE NOTES:
+#   - Simple key:value vars shared by web+worker live in
+#     `envVarGroups.shared-config` to avoid duplication.
+#   - `fromDatabase` / `sync: false` / `generateValue` entries
+#     CANNOT go inside envVarGroups, so they are duplicated in
+#     each service's `envVars` block.
+#   - Secrets (sync:false) must be set via the Render Dashboard
+#     after initial deploy; they will persist across blueprint
+#     syncs.
+
+# ── Preview Environments ───────────────────────────────────
+previews:
+  generation: automatic
+
+
+# ── Databases ──────────────────────────────────────────────
 databases:
   - name: factorynerve-db
     plan: free
     databaseName: factorynerve
     user: factorynerve
 
-services:
-  - type: web
-    name: factorynerve-api
-    runtime: docker
-    plan: free
-    dockerfilePath: ./deploy/render/backend.Dockerfile
-    dockerContext: .
-    autoDeploy: true
-    healthCheckPath: /observability/ready
+
+# ── Shared Environment Variables ───────────────────────────
+# Simple key:value pairs shared between ALL services.
+# NOTE: fromDatabase, sync:false, and generateValue entries
+# cannot live here – they must go in each service's envVars.
+envVarGroups:
+  - name: shared-config
     envVars:
+      # ── App metadata ──────────────────────────────────────
       - key: APP_NAME
         value: FactoryNerve
       - key: APP_ENV
@@ -24,6 +42,8 @@ services:
         value: INFO
       - key: LOG_FORMAT
         value: json
+
+      # ── URLs ──────────────────────────────────────────────
       - key: WEB_APP_URL
         value: https://www.factorynerve.online
       - key: EMAIL_VERIFICATION_BASE_URL
@@ -34,8 +54,8 @@ services:
         value: "false"
       - key: PASSWORD_RESET_EXPOSE_LINK
         value: "false"
-      - key: JWT_SECRET_KEY
-        generateValue: true
+
+      # ── JWT (legacy – retained for transition) ────────────
       - key: JWT_EXPIRE_HOURS
         value: "24"
       - key: JWT_ACCESS_COOKIE
@@ -54,6 +74,42 @@ services:
         value: factorynerve.online
       - key: JWT_COOKIE_PATH
         value: /
+
+      # ── Auth consolidation (primary config) ───────────────
+      - key: AUTH_SESSION_COOKIE
+        value: auth_session
+      - key: AUTH_CSRF_COOKIE
+        value: dpr_csrf
+      - key: AUTH_CSRF_HEADER
+        value: X-CSRF-Token
+      - key: AUTH_SESSION_SAMESITE
+        value: Lax
+      - key: AUTH_SESSION_SECURE
+        value: "true"
+      - key: AUTH_SESSION_TTL_MINUTES
+        value: "1440"
+      - key: SESSION_IDLE_TIMEOUT_MINUTES
+        value: "30"
+      - key: SESSION_ABSOLUTE_TIMEOUT_HOURS
+        value: "24"
+      - key: AUTH_LOCKOUT_THRESHOLD
+        value: "5"
+      - key: AUTH_LOCKOUT_DURATION_MINUTES
+        value: "15"
+      - key: AUTH_PERSISTENT_LOCKOUT_ATTEMPTS
+        value: "20"
+      - key: AUTH_RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
+      - key: AUTH_RATE_LIMIT_MAX_ATTEMPTS
+        value: "5"
+      - key: AUTH_PASSWORD_RESET_TTL_MINUTES
+        value: "30"
+      - key: AUTH_MFA_ISSUER
+        value: DPR.ai
+      - key: PASSWORD_EXPIRY_DAYS
+        value: "90"
+
+      # ── CORS / HTTPS ──────────────────────────────────────
       - key: CORS_ALLOWED_ORIGINS
         value: https://factorynerve.online,https://www.factorynerve.online
       - key: CORS_ALLOW_CREDENTIALS
@@ -64,36 +120,36 @@ services:
         value: "true"
       - key: HSTS_MAX_AGE
         value: "31536000"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: factorynerve-db
-          property: connectionString
-      - key: DATA_ENCRYPTION_KEY
-        sync: false
+
+      # ── Database pool ─────────────────────────────────────
       - key: DB_POOL_SIZE
-        value: "10"
+        value: "3"
       - key: DB_POOL_OVERFLOW
-        value: "20"
+        value: "3"
       - key: DB_POOL_TIMEOUT
-        value: "30"
+        value: "10"
       - key: DB_POOL_RECYCLE
         value: "1800"
+
+      # ── Rate limiting ─────────────────────────────────────
       - key: RATE_LIMIT_WINDOW_SECONDS
         value: "60"
       - key: RATE_LIMIT_MAX_REQUESTS
         value: "120"
       - key: MAX_REQUEST_BYTES
         value: "12000000"
+
+      # ── Email / SMTP (non-secret) ─────────────────────────
+      - key: EMAIL_MAX_RETRIES
+        value: "5"
+      - key: EMAIL_BATCH_SIZE
+        value: "10"
       - key: SMTP_HOST
         value: smtp.resend.com
       - key: SMTP_PORT
         value: "587"
       - key: SMTP_USER
         value: resend
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: RESEND_API_KEY
-        sync: false
       - key: SMTP_FROM
         value: no-reply@factorynerve.online
       - key: SMTP_USE_TLS
@@ -106,16 +162,79 @@ services:
         value: Verify your FactoryNerve email
       - key: PASSWORD_RESET_EMAIL_SUBJECT
         value: Reset your FactoryNerve password
-      - key: GOOGLE_CLIENT_ID
-        sync: false
-      - key: GOOGLE_CLIENT_SECRET
-        sync: false
+
+      # ── OAuth ─────────────────────────────────────────────
       - key: GOOGLE_REDIRECT_URI
         value: https://www.factorynerve.online/api/auth/google/callback
       - key: FRONTEND_OAUTH_REDIRECT
         value: https://www.factorynerve.online
+
+      # ── AI provider ───────────────────────────────────────
       - key: AI_PROVIDER
         value: groq
+      - key: OPENAI_MODEL
+        value: gpt-4o-mini
+      - key: NEXT_PUBLIC_RELEASE_VERSION
+        value: render-bootstrap
+
+      # ── Monitoring ────────────────────────────────────────
+      - key: SENTRY_ENV
+        value: production
+      - key: SENTRY_TRACES_SAMPLE_RATE
+        value: "0.1"
+
+
+# ── Services ──────────────────────────────────────────────
+services:
+  # ── Web (FastAPI) ────────────────────────────────────────
+  # Docker runtime – CMD from Dockerfile handles startup.
+  - type: web
+    name: factorynerve-api
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./deploy/render/backend.Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    healthCheckPath: /observability/ready
+    envVars:
+      # ── Reference shared config from envVarGroup ──────────
+      - fromGroup: shared-config
+
+      # ══ fromDatabase / sync:false / generateValue only ═══
+      # These fields are NOT allowed inside envVarGroups.
+      # ── Database ──────────────────────────────────────────
+      - key: DATABASE_URL
+        fromDatabase:
+          name: factorynerve-db
+          property: connectionString
+
+      # ── Secrets (set in Render Dashboard; persist across syncs) ──
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+
+      # ── Auto-generated secrets ────────────────────────────
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: AUTH_RESET_SECRET
+        generateValue: true
+      - key: METRICS_TOKEN
+        generateValue: true
+
+      # ── Email secrets ─────────────────────────────────────
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
+      # ── OAuth secrets ─────────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+      # ── AI provider secrets ───────────────────────────────
       - key: GROQ_API_KEY
         sync: false
       - key: ANTHROPIC_API_KEY
@@ -124,13 +243,66 @@ services:
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: OPENAI_MODEL
-        value: gpt-4o-mini
-      - key: NEXT_PUBLIC_RELEASE_VERSION
-        value: render-bootstrap
+
+      # ── Sentry ────────────────────────────────────────────
       - key: SENTRY_DSN
         sync: false
-      - key: SENTRY_ENV
-        value: production
-      - key: SENTRY_TRACES_SAMPLE_RATE
-        value: "0.1"
+
+  # ── RQ Worker ────────────────────────────────────────────
+  - type: worker
+    name: factorynerve-rq-worker
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: rq worker dpr:email dpr:attendance dpr:approval dpr:feedback dpr:whatsapp
+    autoDeploy: true
+    envVars:
+      # ── Reference shared config from envVarGroup ──────────
+      - fromGroup: shared-config
+
+      # ══ fromDatabase / sync:false / generateValue only ═══
+      # ── Database ──────────────────────────────────────────
+      - key: DATABASE_URL
+        fromDatabase:
+          name: factorynerve-db
+          property: connectionString
+
+      # ── Secrets (set in Render Dashboard) ─────────────────
+      - key: DATA_ENCRYPTION_KEY
+        sync: false
+      - key: REDIS_URL
+        sync: false
+
+      # ── Auto-generated secrets ────────────────────────────
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: AUTH_RESET_SECRET
+        generateValue: true
+      - key: METRICS_TOKEN
+        generateValue: true
+
+      # ── Email secrets ─────────────────────────────────────
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+
+      # ── OAuth secrets ─────────────────────────────────────
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+      # ── AI provider secrets ───────────────────────────────
+      - key: GROQ_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+      # ── Sentry ────────────────────────────────────────────
+      - key: SENTRY_DSN
+        sync: false

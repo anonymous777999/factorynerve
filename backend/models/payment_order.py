@@ -17,6 +17,7 @@ class PaymentOrder(Base):
         Index("ix_payment_orders_razorpay_order_id", "razorpay_order_id", unique=True),
         Index("ix_payment_orders_user_id", "user_id"),
         Index("ix_payment_orders_idempotency", "idempotency_key", unique=True),
+        Index("uq_payment_orders_provider_order", "provider", "provider_order_id", unique=True),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

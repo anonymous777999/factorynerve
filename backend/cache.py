@@ -28,6 +28,12 @@ _memory_cache: dict[str, tuple[float, str]] = {}
 _redis_client = None
 _redis_failed = False
 
+# Process-lifetime namespace to prevent cross-restart cache collision.
+# Regenerated every time the Python process starts, ensuring that after
+# a server restart (or cache flush) no stale entries from a previous
+# process lifetime are served, even if Redis persistence returns old data.
+_cache_NAMESPACE: str = os.urandom(8).hex()
+
 
 def json_default(value: Any) -> Any:
     if isinstance(value, (datetime, date)):
@@ -60,7 +66,12 @@ def get_redis_client():
 
 
 def build_cache_key(*parts: Any) -> str:
-    return ":".join(str(part) for part in parts if part not in (None, ""))
+    # Prepend the process-level namespace so cached entries from a previous
+    # process lifetime (or a different deployment) are never served.  This
+    # prevents cache-key collision across restarts and across tenants when
+    # callers forget to include their own tenant scope.
+    non_null = [str(part) for part in parts if part not in (None, "")]
+    return f"{_cache_NAMESPACE}:" + ":".join(non_null)
 
 
 def get_json(key: str) -> Any | None:

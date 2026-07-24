@@ -261,3 +261,48 @@ export async function getUsageSummary() {
 export async function getBillingStatus() {
   return apiFetch<BillingStatus>("/billing/status");
 }
+
+// ── Defect Reasons ────────────────────────────────────────────────────────────
+
+export type DefectReason = {
+  id: number;
+  code: string;
+  label: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string | null;
+};
+
+export async function listDefectReasons(includeInactive = false) {
+  const query = includeInactive ? "?include_inactive=true" : "";
+  return apiFetch<DefectReason[]>(`/settings/defect-reasons${query}`);
+}
+
+export async function createDefectReason(payload: {
+  code: string;
+  label: string;
+  description?: string | null;
+}) {
+  return apiFetch<DefectReason & { message: string }>("/settings/defect-reasons", {
+    method: "POST",
+    body: payload,
+  });
+}
+
+export async function updateDefectReason(
+  reasonId: number,
+  payload: {
+    code?: string;
+    label?: string;
+    description?: string | null;
+  },
+) {
+  return apiFetch<DefectReason & { message: string }>(`/settings/defect-reasons/${reasonId}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
+export async function deactivateDefectReason(reasonId: number) {
+  return apiFetch<{ message: string }>(`/settings/defect-reasons/${reasonId}`, { method: "DELETE" });
+}

@@ -17,6 +17,9 @@ class AuditLog(Base):
     __table_args__ = (
         Index("ix_audit_logs_user_id", "user_id"),
         Index("ix_audit_logs_org_id", "org_id"),
+        Index("ix_audit_logs_factory_id", "factory_id"),
+        Index("ix_audit_logs_timestamp", "timestamp"),
+        Index("ix_audit_logs_factory_action", "factory_id", "action"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)

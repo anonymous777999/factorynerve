@@ -13,21 +13,36 @@ from fastapi.responses import RedirectResponse
 from google.auth.transport import requests as grequests  # type: ignore
 from google.oauth2 import id_token  # type: ignore
 from jose import jwt
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from backend.auth_cookies import set_auth_cookies
 from backend.database import get_db
-from backend.models.refresh_token import RefreshToken
 from backend.models.user_factory_role import UserFactoryRole
-from backend.routers.auth import _issue_refresh_token, _log_auth_event, _resolve_active_factory_id
-from backend.security import create_access_token
+from backend.models.user import User
+from backend.routers.auth import _log_auth_event, _resolve_active_factory_id
+from backend.auth_security.sessions import create_session
+from backend.auth_security.passwords import hash_password
 from backend.services.auth_service import get_or_create_google_user
-from backend.utils import get_config
+from backend.utils import get_config, load_jwt_rsa_private_key, get_jwt_rsa_public_key
 
 
 router = APIRouter(tags=["Authentication"])
 config = get_config()
+
+
+def _jwt_sign(payload: dict) -> str:
+    """Sign a JWT payload preferring RS256, falling back to HS256."""
+    rsa_key = load_jwt_rsa_private_key(config.jwt_rsa_private_key)
+    if rsa_key is not None:
+        return jwt.encode(payload, rsa_key, algorithm="RS256")
+    return jwt.encode(payload, config.jwt_secret_key, algorithm="HS256")
+
+
+def _jwt_verify(token: str) -> dict:
+    """Verify a JWT using the configured algorithm only (RS256 if RSA key available, else HS256)."""
+    rsa_public = get_jwt_rsa_public_key()
+    if rsa_public is not None:
+        return jwt.decode(token, rsa_public, algorithms=["RS256"])
+    return jwt.decode(token, config.jwt_secret_key, algorithms=["HS256"])
 
 
 def _google_config() -> tuple[str, str, str]:
@@ -85,41 +100,6 @@ def _login_error_redirect(message: str) -> RedirectResponse:
     )
 
 
-def _resolve_recent_factory_id(db: Session, *, user_id: int) -> str | None:
-    now = datetime.now(timezone.utc)
-    candidate_rows = (
-        db.query(RefreshToken.factory_id)
-        .filter(
-            RefreshToken.user_id == user_id,
-            RefreshToken.factory_id.is_not(None),
-            RefreshToken.revoked_at.is_(None),
-            RefreshToken.expires_at > now,
-        )
-        .order_by(
-            func.coalesce(RefreshToken.last_used_at, RefreshToken.created_at).desc(),
-            RefreshToken.created_at.desc(),
-            RefreshToken.id.desc(),
-        )
-        .all()
-    )
-
-    for (factory_id,) in candidate_rows:
-        if not factory_id:
-            continue
-        membership = (
-            db.query(UserFactoryRole.id)
-            .filter(
-                UserFactoryRole.user_id == user_id,
-                UserFactoryRole.factory_id == factory_id,
-            )
-            .first()
-        )
-        if membership:
-            return factory_id
-
-    return None
-
-
 def _encode_state(remember: bool, next_path: str) -> str:
     payload = {
         "nonce": secrets.token_urlsafe(16),
@@ -127,12 +107,12 @@ def _encode_state(remember: bool, next_path: str) -> str:
         "next": _sanitize_next_path(next_path),
         "exp": int((datetime.now(timezone.utc) + timedelta(minutes=10)).timestamp()),
     }
-    return jwt.encode(payload, config.jwt_secret_key, algorithm="HS256")
+    return _jwt_sign(payload)
 
 
 def _decode_state(state: str) -> dict:
     try:
-        return jwt.decode(state, config.jwt_secret_key, algorithms=["HS256"])
+        return _jwt_verify(state)
     except Exception as exc:
         raise HTTPException(status_code=400, detail="Invalid OAuth state.") from exc
 
@@ -203,7 +183,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
 
     try:
         id_info = id_token.verify_oauth2_token(raw_id_token, grequests.Request(), client_id)
-    except Exception:
+    except Exception as error:
         return _login_error_redirect("Could not verify the Google account response.")
 
     issuer = id_info.get("iss")
@@ -228,32 +208,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
         picture=picture,
     )
 
-    active_factory_id = _resolve_recent_factory_id(db, user_id=user.id)
-    if not active_factory_id:
-        active_factory_id = _resolve_active_factory_id(
-            db,
-            user_id=user.id,
-            preferred_factory_id=None,
-        )
-    role_row = None
-    if active_factory_id:
-        role_row = (
-            db.query(UserFactoryRole)
-            .filter(
-                UserFactoryRole.user_id == user.id,
-                UserFactoryRole.factory_id == active_factory_id,
-            )
-            .first()
-        )
-    if not role_row:
-        role_row = (
-            db.query(UserFactoryRole)
-            .filter(UserFactoryRole.user_id == user.id)
-            .order_by(UserFactoryRole.assigned_at.asc())
-            .first()
-        )
-        active_factory_id = role_row.factory_id if role_row else factory_id
-    active_role = role_row.role.value if role_row else user.role.value
+    active_factory_id = _resolve_active_factory_id(db, user_id=user.id, preferred_factory_id=None)
 
     user.last_login = datetime.now(timezone.utc)
     _log_auth_event(
@@ -265,28 +220,18 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
         org_id=user.org_id,
         factory_id=active_factory_id,
     )
-    refresh_token = _issue_refresh_token(
-        db,
-        user=user,
-        org_id=user.org_id,
-        factory_id=active_factory_id,
-    )
-    db.commit()
 
-    access_token = create_access_token(
-        user_id=user.id,
-        role=active_role,
-        email=user.email,
-        org_id=org_id,
-        factory_id=active_factory_id,
-    )
+    # Ensure the User record has auth fields needed for v2 session
+    now = datetime.now(timezone.utc)
+    if not user.password_changed_at:
+        user.password_changed_at = now
+    user.is_email_verified = True
+    user.updated_at = now
+    db.add(user)
+    db.flush()
+
     final = _build_frontend_redirect(next_path)
     response = RedirectResponse(final)
-    csrf_token = set_auth_cookies(
-        response=response,
-        access_token=access_token,
-        refresh_token=refresh_token,
-        request=request,
-    )
-    response.headers["X-CSRF-Token"] = csrf_token
+    create_session(db, user=user, request=request, response=response, factory_id=active_factory_id)
+    db.commit()
     return response

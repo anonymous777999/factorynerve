@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from backend.routers import ocr as ocr_router
+from backend.routers.ocr._common import _normalize_ragged_rows
 
 
 def test_normalize_table_excel_value_preserves_plain_scalars():
@@ -106,3 +107,116 @@ def test_normalize_table_excel_extracted_json_flattens_structured_cells():
         "headers": ["Item", "Qty"],
         "rows": [["Steel Rod", "12"], ["A, B", "₹5000"]],
     }
+
+
+class TestNormalizeRaggedRows:
+    """Tests for _normalize_ragged_rows merged-cell/ragged array handling."""
+
+    def test_normalize_ragged_rows_pads_short_rows(self):
+        """Short rows are padded to match the widest row."""
+        headers = ["Item", "Qty", "Rate", "Amount"]
+        rows = [
+            ["Bolt", "5", "10", "50"],
+            ["Nut", "3", "8", "24"],
+            ["Total", "", "", "74"],  # Short row
+        ]
+        result_headers, result_rows, warnings = _normalize_ragged_rows(headers, rows)
+
+        assert result_headers == ["Item", "Qty", "Rate", "Amount"]
+        assert len(result_rows[2]) == 4  # Padded to 4 columns
+        assert result_rows[2] == ["Total", "", "", "74"]
+        assert len(warnings) == 0  # Not a heading row
+
+    def test_normalize_ragged_rows_detects_merged_heading_rows(self):
+        """Single-cell rows that look like section headings are detected as merged cells."""
+        headers = ["Item", "Amount"]
+        rows = [
+            ["TRADING ACCOUNT"],  # Merged heading
+            ["Opening Stock", "5000"],
+            ["Purchase", "10000"],
+            ["BALANCE SHEET"],  # Another merged heading
+            ["Cash", "8000"],
+        ]
+        result_headers, result_rows, warnings = _normalize_ragged_rows(headers, rows)
+
+        assert len(result_headers) == 2  # Headers unchanged
+        assert len(result_rows) == 5  # Same number of rows
+        # Merged rows padded
+        assert result_rows[0] == ["TRADING ACCOUNT", ""]
+        assert result_rows[3] == ["BALANCE SHEET", ""]
+        # Data rows unchanged
+        assert result_rows[1] == ["Opening Stock", "5000"]
+        assert len(warnings) > 0  # Should have detected merged rows
+
+    def test_normalize_ragged_rows_skips_total_rows(self):
+        """Rows with total/summary keywords are NOT treated as merged headings."""
+        headers = ["Item", "Debit", "Credit"]
+        rows = [
+            ["Opening", "5000", ""],
+            ["Sales", "", "10000"],
+            ["Total"],  # Total keyword row — should NOT be treated as heading
+        ]
+        result_headers, result_rows, warnings = _normalize_ragged_rows(headers, rows)
+
+        # Total row should be padded, but no merged-row warning
+        assert len(result_rows) == 3
+        assert result_rows[2] == ["Total", "", ""]
+        # No heading detection warning since "Total" is excluded
+        if warnings:
+            # If warnings exist, they should NOT mention "Total"
+            assert all("Total" not in w for w in warnings)
+
+    def test_normalize_ragged_rows_extends_headers_when_rows_are_wider(self):
+        """When data rows have more columns than headers, headers are extended."""
+        headers = ["Name"]
+        rows = [
+            ["Item1", "100", "2024-01-01"],
+            ["Item2", "200", "2024-01-02"],
+        ]
+        result_headers, result_rows, warnings = _normalize_ragged_rows(headers, rows)
+
+        assert len(result_headers) == 3
+        assert result_headers[1] == "Column 2"
+        assert result_headers[2] == "Column 3"
+        assert len(result_rows[0]) == 3
+        assert len(warnings) == 0
+
+    def test_normalize_ragged_rows_handles_single_row_tables(self):
+        """Single-row tables are handled gracefully."""
+        headers = ["Name", "Value"]
+        rows = [["Single", "42"]]
+        result_headers, result_rows, warnings = _normalize_ragged_rows(headers, rows)
+
+        assert result_headers == ["Name", "Value"]
+        assert result_rows == [["Single", "42"]]
+        assert len(warnings) == 0
+
+    def test_normalize_ragged_rows_handles_empty_rows(self):
+        """Empty row list returns empty result without error."""
+        headers = ["Name", "Value"]
+        result_headers, result_rows, warnings = _normalize_ragged_rows(headers, [])
+
+        assert result_headers == ["Name", "Value"]
+        assert result_rows == []
+        assert len(warnings) == 0
+
+    def test_normalize_ragged_rows_normalizes_via_extracted_json(self):
+        """Integration test: _normalize_table_excel_extracted_json calls ragged rows."""
+        result = ocr_router._normalize_table_excel_extracted_json(
+            {
+                "type": "table",
+                "headers": ["Item"],
+                "rows": [
+                    ["SALES ACCOUNT"],  # Merged heading
+                    ["Revenue", "5000", "Cost", "3000"],
+                    ["GROSS PROFIT"],  # Another merged heading
+                ],
+            }
+        )
+
+        assert result["type"] == "table"
+        assert len(result["headers"]) == 4  # Extended to match widest row
+        assert result["rows"][0] == ["SALES ACCOUNT", "", "", ""]  # Padded
+        assert result["rows"][1] == ["Revenue", "5000", "Cost", "3000"]  # As-is
+        assert result["rows"][2] == ["GROSS PROFIT", "", "", ""]  # Padded
+        assert "warnings" in result  # Should have detected merged rows

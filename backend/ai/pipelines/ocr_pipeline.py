@@ -28,8 +28,19 @@ _INJECTION_PATTERNS = [
     r"ignore (all |previous )?instructions?",
     r"system\s*:",
     r"<\|.*?\|>",
-    r"you are now",
+    r"you are (now )?",
     r"new instructions?",
+    r"disregard",
+    r"override",
+    r"forget (all )?",
+    r"pretend",
+    r"act as if",
+    r"from now on",
+    r"your (new )?(role|persona|identity)",
+    r"### instructions?",
+    r"#\s*instructions?",
+    r"you are a (free|better|different)",
+    r"change your (instructions|rules|guidelines)",
 ]
 
 
@@ -280,7 +291,7 @@ class OCRPipeline:
             )
             return failure
 
-    def _log_usage(self, *, org_id: int, raw: RawAIResponse, reason: str) -> None:
+    def _log_usage(self, *, org_id: str, raw: RawAIResponse, reason: str) -> None:
         self.usage_logger(
             org_id=org_id,
             tokens=raw.usage.total_tokens,

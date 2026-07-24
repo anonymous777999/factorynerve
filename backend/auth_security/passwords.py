@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import re
 from dataclasses import dataclass
 
 from passlib.context import CryptContext
+
+
+logger = logging.getLogger(__name__)
 
 
 _pwd_context = CryptContext(
@@ -31,6 +35,8 @@ def verify_password(password: str, password_hash: str) -> bool:
     try:
         return _pwd_context.verify(password, password_hash)
     except Exception:
+        logger.exception("Password verification failed: hash_prefix=%s",
+                         password_hash[:30] if password_hash else "empty")
         return False
 
 

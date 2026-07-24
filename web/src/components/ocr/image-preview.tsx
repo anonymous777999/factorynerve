@@ -26,7 +26,7 @@ export function ImagePreview({
       {(badge || title || subtitle) ? (
         <div className="border-b border-[#eff2f5] px-4 py-4">
           {badge ? (
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a93a0]">
+            <div className="text-[11px] font-semibold uppercase tracking-label text-[#8a93a0]">
               {badge}
             </div>
           ) : null}

@@ -393,8 +393,8 @@ def test_observability_governance_endpoint_isolated(monkeypatch):
 
     assert response.status_code == 200
     payload = response.json()
-    assert "rules" in payload
-    assert "providers" in payload
+    assert "rules" in payload.get("data", payload)
+    assert "providers" in payload.get("data", payload)
 
 
 def test_governance_and_telemetry_hot_path_overhead_stays_small():

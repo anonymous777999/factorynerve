@@ -1,0 +1,44 @@
+```svg
+<svg width="520" height="100" viewBox="0 0 520 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="520" height="100" fill="transparent"/>
+
+  <!-- FN Icon -->
+  <g transform="translate(10,12)">
+    <!-- F -->
+    <path d="M10 5H62V18H25V35H55V48H25V76H10V5Z" fill="#081C3A"/>
+
+    <!-- N -->
+    <path d="M60 76V5H75V45L105 5H122V76H107V36L77 76H60Z" fill="#1D4ED8"/>
+  </g>
+
+  <!-- Divider -->
+  <line x1="150" y1="20" x2="150" y2="80" stroke="#5B6575" stroke-width="2"/>
+
+  <!-- Factory -->
+  <text x="175" y="52"
+        font-family="Inter, Arial, sans-serif"
+        font-size="44"
+        font-weight="700"
+        fill="#081C3A">
+    Factory
+  </text>
+
+  <!-- Nerve -->
+  <text x="340" y="52"
+        font-family="Inter, Arial, sans-serif"
+        font-size="44"
+        font-weight="700"
+        fill="#1D4ED8">
+    Nerve
+  </text>
+
+  <!-- Tagline -->
+  <text x="176" y="80"
+        font-family="Inter, Arial, sans-serif"
+        font-size="16"
+        letter-spacing="3"
+        fill="#5B6575">
+    AI-POWERED FACTORY OPERATING SYSTEM
+  </text>
+</svg>
+```

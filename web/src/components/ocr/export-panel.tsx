@@ -35,8 +35,8 @@ function ActionCard({
       className={cn(
         "rounded-[24px] border px-5 py-5 text-left transition duration-200 disabled:cursor-not-allowed disabled:opacity-60",
         primary
-          ? "border-[#185FA5] bg-[#185FA5] text-white shadow-[0_20px_42px_rgba(24,95,165,0.24)] hover:bg-[#164f8a]"
-          : "border-[#dfe6ed] bg-white text-[#101828] hover:border-[#185FA5]/35 hover:shadow-[0_14px_30px_rgba(15,23,42,0.06)]",
+          ? "border-[#8c4218] bg-[#8c4218] text-white shadow-[0_20px_42px_rgba(140,66,24,0.24)] hover:bg-[#743512]"
+          : "border-[#dfe6ed] bg-white text-[#101828] hover:border-[#8c4218]/35 hover:shadow-[0_14px_30px_rgba(15,23,42,0.06)]",
       )}
     >
       <div className={cn("text-sm", primary ? "text-white/85" : "text-[#667085]")}>

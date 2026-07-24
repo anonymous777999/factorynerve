@@ -32,8 +32,8 @@ function ToolbarButton({
       className={cn(
         "h-10 rounded-full border px-4 text-sm font-medium transition duration-200 disabled:cursor-not-allowed disabled:opacity-45",
         active
-          ? "border-[#185FA5] bg-[#185FA5] text-white"
-          : "border-[#d9e1e8] bg-white text-[#344054] hover:border-[#185FA5]/35 hover:text-[#185FA5]",
+          ? "border-[#8c4218] bg-[#8c4218] text-white"
+          : "border-[#d9e1e8] bg-white text-[#344054] hover:border-[#8c4218]/35 hover:text-[#8c4218]",
       )}
     >
       {label}

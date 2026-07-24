@@ -1,0 +1,20 @@
+HTTP/1.1 401 Unauthorized
+Date: Mon, 13 Jul 2026 02:30:18 GMT
+Transfer-Encoding: chunked
+Connection: keep-alive
+cf-cache-status: DYNAMIC
+content-security-policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https: wss:; frame-src 'self' https://checkout.razorpay.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+cross-origin-resource-policy: same-site
+permissions-policy: geolocation=(), microphone=(), camera=(self)
+referrer-policy: no-referrer
+rndr-id: 8794b568-efec-4338
+Server: cloudflare
+strict-transport-security: max-age=31536000; includeSubDomains
+vary: Accept-Encoding
+x-content-type-options: nosniff
+x-frame-options: DENY
+x-render-origin-server: uvicorn
+x-request-id: c1ce5d1e-d80f-4a1a-a7df-a79241693c5c
+x-session-expired: idle_timeout
+CF-RAY: a1a4dd6a9e2e6ee0-BOM
+alt-svc: h3=":443"; ma=86400

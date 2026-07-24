@@ -1,0 +1,10 @@
+Phase 2 Remaining Fixes - Results
+========================================
+A: SKIPPED - pattern not found
+B: SKIPPED - pattern not found
+C: SKIPPED - pattern not found
+D: SKIPPED - pattern not found
+E: SKIPPED - pattern not found
+
+Total applied: 0
+Total skipped: 5

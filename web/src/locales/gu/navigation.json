@@ -32,6 +32,18 @@
   "nav.section.account": "Account",
   "nav.profile.label": "Profile",
   "nav.profile.description": "Your identity, access, password, and account details",
+  "nav.steel_inventory_intelligence.label": "ઇન્વેન્ટરી ઇન્ટેલિજન્સ",
+  "nav.steel_inventory_intelligence.description": "ઓછા સ્ટોક ચેતવણીઓ, ડેડ સ્ટોક શોધ અને ટર્નઓવર વિશ્લેષણ",
+  "nav.steel_quality.label": "ગુણવત્તા ટ્રેકિંગ",
+  "nav.steel_quality.description": "બેચ ગુણવત્તા સ્કોર, ગંભીરતા વિતરણ અને ઓપરેટર પ્રદર્શન",
+  "nav.steel_anomalies.label": "અસામાન્યતા શોધ",
+  "nav.steel_anomalies.description": "નાણાકીય, ઇન્વેન્ટરી અને ડિસ્પેચ છેતરપિંડી ચેતવણીઓ",
+  "nav.steel_sales_intelligence.label": "સેલ્સ ઇન્ટેલિજન્સ",
+  "nav.steel_sales_intelligence.description": "વેચાણ વલણો, ગ્રાહક વિશ્લેષણ અને ઓર્ડર પૂર્ણતા ફનલ",
+  "nav.steel_financial_intelligence.label": "નાણાકીય ગુપ્તચર",
+  "nav.steel_financial_intelligence.description": "આવક, માર્જિન, પ્રાપ્ય અને રોકડ પ્રવાહ",
+  "nav.steel_production_intelligence.label": "ઉત્પાદન ઇન્ટેલિજન્સ",
+  "nav.steel_production_intelligence.description": "શિફ્ટ થ્રુપુટ, બેચ ગુણવત્તા અને ઓપરેટર પ્રદર્શન",
   "role.team_member": "Team member",
   "role.attendance": "Attendance user"
 }

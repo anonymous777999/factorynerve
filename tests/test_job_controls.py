@@ -13,7 +13,7 @@ PNG_1X1_BYTES = base64.b64decode(
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def _wait_for_api_job(http_client, path: str, headers: dict[str, str], attempts: int = 80):
@@ -103,7 +103,7 @@ def test_shared_report_pdf_job_and_cancel(http_client):
     user = register_user(http_client, role="manager")
     headers = _auth_headers(user["access_token"])
 
-    set_org_plan_for_user_email(user["email"], "growth")
+    set_org_plan_for_user_email(user["email"], "operations")
 
     created = http_client.post("/entries", json=create_entry_payload(index=22), headers=headers)
     assert created.status_code == HTTPStatus.CREATED, created.text

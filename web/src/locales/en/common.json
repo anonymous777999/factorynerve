@@ -11,5 +11,6 @@
   "common.step": "Step",
   "common.plan": "plan",
   "common.and": "and",
+  "common.view": "View",
   "common.not_selected": "Factory not selected"
 }

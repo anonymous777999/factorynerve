@@ -15,8 +15,22 @@ from backend.ocr_utils import OcrResult
 from backend.understanding.classifier import classify as classify_document
 from backend.understanding.normalizer import normalize as normalize_understanding
 from backend.understanding.parser_registry import parse_document
+from backend.understanding.structure import analyze_structure
+from backend.services.ocr_document_registry import serialize_document_type_config
+import backend.services.ocr_document_types  # noqa: F401 -- side effect: registers document types
 from backend.services.anthropic_usage import normalize_anthropic_model_name
 from backend.services.ocr_confidence import calculate_structural_confidence
+from backend.services.ocr_confidence import calculate_factual_confidence
+
+
+# ── Feature flag: OCR_NEW_CONFIDENCE_ENABLED ─────────────────────────────────
+# When enabled, surfaces factual_confidence alongside structural avg_confidence.
+# Factual confidence blends cross-validation discrepancies into the score:
+#   - Unvalidated: capped at 50% of structural
+#   - Blocked (>30% discrepancy): floored at 10%
+#   - Needs review: penalized proportionally
+# When disabled, factual_confidence is omitted from the output (backward compat).
+_OCR_NEW_CONFIDENCE_ENABLED = os.getenv("OCR_NEW_CONFIDENCE_ENABLED", "true").lower() in ("1", "true", "yes", "on")
 from backend.services.ocr_normalization import normalize_structured_payload
 from backend.services.ocr_normalization import (
     build_cell_confidence_matrix,
@@ -35,6 +49,14 @@ from backend.services.ocr_structural_grouping import (
 )
 from backend.table_scan import extract_table_from_image
 from backend.utils import normalize_confidence
+from backend.services.ocr_cross_validator import OcrCrossValidator, CrossValidationResult
+from backend.services.pipeline_metadata import PipelineMetadata
+from backend.services.ocr_image_preprocessing import preprocess_image, preprocess_image_metadata
+from backend.validators import OcrValidationPipeline, ValidationResult
+from backend.metrics import (
+    OCR_CACHE_HIT_RATIO,
+    OCR_EXTRACTION_SUCCESS_RATE,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -49,6 +71,31 @@ _DEFAULT_ROUTE = {
 }
 _AI_REQUIRED_DOC_TYPES = {"table", "sheet", "spreadsheet"}
 
+
+def _build_validation_from_verification(verification: OcrVerification) -> dict | None:
+    """Run the validation pipeline against stored verification data.
+
+    Reconstructs the validation result from the stored headers/rows.
+    Returns None if no validation can be run (no rows/headers).
+    """
+    headers = verification.headers or []
+    rows = verification.reviewed_rows or verification.original_rows or []
+    if not headers and not rows:
+        return None
+    try:
+        pipeline = OcrValidationPipeline()
+        result = pipeline.validate(
+            headers=headers,
+            rows=rows,
+            doc_type=verification.doc_type_hint,
+            cross_validation=verification.cross_validation,
+        )
+        return result.to_dict()
+    except Exception:
+        logger.warning("Validation from cache failed for verification id=%s", verification.id, exc_info=True)
+        return None
+
+
 # Feature flag for cell object structure (Phase 1)
 # IMPORTANT: Cell objects should ONLY exist in export/metadata layers
 # DO NOT enable in main runtime to preserve backward compatibility
@@ -61,16 +108,16 @@ def _upgrade_rows_to_cell_objects(
 ) -> list[list[dict[str, Any]]]:
     """
     Phase 1 & 3: Minimal cell object upgrade with numeric normalization.
-    
+
     Converts string rows to structured cell objects with:
     - value: str (display value - preserved)
     - confidence: float (0.0-1.0)
     - normalized: float | None (Phase 3: safe numeric value for calculations)
-    
+
     Args:
         rows: List of string rows
         cell_confidence_matrix: Optional OCR confidence matrix
-    
+
     Returns:
         List of rows with cell objects (including normalized where applicable)
     """
@@ -80,13 +127,13 @@ def _upgrade_rows_to_cell_objects(
         infer_column_types,
         estimate_confidence_simple,
     )
-    
+
     if not rows:
         return []
-    
+
     # Infer column types
     column_types = infer_column_types(rows)
-    
+
     # Upgrade each cell
     upgraded_rows = []
     for row_idx, row in enumerate(rows):
@@ -94,30 +141,30 @@ def _upgrade_rows_to_cell_objects(
         for col_idx, cell in enumerate(row):
             # Get column type
             column_type = column_types[col_idx] if col_idx < len(column_types) else "text"
-            
+
             # Get OCR confidence if available
             ocr_conf = None
             if cell_confidence_matrix and row_idx < len(cell_confidence_matrix):
                 if col_idx < len(cell_confidence_matrix[row_idx]):
                     ocr_conf = cell_confidence_matrix[row_idx][col_idx]
-            
+
             # Phase 3: Enable numeric normalization for numeric columns
             add_normalized = (column_type == "numeric")
-            
+
             # Normalize to cell object (with optional numeric normalization)
             cell_obj = normalize_cell(cell, confidence=ocr_conf, add_normalized=add_normalized)
-            
+
             # Enhance confidence with context
             cell_obj["confidence"] = estimate_confidence_simple(
                 cell_obj["value"],
                 column_type,
                 cell_obj["confidence"]
             )
-            
+
             upgraded_row.append(cell_obj)
-        
+
         upgraded_rows.append(upgraded_row)
-    
+
     return upgraded_rows
 
 
@@ -211,7 +258,7 @@ def _reuse_matches_requested_model(candidate: OcrVerification, requested_model: 
 
 
 def _flatten_rows(rows: list[list[str]]) -> str | None:
-    parts = [" | ".join(cell for cell in row if cell) for row in rows]
+    parts = ["\t".join(cell for cell in row if cell) for row in rows]
     joined = "\n".join(part for part in parts if part.strip())
     return joined or None
 
@@ -219,20 +266,66 @@ def _flatten_rows(rows: list[list[str]]) -> str | None:
 def _apply_document_understanding(payload: dict[str, Any]) -> dict[str, Any]:
     try:
         rows = payload.get("rows") or []
+        headers = payload.get("headers") or []
         text = str(payload.get("raw_text") or _flatten_rows(rows) or "")
         classified = classify_document(text)
-        parsed = parse_document(str(classified.get("doc_type") or "generic"), rows)
+        # classify() returns [(doc_type, confidence), ...] sorted by confidence;
+        # normalize into an understanding dict (older versions returned a dict).
+        if isinstance(classified, dict):
+            understanding = dict(classified)
+            doc_type = str(understanding.get("doc_type") or "generic")
+        else:
+            candidates = [
+                (str(item[0]), float(item[1]))
+                for item in (classified or [])
+                if isinstance(item, (list, tuple)) and len(item) >= 2
+            ]
+            doc_type = candidates[0][0] if candidates else "generic"
+            understanding = {
+                "doc_type": doc_type,
+                "confidence": candidates[0][1] if candidates else 0.0,
+                "candidates": [
+                    {"doc_type": dt, "confidence": conf} for dt, conf in candidates
+                ],
+            }
+
+        # Compute structural metadata (header/key-value/total-row/column-type
+        # detection) once, server-side, from the REAL extracted headers+rows so
+        # every frontend view reads the same answer instead of re-guessing.
+        try:
+            structure = analyze_structure(
+                [str(h) for h in headers],
+                [[str(cell) for cell in row] for row in rows],
+                doc_type=doc_type,
+            )
+        except Exception as struct_err:  # pylint: disable=broad-except
+            logger.warning("Structure analysis failed: %s", struct_err, exc_info=True)
+            structure = None
+        understanding["structure"] = structure
+
+        # parse_document() only meaningfully reshapes ledger-style documents
+        # (splitting Dr/Cr sides into a normalized sheet). For every other type
+        # its generic path replaces the real OCR headers with "Column 1",
+        # "Column 2", ... -- which silently destroys the headers the extraction
+        # layer worked to produce. So only adopt the parser's reshaped
+        # headers/rows when it actually did that ledger work; otherwise keep the
+        # original headers/rows untouched.
+        parsed = parse_document(doc_type, rows)
+        reshaped = getattr(parsed, "doc_type", "") == "ledger"
+        if not reshaped:
+            return {**payload, "understanding": understanding}
+
         normalized = normalize_understanding(parsed)
         sheets = normalized.get("sheets") if isinstance(normalized, dict) else []
         if not sheets or not isinstance(sheets[0], dict):
-            return payload
+            return {**payload, "understanding": understanding}
         first_sheet = sheets[0]
         return {
             **payload,
             "headers": [str(value) for value in first_sheet.get("columns") or []],
             "rows": [[str(cell) for cell in row] for row in first_sheet.get("rows") or []],
             "sheets": sheets,
-            "understanding": classified,
+            "understanding": understanding,
         }
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("Document understanding failed; using original OCR rows: %s", error, exc_info=True)
@@ -495,10 +588,11 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
     warnings = verification.warnings or []
     scan_quality = verification.scan_quality or {}
     review_required = scan_quality.get("confidence_band") == "low" or bool(warnings)
-    
+
     # Smart trust policy: lower trust only when document-level signals suggest a risky extraction.
     cache_trust = "high"
-    if review_required or (scan_quality.get("confidence_band") == "medium" and len(warnings) >= 2):
+    # Tightened: single warning on medium confidence now triggers low trust (Bug #24)
+    if review_required or (scan_quality.get("confidence_band") == "medium" and len(warnings) >= 1):
         cache_trust = "low"
 
     # user_corrected if reviewed_rows differs from original_rows
@@ -510,9 +604,41 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
 
     routing = verification.routing_meta or {}
     reprocess_count = int(routing.get("reprocess_count", 0))
-    
+
     # Get layout confidence from scan_quality if available (NEW)
     layout_confidence = scan_quality.get("layout_confidence", 0.5)
+
+    # NEW (P0-2): Factual confidence from cached cross-validation
+    # Recompute factual confidence from the stored cross-validation dictionary
+    # so cached results show the same dual-score system as fresh results.
+    factual_confidence_payload: dict[str, Any] | None = None
+    if _OCR_NEW_CONFIDENCE_ENABLED:
+        cv = verification.cross_validation or {}
+        if isinstance(cv, dict) and cv.get("status"):
+            # Cross-validation data exists — rebuild factual score from cached state
+            status = str(cv.get("status") or "unvalidated")
+            if status == "verified":
+                factual_score = confidence
+            elif status == "blocked":
+                factual_score = 10.0
+            elif status == "needs_review":
+                factual_score = max(10.0, confidence * 0.8)
+            else:
+                factual_score = min(confidence * 0.5, 50.0)
+            factual_confidence_payload = {
+                "score": round(factual_score, 1),
+                "status": status,
+                "discrepancies": int(cv.get("discrepancies", 0) or 0),
+                "explanation": str(cv.get("explanation") or "Cached cross-validation data."),
+            }
+        else:
+            # No cached cross-validation — cap at 50% to indicate unverified
+            factual_confidence_payload = {
+                "score": round(min(confidence * 0.5, 50.0), 1),
+                "status": "unvalidated",
+                "discrepancies": 0,
+                "explanation": "No cross-validation data available for cached result.",
+            }
 
     return {
         "type": _doc_type(verification.doc_type_hint),
@@ -536,6 +662,9 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
         "raw_column_added": bool(verification.raw_column_added),
         "reused": True,
         "reused_verification_id": verification.id,
+        "cross_validation": verification.cross_validation,
+        "factual_confidence": factual_confidence_payload if _OCR_NEW_CONFIDENCE_ENABLED else None,
+        "pipeline_metadata": cached_meta.to_dict(),
         "cached": True,
         "cache_created_at": created_at.isoformat(),
         "cache_age_hours": age_hours,
@@ -543,11 +672,13 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
         "ttl_hours": 24 if cache_trust == "low" else 168,
         "reprocess_count": reprocess_count,
         "reprocess_limit": 3,
+        "ai_degraded_to_base": routing.get("ai_degraded_to_base", False),
         "user_corrected": user_corrected,
         "review_required": review_required,
         "last_reprocessed_at": routing.get("last_reprocessed_at"),
         "previous_confidence": routing.get("previous_confidence"),
         "model": routing.get("provider_model") or routing.get("selected_model") or "local-tesseract",
+        "validation": _build_validation_from_verification(verification),
     }
 
 
@@ -561,6 +692,7 @@ def find_reusable_verification(
     requested_model: str | None = None,
 ) -> OcrVerification | None:
     if not org_id or not document_hash:
+        OCR_CACHE_HIT_RATIO.set(0.0)
         return None
     query = (
         db.query(OcrVerification)
@@ -583,7 +715,10 @@ def find_reusable_verification(
         if not _reuse_matches_requested_model(candidate, requested_model):
             continue
         if candidate.reviewed_rows or candidate.original_rows:
+            # Cache hit — update hit ratio
+            OCR_CACHE_HIT_RATIO.set(1.0)
             return candidate
+    OCR_CACHE_HIT_RATIO.set(0.0)
     return None
 
 
@@ -592,11 +727,42 @@ def build_structured_ocr_result(
     *,
     base_result: OcrResult,
     used_language: str,
-    fallback_used: bool,
+    fallback_used: bool = False,
     template: OcrTemplate | None = None,
     doc_type_hint: str | None = None,
     force_model: str | None = None,
+    pipeline_metadata: PipelineMetadata | None = None,
 ) -> dict[str, Any]:
+    """Build a structured OCR result from a local Tesseract base result.
+
+    Parameters
+    ----------
+    pipeline_metadata :
+        Consolidated pipeline quality state (P0-3). When provided, the value of
+        ``pipeline_metadata.tesseract_fallback_used`` takes precedence over the
+        legacy ``fallback_used`` parameter. New code should prefer passing
+        ``pipeline_metadata`` instead of the individual bool.
+    """
+    # Merge legacy fallback_used into PipelineMetadata for backward compatibility.
+    # A caller-supplied PipelineMetadata takes precedence and is preserved;
+    # only create a fresh one when the caller didn't pass any.
+    if pipeline_metadata is not None:
+        if fallback_used:
+            pipeline_metadata.tesseract_fallback_used = True
+        fallback_used = pipeline_metadata.tesseract_fallback_used
+    else:
+        pipeline_metadata = PipelineMetadata(tesseract_fallback_used=fallback_used)
+
+    # Preprocess image for better OCR on factory documents (P0-1)
+    try:
+        preprocessed = preprocess_image(image_bytes)
+        if preprocessed is not None and preprocessed != image_bytes:
+            image_bytes = preprocessed
+            pipeline_metadata.preprocessing_applied = True
+    except Exception as exc:
+        logger.warning("OCR preprocessing failed: %s", exc)
+        pipeline_metadata.preprocessing_applied = False
+
     requested_model = normalize_anthropic_model_name(force_model)
     try:
         route = choose_ocr_route(
@@ -721,14 +887,14 @@ def build_structured_ocr_result(
     )
     normalized_headers = normalized.get("headers") or []
     normalized_rows = normalized.get("rows") or []
-    
+
     # ==================================================================
     # PHASE 1-5: NEW LAYOUT & STRUCTURAL ANALYSIS PIPELINE
     # ==================================================================
-    
+
     # Phase 1: Safe immediate fixes
     phase1_warnings = []
-    
+
     # 1. Repeated header suppression
     try:
         normalized_rows, suppression_warnings = suppress_repeated_headers(
@@ -738,7 +904,7 @@ def build_structured_ocr_result(
         phase1_warnings.extend(suppression_warnings)
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("Repeated header suppression failed: %s", error, exc_info=True)
-    
+
     # 2. Empty column pruning
     try:
         normalized_headers, normalized_rows, pruning_warnings = prune_empty_columns(
@@ -749,52 +915,194 @@ def build_structured_ocr_result(
         phase1_warnings.extend(pruning_warnings)
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("Empty column pruning failed: %s", error, exc_info=True)
-    
+
     # Phase 2-3: Layout analysis (with bounding box canonicalization built-in)
-    layout_analysis_result = analyze_layout(
-        normalized_headers,
-        normalized_rows,
-        base_result.cell_boxes
-    )
-    
+    try:
+        layout_analysis_result = analyze_layout(
+            normalized_headers,
+            normalized_rows,
+            base_result.cell_boxes
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Layout analysis failed: %s", error, exc_info=True)
+        # Provide fallback values to allow pipeline to continue
+        layout_analysis_result = {
+            "layout_confidence": 0.5,
+            "layout_type": "unknown",
+            "processing_time_ms": 0.0,
+            "heuristics_applied": [],
+            "warnings": [f"Layout analysis skipped due to error: {str(error)}"]
+        }
+
     # Phase 4-5: Structural grouping and selector bridge
-    structural_grouping = analyze_and_group(
-        normalized_headers,
-        normalized_rows,
-        layout_analysis_result,
-        title=normalized.get("title") or _title_from_hint(doc_type_hint, template)
-    )
-    
+    try:
+        structural_grouping = analyze_and_group(
+            normalized_headers,
+            normalized_rows,
+            layout_analysis_result,
+            title=normalized.get("title") or _title_from_hint(doc_type_hint, template)
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Structural grouping failed: %s", error, exc_info=True)
+        # Provide fallback values
+        structural_grouping = {
+            "primary_group": None,
+            "grouping_strategy": "unknown",
+            "warnings": [f"Structural grouping skipped due to error: {str(error)}"]
+        }
+
     # Apply selector bridge to get generic contract
-    if structural_grouping["primary_group"]:
-        bridge_output = apply_selector_bridge(structural_grouping["primary_group"])
-        # Update normalized data with bridge output
-        normalized_headers = bridge_output.get("headers", normalized_headers)
-        normalized_rows = bridge_output.get("rows", normalized_rows)
-    
+    if structural_grouping.get("primary_group"):
+        try:
+            bridge_output = apply_selector_bridge(structural_grouping["primary_group"])
+            # Update normalized data with bridge output
+            normalized_headers = bridge_output.get("headers", normalized_headers)
+            normalized_rows = bridge_output.get("rows", normalized_rows)
+        except Exception as error:  # pylint: disable=broad-except
+            logger.warning("Selector bridge failed: %s", error, exc_info=True)
+            warnings.append(f"Selector bridge skipped due to error: {str(error)}")
+            # Continue with unmodified normalized data
+
     # Collect all warnings
     warnings.extend(phase1_warnings)
     warnings.extend(layout_analysis_result.get("warnings", []))
     warnings.extend(structural_grouping.get("warnings", []))
-    
+
     # ==================================================================
     # END NEW PIPELINE - Continue with existing confidence calculation
     # ==================================================================
-    
+
     raw_text = normalized.get("raw_text") or _flatten_rows(normalized_rows)
-    confidence_payload = calculate_structural_confidence(
-        {
-            "headers": normalized_headers,
-            "rows": normalized_rows,
-        }
-    )
-    avg_confidence = float(confidence_payload.get("score") or 0.0)
-    
+    try:
+        confidence_payload = calculate_structural_confidence(
+            {
+                "headers": normalized_headers,
+                "rows": normalized_rows,
+            }
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Calculate structural confidence failed: %s", error, exc_info=True)
+        confidence_payload = {"score": 0.0}
+
+    try:
+        avg_confidence = float(confidence_payload.get("score") or 0.0)
+    except (ValueError, TypeError):
+        logger.warning("Failed to convert confidence score to float: %s", confidence_payload.get("score"))
+        avg_confidence = 0.0
+
     # Get layout confidence from analysis
     layout_confidence = layout_analysis_result.get("layout_confidence", 0.5)
-    
-    heuristic_confidence_matrix = build_cell_confidence_matrix(normalized_headers, normalized_rows)
-    final_rows = build_confidence_enriched_rows(normalized_headers, normalized_rows)
+
+    try:
+        heuristic_confidence_matrix = build_cell_confidence_matrix(normalized_headers, normalized_rows)
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Build cell confidence matrix failed: %s", error, exc_info=True)
+        # Provide empty matrix as fallback
+        heuristic_confidence_matrix = []
+
+    try:
+        final_rows = build_confidence_enriched_rows(normalized_headers, normalized_rows)
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Build confidence enriched rows failed: %s", error, exc_info=True)
+        # Provide empty rows as fallback
+        final_rows = []
+
+    # ==================================================================
+    # CROSS-VALIDATION: Compare AI-enhanced rows against Tesseract base
+    # ==================================================================
+    cross_validation_result: CrossValidationResult | None = None
+    base_rows_for_validation = base_result.rows or []
+    if base_rows_for_validation and normalized_rows:
+        try:
+            validator = OcrCrossValidator()
+            cross_validation_result = validator.validate(
+                image_bytes=image_bytes,
+                ai_extracted_rows=normalized_rows,
+                tesseract_rows=base_rows_for_validation,
+            )
+
+            # Adjust confidence based on cross-validation
+            # We use the score from the result if we want to influence avg_confidence directly,
+            # but here we'll follow the plan to use it to augment warnings and metadata.
+            if cross_validation_result.status == "blocked":
+                avg_confidence *= 0.5
+                warnings.append(f"CRITICAL: {cross_validation_result.explanation}")
+            elif cross_validation_result.status == "needs_review":
+                avg_confidence *= 0.8
+                warnings.append(f"WARNING: {cross_validation_result.explanation}")
+
+        except Exception as error:  # pylint: disable=broad-except
+            logger.warning("Cross-validation failed: %s", error, exc_info=True)
+
+    # ==================================================================
+    # END CROSS-VALIDATION
+    # ==================================================================
+
+    # NEW (P0-2): Surface factual confidence alongside structural confidence
+    # Factual confidence measures truth-against-image via cross-validation.
+    # When cross-validation didn't run (no Tesseract rows), factual is capped
+    # at 50% of structural to indicate lack of verification.
+    factual_confidence_payload: dict[str, Any] | None = None
+    if _OCR_NEW_CONFIDENCE_ENABLED:
+        if cross_validation_result is not None:
+            factual_confidence_payload = calculate_factual_confidence(
+                result=cross_validation_result,
+                structural_confidence=avg_confidence,
+            )
+        else:
+            # No cross-validation ran — signal unverified with a synthetic result
+            factual_confidence_payload = {
+                "score": round(min(avg_confidence * 0.5, 50.0), 1),
+                "status": "unvalidated",
+                "discrepancies": 0,
+                "explanation": "No cross-validation data available. Factual confidence capped at 50% of structural.",
+            }
+
+    # Phase 4: Run multi-stage validation pipeline
+    validation_result: ValidationResult | None = None
+    try:
+        pipeline = OcrValidationPipeline()
+        validation_result = pipeline.validate(
+            headers=normalized_headers,
+            rows=normalized_rows,
+            doc_type=doc_type_hint,
+            data={"headers": normalized_headers, "rows": normalized_rows},
+            cross_validation=cross_validation_result.to_dict() if cross_validation_result else None,
+        )
+        for issue in validation_result.all_issues:
+            if issue.severity == "error":
+                warnings.append(f"VALIDATION: {issue.message}")
+        # Phase 7: Track extraction success rate
+        OCR_EXTRACTION_SUCCESS_RATE.set(1.0 if validation_result.passed else 0.0)
+    except Exception as val_err:
+        logger.warning("Validation pipeline failed: %s", val_err, exc_info=True)
+        validation_result = None
+        OCR_EXTRACTION_SUCCESS_RATE.set(0.0)
+
+    # NEW (P0-3): Update pipeline metadata with AI result
+    pipeline_metadata.ai_attempted = route_meta.get("ai_attempted", False)
+    pipeline_metadata.ai_succeeded = route_meta.get("ai_applied", False)
+    pipeline_metadata.ai_degraded_to_base = route_meta.get("ai_degraded_to_base", False)
+    pipeline_metadata.ai_failure_reason = route_meta.get("ai_failure_reason")
+
+    # Surface the classifier's guess (computed above via
+    # _apply_document_understanding) so DocumentTypeAdapter on the frontend
+    # can route to a type-specific review layout instead of always falling
+    # back to the generic table view. Only trust it above a confidence
+    # floor and only when it matches a registered document type.
+    _understanding = normalized.get("understanding") if isinstance(normalized.get("understanding"), dict) else None
+    _classified_type = str(_understanding.get("doc_type") or "") if _understanding else ""
+    _classified_confidence = float(_understanding.get("confidence") or 0.0) if _understanding else 0.0
+    _document_type_config = (
+        serialize_document_type_config(_classified_type)
+        if _understanding and _classified_confidence >= 0.35
+        else None
+    )
+    _classification = (
+        {"type_id": _classified_type, "confidence": _classified_confidence, "method": "auto"}
+        if _document_type_config
+        else None
+    )
 
     return {
         "type": normalized.get("type") or _doc_type(doc_type_hint),
@@ -818,6 +1126,13 @@ def build_structured_ocr_result(
         "token_usage": route_meta.get("usage") if isinstance(route_meta.get("usage"), dict) else None,
         "sheets": normalized.get("sheets") if isinstance(normalized.get("sheets"), list) else None,
         "understanding": normalized.get("understanding") if isinstance(normalized.get("understanding"), dict) else None,
+        "structure": (
+            normalized.get("understanding", {}).get("structure")
+            if isinstance(normalized.get("understanding"), dict)
+            else None
+        ),
+        "classification": _classification,
+        "document_type_config": _document_type_config,
         "layout_analysis": {  # NEW: Layout analysis metadata
             "processing_time_ms": layout_analysis_result.get("processing_time_ms", 0.0),
             "heuristics_applied": layout_analysis_result.get("heuristics_applied", []),
@@ -838,4 +1153,9 @@ def build_structured_ocr_result(
         else None,
         "reused": False,
         "reused_verification_id": None,
+        "ai_degraded_to_base": route_meta.get("ai_degraded_to_base", False),
+        "cross_validation": cross_validation_result.to_dict() if cross_validation_result else None,
+        "factual_confidence": factual_confidence_payload if _OCR_NEW_CONFIDENCE_ENABLED else None,
+        "pipeline_metadata": pipeline_metadata.to_dict(),
+        "validation": validation_result.to_dict() if validation_result else None,
     }

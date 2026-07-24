@@ -1,6 +1,13 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
+import {
+  CANONICAL_REDIRECT_BYPASS_PATHS,
+  getAllowedRoles,
+  isMiddlewareBypassPath,
+  isProtectedPath,
+} from "@/lib/route-manifest";
+
 const CANONICAL_HOST = "www.factorynerve.online";
 const BUILD_VERSION = (
   process.env.VERCEL_URL ||
@@ -8,52 +15,12 @@ const BUILD_VERSION = (
   process.env.VERCEL_GIT_COMMIT_SHA ||
   "dev"
 ).trim();
-const CANONICAL_REDIRECT_BYPASS_PATHS = new Set([
-  "/.well-known/assetlinks.json",
-  "/.well-known/apple-app-site-association",
-]);
-
-const PROTECTED_PREFIXES = [
-  "/entry",
-  "/tasks",
-  "/approvals",
-  "/steel",
-  "/control-tower",
-  "/dashboard",
-  "/settings",
-  "/reports",
-  "/analytics",
-  "/billing",
-  "/alerts",
-  "/profile",
-  "/plans",
-  "/ocr",
-  "/email-summary",
-  "/premium",
-  "/attendance",
-  "/work-queue",
-  "/ai",
-];
-
-const ROLE_ROUTES = {
-  "/billing": ["admin", "owner"],
-  "/settings": ["manager", "admin", "owner"],
-  "/admin-billing": ["superadmin"],
-  "/analytics": ["supervisor", "manager", "admin", "owner"],
-  "/settings/users": ["manager", "admin", "owner"],
-} as const;
 
 type NormalizedTokenPayload = {
   role: string | null;
   orgId: string | null;
   source: "auth_session" | "dpr_access" | null;
 };
-
-function isProtectedPath(pathname: string) {
-  return PROTECTED_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-  );
-}
 
 function withBuildVersionHeader(response: NextResponse) {
   response.headers.set("x-dpr-build-version", BUILD_VERSION);
@@ -85,7 +52,7 @@ async function readSessionAuthContext(
   }
 
   try {
-    const authUrl = new URL("/api/auth/me", request.url);
+    const authUrl = new URL("/api/auth/v2/me", request.url);
     const response = await fetch(authUrl, {
       method: "GET",
       headers: {
@@ -98,22 +65,31 @@ async function readSessionAuthContext(
       return { role: null, orgId: null, source: "auth_session" };
     }
 
-    const payload = (await response.json()) as Record<string, unknown> | null;
+    const rawPayload = (await response.json()) as Record<string, unknown> | null;
+    // Unwrap the response envelope ({ success, data }) if present.
+    // Backend endpoints like /auth/v2/me and /auth/v2/context wrap the response
+    // in a { success: true, data: {...} } envelope via middleware.
+    const innerPayload =
+      rawPayload &&
+      typeof rawPayload === "object" &&
+      "data" in rawPayload
+        ? (rawPayload.data as Record<string, unknown> | null)
+        : rawPayload;
     const user =
-      payload && typeof payload === "object" && "user" in payload
-        ? (payload.user as Record<string, unknown> | null)
+      innerPayload && typeof innerPayload === "object" && "user" in innerPayload
+        ? (innerPayload.user as Record<string, unknown> | null)
         : null;
     const rawRole =
       typeof user?.role === "string"
         ? user.role
-        : typeof payload?.role === "string"
-          ? payload.role
+        : typeof innerPayload?.role === "string"
+          ? innerPayload.role
           : null;
     const rawOrgId =
       typeof user?.org_id === "string"
         ? user.org_id
-        : typeof payload?.org_id === "string"
-          ? payload.org_id
+        : typeof innerPayload?.org_id === "string"
+          ? innerPayload.org_id
           : null;
 
     return {
@@ -161,14 +137,6 @@ async function normalizeTokenPayload(
   };
 }
 
-function getAllowedRoles(pathname: string) {
-  const match = Object.keys(ROLE_ROUTES)
-    .sort((left, right) => right.length - left.length)
-    .find((route) => pathname === route || pathname.startsWith(`${route}/`));
-
-  return match ? ROLE_ROUTES[match as keyof typeof ROLE_ROUTES] : null;
-}
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.nextUrl.hostname;
@@ -189,15 +157,7 @@ export async function middleware(request: NextRequest) {
     return withBuildVersionHeader(NextResponse.redirect(url, 308));
   }
 
-  if (
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/_next") ||
-    pathname === "/login" ||
-    pathname === "/register" ||
-    pathname === "/favicon.ico" ||
-    pathname === "/manifest.json" ||
-    pathname === "/sw.js"
-  ) {
+  if (isMiddlewareBypassPath(pathname)) {
     return withBuildVersionHeader(NextResponse.next());
   }
 

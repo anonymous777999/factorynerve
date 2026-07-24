@@ -1,6 +1,6 @@
 // Define which column indices should be visible in the OCR spreadsheet grid
 // This is a placeholder configuration - adjust based on your actual OCR data structure
-// 
+//
 // Since OCR data comes as OcrCell[][], we work with column indices rather than field names
 // The headers array provides the column names dynamically from OCR extraction
 //

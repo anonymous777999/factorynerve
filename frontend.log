@@ -1,0 +1,621 @@
+
+> web@0.1.0 dev
+> next dev --webpack --hostname 127.0.0.1
+
+▲ Next.js 16.2.1 (webpack)
+- Local:         http://127.0.0.1:3000
+- Network:       http://127.0.0.1:3000
+- Environments: .env.local
+✓ Ready in 2.0s
+
+○ Compiling / ...
+ GET / 200 in 22.8s (next.js: 19.8s, application-code: 3.0s)
+ GET / 200 in 1062ms (next.js: 49ms, application-code: 1013ms)
+ HEAD / 200 in 533ms (next.js: 35ms, application-code: 498ms)
+ HEAD / 200 in 123ms (next.js: 7ms, application-code: 115ms)
+○ Compiling /access ...
+[i18n] Missing translation for en:auth.login.destination.workspace
+[i18n] Missing translation for en:auth.login.eyebrow
+[i18n] Missing translation for en:auth.login.title
+[i18n] Missing translation for en:auth.login.description
+[i18n] Missing translation for en:auth.login.trust_security
+[i18n] Missing translation for en:auth.login.trust_routing
+[i18n] Missing translation for en:auth.login.trust_isolation
+[i18n] Missing translation for en:auth.login.badge
+[i18n] Missing translation for en:auth.login.form_title
+[i18n] Missing translation for en:auth.login.description_default
+[i18n] Missing translation for en:auth.login.google
+[i18n] Missing translation for en:auth.login.divider_or
+[i18n] Missing translation for en:auth.login.email_label
+[i18n] Missing translation for en:auth.login.email_placeholder
+[i18n] Missing translation for en:auth.login.password_label
+[i18n] Missing translation for en:auth.login.reset_password
+[i18n] Missing translation for en:auth.login.show_password
+[i18n] Missing translation for en:auth.login.submit
+[i18n] Missing translation for en:auth.login.create_account_prompt
+[i18n] Missing translation for en:auth.login.create_account
+[i18n] Missing translation for en:auth.shell.support_title
+[i18n] Missing translation for en:auth.shell.support_description
+[i18n] Missing translation for en:auth.shell.footer_privacy
+[i18n] Missing translation for en:auth.shell.footer_terms
+[i18n] Missing translation for en:auth.shell.footer_security
+[i18n] Missing translation for en:auth.shell.footer_contact
+ GET / 200 in 286ms (next.js: 117ms, application-code: 169ms)
+ GET /access 200 in 10.4s (next.js: 7.3s, application-code: 3.1s)
+ GET /access? 200 in 766ms (next.js: 17ms, application-code: 750ms)
+ HEAD /access 200 in 1051ms (next.js: 43ms, application-code: 1008ms)
+[browser] [i18n] Missing translation for en:auth.login.destination.workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.eyebrow (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.trust_security (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.trust_routing (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.trust_isolation (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.badge (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.form_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.description_default (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.google (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.divider_or (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.email_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.email_placeholder (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.password_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.reset_password (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.show_password (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.submit (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.create_account_prompt (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.create_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.shell.support_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.shell.support_description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.shell.footer_privacy (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.shell.footer_terms (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.shell.footer_security (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.shell.footer_contact (src\lib\i18n.tsx:922:11)
+ HEAD /access 200 in 106ms (next.js: 5ms, application-code: 102ms)
+ HEAD /access 200 in 156ms (next.js: 11ms, application-code: 145ms)
+ HEAD /access 200 in 185ms (next.js: 9ms, application-code: 176ms)
+ HEAD /access 200 in 200ms (next.js: 12ms, application-code: 188ms)
+ HEAD /access 200 in 220ms (next.js: 11ms, application-code: 209ms)
+ HEAD /access 200 in 113ms (next.js: 5ms, application-code: 108ms)
+ HEAD /access 200 in 183ms (next.js: 8ms, application-code: 175ms)
+ GET / 200 in 348ms (next.js: 11ms, application-code: 336ms)
+ HEAD / 200 in 135ms (next.js: 4ms, application-code: 131ms)
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.today
+[i18n] Missing translation for en:nav.today_board.label
+[i18n] Missing translation for en:nav.today_board.description
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+ GET /desk 404 in 2.5s (next.js: 1846ms, application-code: 664ms)
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.today (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar_overlay (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+ HEAD /desk 404 in 258ms (next.js: 36ms, application-code: 222ms)
+[browser] [i18n] Missing translation for en:role.owner (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.description (src\lib\i18n.tsx:922:11)
+○ Compiling /profile ...
+ GET /profile 200 in 3.6s (next.js: 3.5s, application-code: 143ms)
+○ Compiling /premium/dashboard ...
+ GET /premium/dashboard 200 in 3.8s (next.js: 3.6s, application-code: 135ms)
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.today
+[i18n] Missing translation for en:nav.today_board.label
+[i18n] Missing translation for en:nav.today_board.description
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ GET /work-queue 200 in 4.0s (next.js: 3.0s, application-code: 982ms)
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.today (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.plan (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.owner (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.operations (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.review (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.management (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.admin (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar_overlay (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+ HEAD /work-queue 200 in 297ms (next.js: 13ms, application-code: 284ms)
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.today
+[i18n] Missing translation for en:nav.today_board.label
+[i18n] Missing translation for en:nav.today_board.description
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+ GET /billing 200 in 3.5s (next.js: 2.9s, application-code: 618ms)
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.today (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.billing.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:billing.billing.dashboard (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.billing.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:billing.billing.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.plan (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:billing.plans.title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.owner (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:billing.billing.heading (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.operations (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:billing.billing.tools (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.review (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.management (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.admin (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.attendance_admin.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.attendance_admin.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_admin.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_admin.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.subscription.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.subscription.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar_overlay (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_workspace (src\lib\i18n.tsx:922:11)
+ HEAD /billing 200 in 319ms (next.js: 14ms, application-code: 304ms)
+ HEAD /billing 200 in 221ms (next.js: 13ms, application-code: 208ms)
+ HEAD /billing 200 in 222ms (next.js: 12ms, application-code: 210ms)
+ HEAD /billing 200 in 133ms (next.js: 4ms, application-code: 129ms)
+ HEAD /billing 200 in 111ms (next.js: 5ms, application-code: 107ms)
+ GET /premium/dashboard 200 in 216ms (next.js: 71ms, application-code: 145ms)
+○ Compiling /control-tower ...
+ GET /control-tower 200 in 4.4s (next.js: 4.3s, application-code: 161ms)
+ GET /profile 200 in 151ms (next.js: 51ms, application-code: 100ms)
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:nav.section.today
+[i18n] Missing translation for en:nav.today_board.label
+[i18n] Missing translation for en:nav.today_board.description
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:shell.hide_workspace
+ HEAD /profile 200 in 623ms (next.js: 47ms, application-code: 576ms)
+[browser] [i18n] Missing translation for en:nav.approvals.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.approvals.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ocr_history.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ocr_history.description (src\lib\i18n.tsx:922:11)
+○ Compiling /approvals ...
+ GET /approvals 200 in 4.0s (next.js: 3.8s, application-code: 215ms)
+ GET /approvals 200 in 101ms (next.js: 13ms, application-code: 89ms)
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.today
+[i18n] Missing translation for en:nav.today_board.label
+[i18n] Missing translation for en:nav.today_board.description
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+ HEAD /approvals 200 in 494ms (next.js: 4ms, application-code: 489ms)
+ HEAD /approvals 200 in 238ms (next.js: 9ms, application-code: 229ms)
+ HEAD /approvals 200 in 231ms (next.js: 17ms, application-code: 215ms)
+ HEAD /approvals 200 in 108ms (next.js: 4ms, application-code: 103ms)
+ HEAD /approvals 200 in 336ms (next.js: 7ms, application-code: 330ms)
+ HEAD /approvals 200 in 319ms (next.js: 13ms, application-code: 306ms)
+ HEAD /approvals 200 in 213ms (next.js: 8ms, application-code: 205ms)
+ HEAD /approvals 200 in 331ms (next.js: 15ms, application-code: 316ms)
+ HEAD /approvals 200 in 195ms (next.js: 4ms, application-code: 192ms)
+ HEAD /approvals 200 in 311ms (next.js: 5ms, application-code: 307ms)
+ GET /approvals 200 in 1141ms (next.js: 11ms, application-code: 1130ms)
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.today (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.approvals.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.approvals.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.plan (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.owner (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.operations (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.review (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.management (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.admin (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ocr_history.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ocr_history.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar_overlay (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.performance.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.performance.description (src\lib\i18n.tsx:922:11)
+ HEAD /approvals 200 in 417ms (next.js: 16ms, application-code: 401ms)
+○ Compiling /analytics ...
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.today
+[i18n] Missing translation for en:nav.today_board.label
+[i18n] Missing translation for en:nav.today_board.description
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+ GET /analytics 200 in 170ms (next.js: 18ms, application-code: 152ms)
+ GET /analytics 200 in 11.1s (next.js: 9.7s, application-code: 1433ms)
+ GET /approvals 200 in 7.7s (next.js: 6.2s, application-code: 1573ms)
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar_overlay (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.today (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.today_board.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+ HEAD /approvals 200 in 320ms (next.js: 15ms, application-code: 305ms)
+[browser] [i18n] Missing translation for en:nav.approvals.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.approvals.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.owner (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.operations (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.review (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.management (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.admin (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.reports_exports.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.owner_desk.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.factory_network.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.scheduled_updates.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.workforce_intelligence.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ai_insights.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_machines.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_batches.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.steel_charts.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.customers.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.dispatch.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ocr_history.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.ocr_history.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.performance.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.performance.description (src\lib\i18n.tsx:922:11)
+○ Compiling /profile ...
+ GET /profile 200 in 4.0s (next.js: 3.7s, application-code: 264ms)
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:nav.section.today
+[i18n] Missing translation for en:nav.today_board.label
+[i18n] Missing translation for en:nav.today_board.description
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:shell.hide_workspace
+ HEAD /profile 200 in 1376ms (next.js: 64ms, application-code: 1312ms)

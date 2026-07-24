@@ -1,0 +1,15 @@
+{
+  "name": "claude-openrouter-proxy",
+  "version": "1.0.0",
+  "description": "Proxy that translates Anthropic API calls to OpenRouter free models",
+  "main": "proxy.js",
+  "scripts": {
+    "start": "node proxy.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "node-fetch": "^2.7.0"
+  }
+}

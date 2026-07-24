@@ -2,6 +2,7 @@ from http import HTTPStatus
 
 from backend.database import SessionLocal, init_db
 from backend.models.organization import Organization
+from backend.models.subscription import Subscription
 from backend.models.user import User
 from tests.utils import create_entry_payload, register_user
 
@@ -10,16 +11,21 @@ init_db()
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def _set_org_plan(email: str, plan: str) -> None:
     with SessionLocal() as db:
         user = db.query(User).filter(User.email == email).first()
         assert user is not None
-        org = db.query(Organization).filter(Organization.org_id == user.org_id).first()
-        assert org is not None
-        org.plan = plan
+        # get_effective_plan reads from Subscription first, not Organization.plan
+        sub = db.query(Subscription).filter(Subscription.org_id == user.org_id).first()
+        if sub:
+            sub.plan = plan
+        else:
+            org = db.query(Organization).filter(Organization.org_id == user.org_id).first()
+            assert org is not None
+            org.plan = plan
         db.commit()
 
 

@@ -10,10 +10,16 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   workers: 1,
-  reporter: "list",
+  outputDir: "../artifacts",
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: "../playwright-report" }],
+  ],
   use: {
     baseURL: "http://127.0.0.1:3000",
     headless: true,
+    screenshot: "only-on-failure",
+    video: "retain-on-failure",
     trace: "on-first-retry",
   },
   projects: [

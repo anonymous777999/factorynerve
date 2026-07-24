@@ -1,4 +1,4 @@
-"""Helpers for steel inventory trust, batch variance, and owner overview."""
+"""Helpers for steel inventory trust, batch variance, owner overview, inventory intelligence, quality tracking, anomaly detection, and owner dashboard."""
 
 from __future__ import annotations
 
@@ -6,9 +6,12 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 import re
 
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
 from backend.models.factory import Factory
+from backend.models.steel_customer import SteelCustomer
+from backend.models.steel_customer_payment import SteelCustomerPayment
 from backend.models.steel_dispatch import SteelDispatch
 from backend.models.steel_dispatch_line import SteelDispatchLine
 from backend.models.steel_inventory_item import SteelInventoryItem
@@ -73,15 +76,46 @@ def normalize_transaction_type(value: str | None) -> str:
 
 
 def stock_balances_for_factory(db: Session, factory_id: str) -> dict[int, float]:
-    balances: dict[int, float] = defaultdict(float)
     rows = (
-        db.query(SteelInventoryTransaction.item_id, SteelInventoryTransaction.quantity_kg)
+        db.query(
+            SteelInventoryTransaction.item_id,
+            func.sum(SteelInventoryTransaction.quantity_kg).label("balance"),
+        )
         .filter(SteelInventoryTransaction.factory_id == factory_id)
+        .group_by(SteelInventoryTransaction.item_id)
         .all()
     )
-    for item_id, quantity_kg in rows:
-        balances[int(item_id)] += float(quantity_kg or 0.0)
-    return dict(balances)
+    return {int(row.item_id): float(row.balance or 0.0) for row in rows}
+
+
+def locked_stock_balance_for_item(db: Session, factory_id: str, item_id: int) -> float:
+    """Return the current stock balance for a single item with a pessimistic row lock.
+
+    Uses ``SELECT SUM(...) ... FOR UPDATE`` to prevent concurrent transactions
+    from reading a stale balance (race condition).  The aggregation is performed
+    inside the database so only one row is returned, avoiding a full table fetch.
+
+    SAFETY: ``FOR UPDATE`` is silently ignored outside an explicit transaction.
+    This function enforces that a transaction is active and raises immediately
+    if not, preventing silent race conditions that would corrupt stock balances.
+
+    Call within a transaction before any write that depends on an accurate balance.
+    """
+    if not db.in_transaction():
+        raise RuntimeError(
+            "locked_stock_balance_for_item() must be called within a database transaction. "
+            "Wrap the caller in ``with db.begin():`` or ensure ``autocommit`` is disabled."
+        )
+    result = (
+        db.query(func.sum(SteelInventoryTransaction.quantity_kg))
+        .filter(
+            SteelInventoryTransaction.factory_id == factory_id,
+            SteelInventoryTransaction.item_id == item_id,
+        )
+        .with_for_update()
+        .scalar()
+    )
+    return float(result or 0.0)
 
 
 def latest_reconciliations_for_factory(db: Session, factory_id: str) -> dict[int, SteelStockReconciliation]:
@@ -90,6 +124,7 @@ def latest_reconciliations_for_factory(db: Session, factory_id: str) -> dict[int
         .filter(
             SteelStockReconciliation.factory_id == factory_id,
             SteelStockReconciliation.status == "approved",
+            SteelStockReconciliation.counted_at >= datetime.now(timezone.utc) - timedelta(days=365),
         )
         .order_by(SteelStockReconciliation.item_id.asc(), SteelStockReconciliation.counted_at.desc())
         .all()
@@ -210,12 +245,18 @@ def normalized_steel_factory_code(factory: Factory) -> str:
 def generate_batch_code(db: Session, factory: Factory, when: datetime | None = None) -> str:
     current = when or datetime.now(timezone.utc)
     prefix = f"ST-{normalized_steel_factory_code(factory)}-{current.year}-"
+    # Use FOR UPDATE to prevent concurrent duplicate codes (Bug #17)
+    # The with_for_update locks the row so two callers can't both read
+    # the same max sequence and generate the same next number.
+    if not db.in_transaction():
+        raise RuntimeError("generate_batch_code() must be called within a transaction.")
     existing = (
         db.query(SteelProductionBatch.batch_code)
         .filter(
             SteelProductionBatch.batch_code.like(f"{prefix}%"),
         )
         .order_by(SteelProductionBatch.id.desc())
+        .with_for_update()
         .first()
     )
     sequence = 1
@@ -231,10 +272,13 @@ def generate_invoice_number(db: Session, factory: Factory, when: datetime | None
     prefix = f"SINV-{normalized_steel_factory_code(factory)}-{current.year}-"
     from backend.models.steel_sales_invoice import SteelSalesInvoice
 
+    if not db.in_transaction():
+        raise RuntimeError("generate_invoice_number() must be called within a transaction.")
     existing = (
         db.query(SteelSalesInvoice.invoice_number)
         .filter(SteelSalesInvoice.invoice_number.like(f"{prefix}%"))
         .order_by(SteelSalesInvoice.id.desc())
+        .with_for_update()
         .first()
     )
     sequence = 1
@@ -250,10 +294,13 @@ def generate_dispatch_number(db: Session, factory: Factory, when: datetime | Non
     prefix = f"SDISP-{normalized_steel_factory_code(factory)}-{current.year}-"
     from backend.models.steel_dispatch import SteelDispatch
 
+    if not db.in_transaction():
+        raise RuntimeError("generate_dispatch_number() must be called within a transaction.")
     existing = (
         db.query(SteelDispatch.dispatch_number)
         .filter(SteelDispatch.dispatch_number.like(f"{prefix}%"))
         .order_by(SteelDispatch.id.desc())
+        .with_for_update()
         .first()
     )
     sequence = 1
@@ -269,10 +316,13 @@ def generate_gate_pass_number(db: Session, factory: Factory, when: datetime | No
     prefix = f"GP-{normalized_steel_factory_code(factory)}-{current.year}-"
     from backend.models.steel_dispatch import SteelDispatch
 
+    if not db.in_transaction():
+        raise RuntimeError("generate_gate_pass_number() must be called within a transaction.")
     existing = (
         db.query(SteelDispatch.gate_pass_number)
         .filter(SteelDispatch.gate_pass_number.like(f"{prefix}%"))
         .order_by(SteelDispatch.id.desc())
+        .with_for_update()
         .first()
     )
     sequence = 1
@@ -303,6 +353,9 @@ def serialize_stock_row(
         "base_unit": item.base_unit,
         "display_unit": item.display_unit,
         "current_rate_per_kg": item.current_rate_per_kg if can_view_financials else None,
+        "reorder_point_kg": item.reorder_point_kg,
+        "safety_stock_kg": item.safety_stock_kg,
+        "lead_time_days": item.lead_time_days,
         "stock_balance_kg": round(float(balance_kg or 0.0), 3),
         "stock_balance_ton": round(float(balance_kg or 0.0) / 1000.0, 3),
         "confidence_status": confidence_status,
@@ -375,6 +428,10 @@ def serialize_batch(
         "profit_per_kg_inr": round(profit_per_kg_inr, 2) if can_view_financials else None,
         "anomaly_score": round(anomaly_score, 2),
         "variance_reason": variance_reason(severity, variance_percent),
+        "rejection_qty_kg": round(float(batch.rejection_qty_kg or 0.0), 3) if batch.rejection_qty_kg is not None else None,
+        "scrap_qty_kg": round(float(batch.scrap_qty_kg or 0.0), 3) if batch.scrap_qty_kg is not None else None,
+        "line_id": batch.line_id,
+        "machine_id": batch.machine_id,
         "status": batch.status,
         "notes": batch.notes,
         "created_at": created_at.isoformat(),
@@ -397,11 +454,15 @@ def build_steel_realization_metrics(
     factory_id: str,
     target_date: date | None = None,
 ) -> dict[str, float | int]:
-    batch_rows = (
-        db.query(SteelProductionBatch)
-        .filter(SteelProductionBatch.factory_id == factory_id)
-        .all()
-    )
+    # Default to last 365 days when no specific target_date is given to avoid
+    # loading the entire batch table (OOM risk for long-running factories).
+    batch_query = db.query(SteelProductionBatch).filter(SteelProductionBatch.factory_id == factory_id)
+    if target_date is not None:
+        batch_query = batch_query.filter(SteelProductionBatch.production_date == target_date)
+    else:
+        cutoff = datetime.now(timezone.utc).date() - timedelta(days=365)
+        batch_query = batch_query.filter(SteelProductionBatch.production_date >= cutoff)
+    batch_rows = batch_query.all()
     if batch_rows:
         item_ids = {batch.input_item_id for batch in batch_rows} | {batch.output_item_id for batch in batch_rows}
         item_map = {
@@ -432,9 +493,13 @@ def build_steel_realization_metrics(
         for item_id, row in output_item_cost_rollup.items()
     }
 
+    # Apply the same 365-day default to invoices and dispatches for consistency
+    # and to prevent loading the entire table when target_date is not specified.
     invoices_query = db.query(SteelSalesInvoice).filter(SteelSalesInvoice.factory_id == factory_id)
     if target_date is not None:
         invoices_query = invoices_query.filter(SteelSalesInvoice.invoice_date == target_date)
+    else:
+        invoices_query = invoices_query.filter(SteelSalesInvoice.invoice_date >= cutoff)
     invoice_rows = invoices_query.all()
     invoice_ids = [int(row.id) for row in invoice_rows]
     invoice_lines = (
@@ -453,6 +518,8 @@ def build_steel_realization_metrics(
     )
     if target_date is not None:
         dispatch_query = dispatch_query.filter(SteelDispatch.dispatch_date == target_date)
+    else:
+        dispatch_query = dispatch_query.filter(SteelDispatch.dispatch_date >= cutoff)
     dispatch_rows = dispatch_query.all()
 
     realized_dispatched_revenue_inr = 0.0
@@ -509,6 +576,7 @@ def build_steel_overview(db: Session, factory: Factory) -> dict[str, object]:
         db.query(SteelInventoryItem)
         .filter(SteelInventoryItem.factory_id == factory.factory_id, SteelInventoryItem.is_active.is_(True))
         .order_by(SteelInventoryItem.category.asc(), SteelInventoryItem.name.asc())
+        .limit(500)
         .all()
     )
     balances = stock_balances_for_factory(db, factory.factory_id)
@@ -835,3 +903,144 @@ def recent_transactions(db: Session, factory_id: str, *, limit: int = 20) -> lis
 
 def stale_reconciliation_cutoff(days: int = 14) -> datetime:
     return datetime.now(timezone.utc) - timedelta(days=days)
+
+
+# P1-14: Reorder point auto-calculation ---------------------------------------
+
+
+def calculate_reorder_points(
+    db: Session,
+    *,
+    factory_id: str,
+    lookback_days: int = 90,
+    safety_factor: float = 1.5,
+) -> dict[str, object]:
+    """Auto-calculate reorder points for all active steel inventory items.
+
+    Uses historical ``dispatch_out`` consumption over the lookback window to
+    compute average daily consumption, then sets
+    ``reorder_point_kg = avg_daily_consumption * lead_time_days * safety_factor``.
+
+    When ``lead_time_days`` is not set on the item, defaults to 7 days.
+    Items with zero consumption history are left untouched so manual values
+    are not overwritten.
+
+    Returns a summary of how many items were updated.
+    """
+    items = (
+        db.query(SteelInventoryItem)
+        .filter(
+            SteelInventoryItem.factory_id == factory_id,
+            SteelInventoryItem.is_active.is_(True),
+        )
+        .all()
+    )
+    if not items:
+        return {"updated": 0, "total": 0}
+
+    cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+    item_ids = [item.id for item in items]
+
+    # Aggregate dispatch_out consumption per item over the lookback window
+    rows = (
+        db.query(
+            SteelInventoryTransaction.item_id,
+            func.sum(SteelInventoryTransaction.quantity_kg).label("total_consumed"),
+            func.count(SteelInventoryTransaction.id).label("txn_count"),
+        )
+        .filter(
+            SteelInventoryTransaction.factory_id == factory_id,
+            SteelInventoryTransaction.item_id.in_(item_ids),
+            SteelInventoryTransaction.transaction_type.in_(["dispatch_out", "production_issue"]),
+            SteelInventoryTransaction.created_at >= cutoff,
+        )
+        .group_by(SteelInventoryTransaction.item_id)
+        .all()
+    )
+
+    consumption_map: dict[int, float] = {}
+    for row in rows:
+        consumption_map[int(row.item_id)] = abs(float(row.total_consumed or 0.0))
+
+    updated_count = 0
+    for item in items:
+        total_consumed = consumption_map.get(int(item.id), 0.0)
+        if total_consumed <= 0:
+            continue  # No consumption history — skip
+
+        avg_daily = total_consumed / max(lookback_days, 1)
+        lead_time = int(item.lead_time_days or 7)
+        reorder_point = round(avg_daily * lead_time * safety_factor, 3)
+
+        if reorder_point != (item.reorder_point_kg or 0.0):
+            item.reorder_point_kg = reorder_point
+            updated_count += 1
+
+    return {"updated": updated_count, "total": len(items)}
+
+
+def calculate_safety_stock(
+    db: Session,
+    *,
+    factory_id: str,
+    lookback_days: int = 90,
+    safety_factor: float = 1.5,
+) -> dict[str, object]:
+    """Auto-calculate safety stock levels based on demand variability.
+
+    Uses the standard deviation of daily consumption over the lookback window
+    multiplied by a safety factor.  Requires at least 5 data points.
+    Items with zero history are skipped.
+    """
+    items = (
+        db.query(SteelInventoryItem)
+        .filter(
+            SteelInventoryItem.factory_id == factory_id,
+            SteelInventoryItem.is_active.is_(True),
+        )
+        .all()
+    )
+    if not items:
+        return {"updated": 0, "total": 0}
+
+    updated_count = 0
+    cutoff = datetime.now(timezone.utc) - timedelta(days=lookback_days)
+    item_ids_list = [item.id for item in items]
+
+    # Batch-query all dispatch_out transactions for all items
+    txn_rows = (
+        db.query(
+            SteelInventoryTransaction.item_id,
+            SteelInventoryTransaction.quantity_kg,
+        )
+        .filter(
+            SteelInventoryTransaction.factory_id == factory_id,
+            SteelInventoryTransaction.item_id.in_(item_ids_list),
+            SteelInventoryTransaction.transaction_type == "dispatch_out",
+            SteelInventoryTransaction.created_at >= cutoff,
+        )
+        .all()
+    )
+
+    # Group transactions by item_id
+    from collections import defaultdict
+    txn_by_item: dict[int, list[float]] = defaultdict(list)
+    for row in txn_rows:
+        txn_by_item[int(row.item_id)].append(abs(float(row.quantity_kg or 0.0)))
+
+    updated_count = 0
+    for item in items:
+        values = txn_by_item.get(int(item.id), [])
+        if len(values) < 5:
+            continue
+
+        mean = sum(values) / len(values)
+        variance = sum((v - mean) ** 2 for v in values) / len(values)
+        std_dev = variance ** 0.5
+
+        safety_stock = round(std_dev * safety_factor, 3)
+        if safety_stock != (item.safety_stock_kg or 0.0):
+            item.safety_stock_kg = safety_stock
+            updated_count += 1
+
+    return {"updated": updated_count, "total": len(items)}

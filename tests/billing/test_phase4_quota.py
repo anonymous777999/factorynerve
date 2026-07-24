@@ -15,11 +15,17 @@ from backend.models.organization import Organization
 from backend.models.subscription import Subscription
 from backend.models.user import User, UserRole
 from backend.routers.billing import _reset_org_ocr_quota_period
-from backend.security import create_access_token, hash_password
+from backend.auth_security.tokens import generate_token, hash_token
+from backend.models.auth_session import AuthSession
+from backend.models.auth_user import AuthUser
+from backend.security import hash_password
 
 
-def _headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+COOKIE_NAME = "auth_session"
+
+
+def _headers(session_token: str) -> dict[str, str]:
+    return {"Cookie": f"{COOKIE_NAME}={session_token}"}
 
 
 def _create_authenticated_user(*, role: UserRole = UserRole.OWNER) -> dict[str, object]:
@@ -28,7 +34,8 @@ def _create_authenticated_user(*, role: UserRole = UserRole.OWNER) -> dict[str, 
     try:
         org_id = str(uuid4())
         email = f"phase4_{uuid4().hex[:10]}@example.com"
-        org = Organization(org_id=org_id, name=f"Phase4 Org {uuid4().hex[:6]}", plan="starter", is_active=True)
+        now = datetime.now(timezone.utc)
+        org = Organization(org_id=org_id, name=f"Phase4 Org {uuid4().hex[:6]}", plan="operator", is_active=True)
         user = User(
             org_id=org_id,
             user_code=10000 + int(uuid4().hex[:4], 16),
@@ -41,15 +48,39 @@ def _create_authenticated_user(*, role: UserRole = UserRole.OWNER) -> dict[str, 
         )
         db.add(org)
         db.add(user)
-        db.commit()
-        db.refresh(user)
-        token = create_access_token(
-            user_id=user.id,
-            role=user.role.value,
-            email=user.email,
-            org_id=user.org_id,
+        db.flush()
+
+        # Create a matching AuthUser for v2 session auth
+        auth_user = AuthUser(
+            email=email,
+            password_hash=hash_password("StrongPassw0rd!"),
+            is_email_verified=True,
+            is_active=True,
         )
-        return {"email": user.email, "access_token": token, "user_id": user.id, "org_id": user.org_id}
+        db.add(auth_user)
+        db.flush()
+
+        # Create a v2 session directly and return the raw token.
+        raw_token = generate_token(32)
+        token_hash = hash_token(raw_token)
+        # Set user_id (the Phase 2+ direct FK) so auth resolves via the
+        # canonical path, exactly like production sessions. Without it, auth
+        # falls back to the legacy AuthUser email bridge, whose
+        # created_at < password_changed_at freshness check spuriously 401s
+        # here because AuthUser.password_changed_at defaults to flush-time
+        # now(), which is a hair later than the `now` captured above.
+        session = AuthSession(
+            auth_user_id=auth_user.id,
+            user_id=user.id,
+            token_hash=token_hash,
+            csrf_hash=hash_token(generate_token(16)),
+            created_at=now,
+            expires_at=now + timedelta(days=30),
+        )
+        db.add(session)
+        db.commit()
+
+        return {"email": user.email, "access_token": raw_token, "user_id": user.id, "org_id": user.org_id}
     finally:
         db.close()
 
@@ -100,10 +131,10 @@ def _set_subscription_state(email: str, *, status: str, grace_hours: int = 24) -
         assert user is not None
         sub = db.query(Subscription).filter(Subscription.org_id == user.org_id).first()
         if not sub:
-            sub = Subscription(org_id=user.org_id, user_id=user.id, plan="starter", status="active")
+            sub = Subscription(org_id=user.org_id, user_id=user.id, plan="operator", status="active")
         sub.status = status
         sub.user_id = user.id
-        sub.plan = "starter"
+        sub.plan = "operator"
         sub.grace_period_end_at = datetime.now(timezone.utc) + timedelta(hours=grace_hours)
         db.add(sub)
         db.commit()
@@ -247,7 +278,7 @@ def test_rate_limit_5_per_minute_on_order_creation(http_client):
     _fallback_hits.clear()
     user = _create_authenticated_user()
     headers = _headers(str(user["access_token"]))
-    payload = {"plan": "starter", "billing_cycle": "monthly", "currency": "INR"}
+    payload = {"plan": "operator", "billing_cycle": "monthly", "currency": "INR"}
 
     responses = [
         http_client.post("/billing/orders", headers=headers, json=payload)

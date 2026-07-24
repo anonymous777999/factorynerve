@@ -31,7 +31,9 @@ from backend.models.payment_order import PaymentOrder
 from backend.models.webhook_event import WebhookEvent
 from backend.models.user import User, UserRole
 from backend.security import get_current_user
-from backend.rbac import require_role
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.plans import (
     PRICING_META,
     addon_kind,
@@ -48,6 +50,7 @@ from backend.plans import (
     plan_has_hard_caps,
 )
 from backend.tenancy import resolve_org_id
+from backend.utils import ensure_utc
 from backend.services.billing_manager import (
     activate_org_addons,
     apply_plan_change,
@@ -64,12 +67,14 @@ from backend.services.ops_alerts import (
     record_payment_failure,
     record_payment_webhook_error,
 )
+from backend.services.invoice_pdf import generate_invoice_pdf
+from fastapi.responses import Response
 
 
 router = APIRouter(tags=["Billing"])
 logger = logging.getLogger(__name__)
 
-TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
+TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "30"))
 BILLING_GRACE_DAYS = int(os.getenv("BILLING_GRACE_DAYS", "3"))
 SUPPORTED_CURRENCY = "INR"
 REUSABLE_ORDER_STATUSES = {"created", "attempted", "authorized"}
@@ -221,17 +226,30 @@ def _mark_payment_order_status(db: Session, *, order_id: str | None, status: str
     db.add(row)
 
 
-def _get_payment_order(db: Session, *, order_id: str | None) -> PaymentOrder | None:
+def _get_payment_order(db: Session, *, order_id: str | None, for_update: bool = True) -> PaymentOrder | None:
     if not order_id:
         return None
-    return (
-        db.query(PaymentOrder)
-        .filter(PaymentOrder.provider == "razorpay", PaymentOrder.provider_order_id == order_id)
-        .first()
+    query = db.query(PaymentOrder).filter(
+        PaymentOrder.provider == "razorpay", PaymentOrder.provider_order_id == order_id
     )
+    if for_update:
+        query = query.with_for_update()
+    return query.first()
 
 
 def _resolve_event_id(data: dict, payload: bytes) -> str:
+    """Build a stable idempotency key for a Razorpay webhook event.
+
+    Priority:
+    1. event_type + payment_id  (most stable — payment IDs are immutable)
+    2. event_type + order_id    (stable — order IDs are immutable)
+    3. event_type + subscription_id (stable for subscription events)
+    4. Fallback: hash of ONLY the stable structural fields (event_type +
+       all entity IDs found in the payload), NOT the full raw bytes.
+       Using raw bytes caused duplicate WebhookEvent rows when Razorpay
+       retried the same event with slightly different metadata (timestamps,
+       attempt counts, etc.).
+    """
     event_type = str(data.get("event", ""))
     payment_entity = _extract_payment_entity(data)
     payment_id = payment_entity.get("id")
@@ -241,7 +259,21 @@ def _resolve_event_id(data: dict, payload: bytes) -> str:
     order_id = order_entity.get("id") or _extract_order_id(data)
     if order_id:
         return f"{event_type}:order:{order_id}"
-    digest = hashlib.sha256(payload).hexdigest()[:16]
+    # Check for subscription entity
+    payload_data = data.get("payload", {})
+    subscription_entity = (payload_data.get("subscription") or {}).get("entity", {})
+    subscription_id = subscription_entity.get("id")
+    if subscription_id:
+        return f"{event_type}:sub:{subscription_id}"
+    # Fallback: hash only stable structural fields, not raw bytes.
+    # Collect all entity IDs present in the payload to form a stable fingerprint.
+    stable_parts = [event_type]
+    for entity_key in sorted(payload_data.keys()):
+        entity_obj = (payload_data.get(entity_key) or {}).get("entity", {})
+        if isinstance(entity_obj, dict) and entity_obj.get("id"):
+            stable_parts.append(f"{entity_key}:{entity_obj['id']}")
+    stable_str = "|".join(stable_parts)
+    digest = hashlib.sha256(stable_str.encode()).hexdigest()[:16]
     return f"{event_type}:hash:{digest}"
 
 
@@ -256,13 +288,13 @@ def _fetch_order_entity(order_id: str | None) -> dict | None:
         import razorpay  # type: ignore
     except ModuleNotFoundError:
         return None
-    except Exception:
+    except Exception as error:
         logger.exception("Razorpay import failed while fetching order entity.")
         return None
     try:
         client = razorpay.Client(auth=(key_id, key_secret))
         return client.order.fetch(order_id) or None
-    except Exception:
+    except Exception as error:
         logger.exception("Razorpay initialization or order fetch failed for order_id=%s.", order_id)
         return None
 
@@ -300,6 +332,7 @@ def _activate_paid_order(
     *,
     user_id: int,
     plan: str,
+    org_id: str | None,
     billing_cycle: str | None,
     amount_paise: int | None,
     addon_quantities: dict[str, int],
@@ -308,6 +341,35 @@ def _activate_paid_order(
     currency: str,
     event_type: str,
 ) -> None:
+    # Idempotency guard: skip if subscription is already active for this period
+    # Use FOR UPDATE row-level lock to serialize concurrent webhook processing
+    # so two identical webhooks cannot both pass the check and double-activate.
+    if org_id:
+        existing_sub = (
+            db.query(Subscription)
+            .filter(Subscription.org_id == org_id)
+            .with_for_update()
+            .first()
+        )
+        if existing_sub is not None:
+            now = datetime.now(timezone.utc)
+            period_end = ensure_utc(existing_sub.current_period_end_at)
+            if (
+                existing_sub.status == "active"
+                and period_end is not None
+                and period_end > now
+                and not addon_quantities
+            ):
+                logger.info(
+                    "Idempotency guard: subscription for org_id=%s is already active "
+                    "with plan=%s until %s; skipping activation for event=%s",
+                    org_id,
+                    existing_sub.plan,
+                    period_end.isoformat(),
+                    event_type,
+                )
+                return
+
     cycle = billing_cycle or _resolve_billing_cycle(plan, amount_paise)
     period_end = _resolve_period_end(cycle)
     detail_parts = [f"plan={plan}", f"event={event_type}"]
@@ -345,13 +407,31 @@ def _activate_paid_order(
             current_period_end_at=period_end,
         )
     if org_id and period_end is not None:
+        # Combine plan OCR limit with all activated OCR pack allowances
+        from backend.plans import get_org_ocr_scan_allowance
+
+        plan_ocr_limit = int(plan_limit(plan, "ocr") or 0)
+        pack_ocr_allowance = get_org_ocr_scan_allowance(db, org_id=org_id)
+        total_ocr_limit = plan_ocr_limit + pack_ocr_allowance
         _reset_org_ocr_quota_period(
             db,
             org_id=org_id,
-            ocr_limit=int(plan_limit(plan, "ocr") or 0),
+            ocr_limit=total_ocr_limit,
             period_start=datetime.now(timezone.utc),
             period_end=period_end,
         )
+        # Calculate total WhatsApp message allowance from active packs and reset quota
+        from backend.plans import get_org_whatsapp_message_allowance
+
+        whatsapp_message_limit = get_org_whatsapp_message_allowance(db, org_id=org_id)
+        if whatsapp_message_limit > 0:
+            _reset_org_whatsapp_quota_period(
+                db,
+                org_id=org_id,
+                message_limit=whatsapp_message_limit,
+                period_start=datetime.now(timezone.utc),
+                period_end=period_end,
+            )
     try:
         existing_invoice = None
         if provider_order_id:
@@ -365,7 +445,7 @@ def _activate_paid_order(
                 .first()
             )
         if not existing_invoice:
-            amount_value = float(amount_paise or 0) / 100.0
+            amount_value = round(float(amount_paise or 0) / 100.0, 2)
             record_invoice(
                 db,
                 user_id=user_id,
@@ -384,7 +464,7 @@ def _activate_paid_order(
             existing_invoice.amount = float(amount_paise or 0) / 100.0
             existing_invoice.issued_at = existing_invoice.issued_at or datetime.now(timezone.utc)
             db.add(existing_invoice)
-    except Exception:
+    except Exception as error:
         logger.exception("Failed to record or update invoice for user_id=%s order_id=%s", user_id, provider_order_id)
     db.flush()
 
@@ -418,6 +498,43 @@ def _reset_org_ocr_quota_period(
             "org_id": org_id,
             "period": period,
             "ocr_limit": ocr_limit,
+            "period_start": period_start,
+            "period_end": period_end,
+            "created_at": timestamp,
+            "updated_at": timestamp,
+        },
+    )
+
+
+def _reset_org_whatsapp_quota_period(
+    db: Session,
+    *,
+    org_id: str,
+    message_limit: int,
+    period_start: datetime,
+    period_end: datetime,
+) -> None:
+    """Create or reset the WhatsApp usage quota row for an org after a pack purchase."""
+    period = period_start.strftime("%Y-%m")
+    timestamp = datetime.now(timezone.utc)
+    db.execute(
+        text(
+            """
+            INSERT INTO org_whatsapp_usage(org_id, period, message_limit, message_count, period_start, period_end, created_at, updated_at)
+            VALUES (:org_id, :period, :message_limit, 0, :period_start, :period_end, :created_at, :updated_at)
+            ON CONFLICT (org_id, period) DO UPDATE
+              SET message_count = 0,
+                  period = EXCLUDED.period,
+                  period_start = EXCLUDED.period_start,
+                  period_end = EXCLUDED.period_end,
+                  message_limit = EXCLUDED.message_limit,
+                  updated_at = EXCLUDED.updated_at
+            """
+        ),
+        {
+            "org_id": org_id,
+            "period": period,
+            "message_limit": message_limit,
             "period_start": period_start,
             "period_end": period_end,
             "created_at": timestamp,
@@ -472,6 +589,21 @@ def _ensure_trial(db: Session, user_id: int, plan: str) -> Subscription:
         trial_end_at=now + timedelta(days=TRIAL_DAYS),
     )
     db.add(sub)
+    db.flush()
+    # Initialize OCR quota for the trial period so require_ocr_quota does not
+    # fail with "quota_exhausted" on the very first scan.  The ocr_limit is
+    # derived from the plan's built-in OCR allowance (e.g. Pilot = 150 scans).
+    plan_key = normalize_plan(plan)
+    ocr_limit = int(plan_limit(plan_key, "ocr") or 0)
+    trial_end = now + timedelta(days=TRIAL_DAYS)
+    if ocr_limit > 0:
+        _reset_org_ocr_quota_period(
+            db,
+            org_id=org_id,
+            ocr_limit=ocr_limit,
+            period_start=now,
+            period_end=trial_end,
+        )
     db.commit()
     db.refresh(sub)
     return sub
@@ -520,22 +652,21 @@ def _resolve_checkout_quote(
     multiplier = 1 if cycle == "monthly" else int(PRICING_META.get("yearly_multiplier", 12) or 12)
     included_users = int(plan_info.get("user_limit", 0) or 0)
     included_factories = int(plan_info.get("factory_limit", 0) or 0)
+    extra_user_price = int(plan_info.get("extra_user_price", 0) or 0)
 
+    # Hard cap check for factories (no per-factory overage pricing yet)
     if plan_has_hard_caps():
-        if included_users > 0 and requested_users and requested_users > included_users:
-            raise HTTPException(
-                status_code=400,
-                detail=f"{plan_info.get('name', 'This plan')} supports up to {included_users} users. Choose a higher plan.",
-            )
         if included_factories > 0 and requested_factories and requested_factories > included_factories:
             raise HTTPException(
                 status_code=400,
                 detail=f"{plan_info.get('name', 'This plan')} supports up to {included_factories} factories. Choose a higher plan.",
             )
 
-    extra_users = 0
+    # Calculate extra user overage — users beyond the plan limit are priced at extra_user_price each
+    # Overage pricing works independently of the hard-cap toggle (pricing and cap-enforcement are separate)
+    extra_users = max(0, (requested_users or 0) - included_users) if extra_user_price > 0 and included_users > 0 else 0
     extra_factories = 0
-    extra_user_monthly = 0
+    extra_user_monthly = extra_users * extra_user_price if extra_user_price > 0 else 0
     extra_factory_monthly = 0
     org_id = resolve_org_id(current_user)
     active_addon_quantities = get_org_addon_quantity_map(db, org_id=org_id)
@@ -585,6 +716,7 @@ def _resolve_checkout_quote(
         "extra_factories": extra_factories,
         "extra_user_monthly": extra_user_monthly,
         "extra_factory_monthly": extra_factory_monthly,
+        "extra_user_price": extra_user_price,
         "selected_addon_ids": list(selected_addon_quantities.keys()),
         "selected_addon_quantities": selected_addon_quantities,
         "chargeable_addon_ids": [item["id"] for item in chargeable_addons],
@@ -607,12 +739,12 @@ def _resolve_checkout_plan(request: Request, payload: CreateOrderRequest) -> str
         or payload.selected_plan
         or payload.plan
     )
-    return normalize_plan(selected_plan or "starter")
+    return normalize_plan(selected_plan or "operator")
 
 
 @router.get("/config")
-def get_billing_config(current_user: User = Depends(get_current_user)) -> dict:
-    require_role(current_user, UserRole.ADMIN)
+def get_billing_config(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.config.view")
     key_id = os.getenv("RAZORPAY_KEY_ID")
     return {
         "configured": bool(key_id and os.getenv("RAZORPAY_KEY_SECRET")),
@@ -629,7 +761,7 @@ def get_billing_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.ADMIN)
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.status.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     sub = _ensure_trial(db, current_user.id, plan)
@@ -637,7 +769,7 @@ def get_billing_status(
     db.commit()
     try:
         from backend.ocr_limits import get_org_usage_summary, get_usage_summary
-    except Exception:
+    except Exception as error:
         get_org_usage_summary = None
         get_usage_summary = None
     usage = None
@@ -661,7 +793,7 @@ def get_billing_status(
             get_feature_usage_summary,
             get_org_feature_usage_summary,
         )
-    except Exception:
+    except Exception as error:
         get_feature_usage_summary = None
         get_org_feature_usage_summary = None
     ai_usage = None
@@ -705,7 +837,7 @@ def get_invoices(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_role(current_user, UserRole.ADMIN)
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.invoice.view")
     rows = list_invoices(db, user_id=current_user.id)
     return [
         {
@@ -718,27 +850,104 @@ def get_invoices(
             "provider": row.provider,
             "provider_invoice_id": row.provider_invoice_id,
             "pdf_url": row.pdf_url,
+            "invoice_number": row.invoice_number,
+            "org_id": row.org_id,
         }
         for row in rows
     ]
 
 
+@router.get("/invoices/{invoice_id}/pdf")
+def download_invoice_pdf(
+    invoice_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    """Generate and download a GST-compliant PDF invoice."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.invoice.view")
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found.")
+    # Access check: user must own the invoice or belong to its org
+    user_owns = invoice.user_id is not None and invoice.user_id == current_user.id
+    if not user_owns:
+        from backend.models.organization import Organization as OrgModel
+        org = db.query(OrgModel).filter(OrgModel.org_id == invoice.org_id).first()
+        user_org_id = resolve_org_id(current_user)
+        if not org or not user_org_id or org.org_id != user_org_id:
+            raise HTTPException(status_code=403, detail="Access denied to this invoice.")
+    try:
+        pdf_bytes = generate_invoice_pdf(db, invoice)
+    except Exception as error:
+        logger.exception("Failed to generate PDF invoice for invoice_id=%s", invoice_id)
+        raise HTTPException(status_code=500, detail="Failed to generate invoice PDF.") from error
+    inv_number = invoice.invoice_number or f"INV-{invoice.id:06d}"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="factory-nerve-invoice-{inv_number}.pdf"'},
+    )
+
+
 class DowngradeRequest(BaseModel):
-    plan: str = Field(default="free")
+    plan: str = Field(default="pilot")
 
 
 @router.post("/downgrade")
 def schedule_plan_downgrade(
     payload: DowngradeRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.OWNER)
+    # Step 1: PDP permission check (requires_mfa=True for billing.plan.change)
+    pdp = PDP(db=db)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="billing.plan.change",
+        resource=ResourceContext(org_id=org_id),
+        request_context=build_request_context(request),
+    )
+
     normalized = normalize_plan(payload.plan)
     if not normalized:
         raise HTTPException(status_code=400, detail="Invalid plan.")
+
+    # Step 2: Approval service initiation (IP-5 — critical action)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=None,
+        workflow_key="billing.plan.downgrade",
+        action_key="billing.plan.change",
+        resource_type="Subscription",
+        resource_id=org_id or "",
+        org_id=org_id,
+        current_workflow_state=None,
+        requested_change={"plan": normalized},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {
+            "message": "Downgrade request submitted for approval.",
+            "pending_plan": normalized,
+            "approval_instance_id": approval_decision.instance_id,
+        }
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     sub = schedule_downgrade(db, user_id=current_user.id, plan=normalized)
     db.commit()
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {
         "pending_plan": sub.pending_plan,
         "pending_plan_effective_at": sub.pending_plan_effective_at,
@@ -747,12 +956,53 @@ def schedule_plan_downgrade(
 
 @router.delete("/downgrade")
 def cancel_plan_downgrade(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.OWNER)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="billing.plan.change",
+        resource=ResourceContext(org_id=org_id),
+        request_context=build_request_context(request),
+    )
+
+    # Step 2: Approval service initiation
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=None,
+        workflow_key="billing.plan.downgrade",
+        action_key="billing.plan.change",
+        resource_type="Subscription",
+        resource_id=org_id or "",
+        org_id=org_id,
+        current_workflow_state="downgrade_scheduled",
+        requested_change={"action": "cancel_downgrade"},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {
+            "message": "Downgrade cancellation submitted for approval.",
+            "approval_instance_id": approval_decision.instance_id,
+        }
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     cancel_scheduled_downgrade(db, user_id=current_user.id)
     db.commit()
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {"message": "Scheduled downgrade cancelled."}
 
 
@@ -765,8 +1015,10 @@ async def create_order(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     try:
-        require_role(current_user, UserRole.OWNER)
+        PDP(db=db).require_permission(actor=current_user, permission_key="billing.order.create")
         normalized_plan = _resolve_checkout_plan(request, payload)
+        if not normalized_plan:
+            raise HTTPException(status_code=400, detail="A valid plan is required.")
         if is_sales_only_plan(normalized_plan):
             raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")
         requested_currency = str(payload.currency or SUPPORTED_CURRENCY).strip().upper()
@@ -915,7 +1167,7 @@ async def sync_order_status(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     del request
-    require_role(current_user, UserRole.OWNER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.order.sync")
     payment_order = (
         db.query(PaymentOrder)
         .filter(
@@ -943,10 +1195,12 @@ async def sync_order_status(
         amount = order_entity.get("amount") if isinstance(order_entity.get("amount"), int) else payment_order.amount
         addon_quantities = _extract_addon_quantities_from_notes(notes)
         currency = str(order_entity.get("currency") or payment_order.currency or SUPPORTED_CURRENCY)
+        sync_org_id = resolve_org_id(current_user)
         _activate_paid_order(
             db,
             user_id=current_user.id,
             plan=plan,
+            org_id=sync_org_id,
             billing_cycle=billing_cycle,
             amount_paise=amount,
             addon_quantities=addon_quantities,
@@ -1010,6 +1264,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
         existing = (
             db.query(WebhookEvent)
             .filter(WebhookEvent.provider == "razorpay", WebhookEvent.event_id == event_id)
+            .with_for_update()
             .first()
         )
         if existing:
@@ -1049,22 +1304,28 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                     amount = _extract_amount(data)
                     cycle = _extract_billing_cycle(data) or _resolve_billing_cycle(plan, amount)
                     addon_quantities = _extract_addon_quantities(data)
-                    if not plan or not user_id:
-                        order_entity = _fetch_order_entity(_extract_order_id(data))
-                        if order_entity:
-                            if not plan:
-                                plan_note = (order_entity.get("notes", {}) or {}).get("plan")
-                                if plan_note:
-                                    plan = normalize_plan(plan_note)
-                            if not user_id:
-                                user_id = _user_id_from_receipt(str(order_entity.get("receipt") or ""))
-                            if amount is None:
-                                amount = order_entity.get("amount") if isinstance(order_entity.get("amount"), int) else amount
-                            if not cycle:
-                                cycle = _resolve_billing_cycle(plan, amount)
-                            if not addon_quantities:
-                                notes = order_entity.get("notes", {}) or {}
-                                addon_quantities = _extract_addon_quantities_from_notes(notes)
+                    # Always fetch the original order entity from Razorpay to get the
+                    # authoritative addon quantities (the payment entity may only have
+                    # addon_ids without quantity info, defaulting to qty=1).
+                    order_entity = _fetch_order_entity(_extract_order_id(data))
+                    if order_entity:
+                        if not plan:
+                            plan_note = (order_entity.get("notes", {}) or {}).get("plan")
+                            if plan_note:
+                                plan = normalize_plan(plan_note)
+                        if not user_id:
+                            user_id = _user_id_from_receipt(str(order_entity.get("receipt") or ""))
+                        if amount is None:
+                            amount = order_entity.get("amount") if isinstance(order_entity.get("amount"), int) else amount
+                        if not cycle:
+                            cycle = _resolve_billing_cycle(plan, amount)
+                        # Always prefer order-entity notes for addon quantities — they
+                        # contain the full chargeable_addon_quantities JSON set by the
+                        # backend during create_order.
+                        order_notes = order_entity.get("notes", {}) or {}
+                        order_addon_quantities = _extract_addon_quantities_from_notes(order_notes)
+                        if order_addon_quantities:
+                            addon_quantities = order_addon_quantities
                     if plan and user_id and not was_paid:
                         if org_id is None:
                             user = db.query(User).filter(User.id == user_id).first()
@@ -1074,6 +1335,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                             db,
                             user_id=user_id,
                             plan=plan,
+                            org_id=org_id,
                             billing_cycle=cycle,
                             amount_paise=amount,
                             addon_quantities=addon_quantities,

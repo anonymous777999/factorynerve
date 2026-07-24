@@ -35,9 +35,14 @@ const backendHost =
   process.env.NEXT_PUBLIC_API_HOST || backendEnv.FASTAPI_HOST || "127.0.0.1";
 const backendPort =
   process.env.NEXT_PUBLIC_API_PORT || backendEnv.FASTAPI_PORT || "8765";
-const backendOrigin = explicitBackendOrigin.trim()
-  ? explicitBackendOrigin.trim().replace(/\/+$/, "")
+const isVercel = process.env.VERCEL === "1" || process.env.VERCEL_ENV === "production";
+const explicitOrigin = explicitBackendOrigin.trim().replace(/\/+$/, "");
+
+const defaultOrigin = isVercel
+  ? "https://factorynerve-api-6ttl.onrender.com"
   : `http://${backendHost}:${backendPort}`;
+
+const resolvedBackendOrigin = explicitOrigin || defaultOrigin;
 
 const nextConfig: NextConfig = {
   turbopack: {
@@ -48,7 +53,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: `${backendOrigin}/:path*`,
+        destination: `${resolvedBackendOrigin}/:path*`,
       },
     ];
   },

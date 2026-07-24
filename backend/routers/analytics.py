@@ -15,7 +15,7 @@ from backend.database import get_db
 from backend.models.entry import Entry
 from backend.models.user import User, UserRole
 from backend.security import get_current_user
-from backend.rbac import require_any_role, require_role
+from backend.authorization import PDP, ResourceContext
 from backend.plans import has_plan_feature, min_plan_for_feature, get_org_plan, normalize_plan, plan_rank
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_org_scope, apply_role_scope, factory_user_ids_query
@@ -45,7 +45,7 @@ def _require_analytics_feature(db: Session, current_user: User) -> None:
 
 
 def _basic_min_plan() -> str:
-    raw = (os.getenv("ANALYTICS_BASIC_MIN_PLAN") or "growth").strip().lower()
+    raw = (os.getenv("ANALYTICS_BASIC_MIN_PLAN") or "pilot").strip().lower()
     return normalize_plan(raw)
 
 
@@ -68,6 +68,8 @@ def _cache_key(db: Session, current_user: User, *parts: Any) -> str:
         resolve_factory_id(db, current_user) or "all",
         "analytics",
         current_user.id,
+        "role",
+        current_user.role.value,
         *parts,
     )
 
@@ -78,7 +80,7 @@ def weekly_analytics(
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
     _require_basic_analytics(db, current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="analytics.operations.view")
     today = date.today()
     start = today - timedelta(days=6)
 
@@ -141,7 +143,7 @@ def monthly_summary(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     _require_basic_analytics(db, current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="analytics.operations.view")
     today = date.today()
     start = today - timedelta(days=29)
 
@@ -190,8 +192,8 @@ def trends(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_analytics_feature(db, current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    _require_basic_analytics(db, current_user)
+    PDP(db=db).require_permission(actor=current_user, permission_key="analytics.operations.view")
     today = date.today()
     start = today - timedelta(days=6)
 
@@ -255,7 +257,7 @@ def manager_analytics(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     _require_analytics_feature(db, current_user)
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="analytics.operations.view")
     start = start_date or (date.today() - timedelta(days=7))
     end = end_date or date.today()
 

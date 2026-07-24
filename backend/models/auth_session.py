@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Index, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -15,6 +15,7 @@ class AuthSession(Base):
     __tablename__ = "auth_sessions"
     __table_args__ = (
         Index("ix_auth_sessions_user_active", "auth_user_id", "revoked_at"),
+        Index("ix_auth_sessions_user_active_v2", "user_id", "revoked_at"),
         Index("ix_auth_sessions_expires", "expires_at"),
         Index("ix_auth_sessions_token_hash", "token_hash"),
     )
@@ -22,6 +23,9 @@ class AuthSession(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     auth_user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("auth_users.id"), nullable=False, index=True
+    )
+    user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=True, index=True
     )
     token_hash: Mapped[str] = mapped_column(String(128), nullable=False)
     csrf_hash: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
@@ -35,3 +39,4 @@ class AuthSession(Base):
 
     ip_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
     user_agent_hash: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    factory_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)

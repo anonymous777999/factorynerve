@@ -3,65 +3,108 @@
 from __future__ import annotations
 
 import os
+import secrets
 from datetime import datetime, timezone, timedelta
 
 from fastapi import HTTPException, Request, Response, status
 from sqlalchemy.orm import Session
 
 from backend.models.auth_session import AuthSession
-from backend.models.auth_user import AuthUser
+from backend.models.user import User
+from backend.auth_security.passwords import hash_password
 from backend.auth_security.tokens import generate_token, hash_token
+from backend.utils import ensure_utc
 
 
 SESSION_COOKIE = os.getenv("AUTH_SESSION_COOKIE", "auth_session")
 CSRF_COOKIE = os.getenv("AUTH_CSRF_COOKIE", "auth_csrf")
 CSRF_HEADER = os.getenv("AUTH_CSRF_HEADER", "X-CSRF-Token")
 SESSION_TTL_MINUTES = int(os.getenv("AUTH_SESSION_TTL_MINUTES", "1440"))
+SESSION_IDLE_TIMEOUT_MINUTES = int(os.getenv("SESSION_IDLE_TIMEOUT_MINUTES", "30"))
+SESSION_ABSOLUTE_TIMEOUT_HOURS = int(os.getenv("SESSION_ABSOLUTE_TIMEOUT_HOURS", "24"))
 SESSION_SAMESITE = os.getenv("AUTH_SESSION_SAMESITE", "Lax")
-SESSION_SECURE = str(os.getenv("AUTH_SESSION_SECURE", "1")).lower() in {"1", "true", "yes", "on"}
+
+# Raw env var — None means "auto-detect from request scheme"
+_SESSION_SECURE_RAW: str | None = os.getenv("AUTH_SESSION_SECURE")
+
+
+def _should_use_secure_cookie(request: Request) -> bool:
+    """Determine whether to set cookie Secure flag.
+
+    Respect explicit env var if set; otherwise auto-detect from request
+    scheme (Secure only for HTTPS).  This mirrors the pattern in
+    backend/auth_cookies.py so cookies work over plain HTTP in local dev.
+    """
+    if _SESSION_SECURE_RAW is not None:
+        return _SESSION_SECURE_RAW.strip().lower() in {"1", "true", "yes", "on"}
+    return request.url.scheme == "https"
 
 
 def _expires_at() -> datetime:
     return datetime.now(timezone.utc) + timedelta(minutes=SESSION_TTL_MINUTES)
 
 
-def _cookie_kwargs() -> dict:
+def _cookie_kwargs(*, request: Request) -> dict:
     return {
         "httponly": True,
-        "secure": SESSION_SECURE,
+        "secure": _should_use_secure_cookie(request),
         "samesite": SESSION_SAMESITE,
         "path": "/",
     }
 
 
-def _csrf_cookie_kwargs() -> dict:
+def _csrf_cookie_kwargs(*, request: Request) -> dict:
     return {
         "httponly": False,
-        "secure": SESSION_SECURE,
+        "secure": _should_use_secure_cookie(request),
         "samesite": SESSION_SAMESITE,
         "path": "/",
     }
 
 
-def create_session(db: Session, *, user: AuthUser, request: Request, response: Response) -> AuthSession:
+def create_session(db: Session, *, user: User, request: Request, response: Response, factory_id: str | None = None) -> AuthSession:
     raw_token = generate_token(32)
     csrf_token = generate_token(16)
     token_hash = hash_token(raw_token)
     csrf_hash = hash_token(csrf_token)
     now = datetime.now(timezone.utc)
+
+    # Look up the actual AuthUser record by email to satisfy the FK constraint
+    # on auth_sessions.auth_user_id -> auth_users.id.  The production database
+    # was created via init_db() + stamp head which bypassed the Auth
+    # Consolidation migration (20260705_05) that normally populates auth_users.
+    from backend.models.auth_user import AuthUser
+    auth_user_record = db.query(AuthUser).filter(AuthUser.email == user.email).first()
+    if not auth_user_record:
+        # Defensive fallback: create AuthUser record if missing
+        auth_user_record = AuthUser(
+            id=str(user.id),
+            email=user.email,
+            password_hash=hash_password(secrets.token_urlsafe(32)),
+            is_active=True,
+            is_email_verified=True,
+            password_changed_at=user.password_changed_at or now,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(auth_user_record)
+        db.flush()
+
     session = AuthSession(
-        auth_user_id=user.id,
+        auth_user_id=auth_user_record.id,  # Use actual AuthUser ID (satisfies FK)
+        user_id=user.id,                     # New direct FK — primary lookup going forward
         token_hash=token_hash,
         csrf_hash=csrf_hash,
         created_at=now,
         expires_at=_expires_at(),
         ip_hash=_hash_value(request.client.host if request.client else None),
         user_agent_hash=_hash_value(request.headers.get("user-agent")),
+        factory_id=factory_id,
     )
     db.add(session)
     db.flush()
-    response.set_cookie(SESSION_COOKIE, raw_token, **_cookie_kwargs())
-    response.set_cookie(CSRF_COOKIE, csrf_token, **_csrf_cookie_kwargs())
+    response.set_cookie(SESSION_COOKIE, raw_token, **_cookie_kwargs(request=request))
+    response.set_cookie(CSRF_COOKIE, csrf_token, **_csrf_cookie_kwargs(request=request))
     return session
 
 
@@ -72,12 +115,23 @@ def revoke_session(db: Session, *, session: AuthSession, response: Response) -> 
     response.delete_cookie(CSRF_COOKIE, path="/")
 
 
-def revoke_all_sessions(db: Session, *, user_id: str) -> None:
+def revoke_all_sessions(db: Session, *, user_id: int | str) -> None:
+    """Revoke all active sessions for a user.
+
+    Accepts both int (user.id) and str (legacy auth_user_id) for backward
+    compatibility during the auth consolidation transition period.
+    """
     now = datetime.now(timezone.utc)
-    db.query(AuthSession).filter(
-        AuthSession.auth_user_id == user_id,
-        AuthSession.revoked_at.is_(None),
-    ).update({"revoked_at": now}, synchronize_session=False)
+    if isinstance(user_id, int):
+        db.query(AuthSession).filter(
+            AuthSession.user_id == user_id,
+            AuthSession.revoked_at.is_(None),
+        ).update({"revoked_at": now}, synchronize_session=False)
+    else:
+        db.query(AuthSession).filter(
+            AuthSession.auth_user_id == user_id,
+            AuthSession.revoked_at.is_(None),
+        ).update({"revoked_at": now}, synchronize_session=False)
 
 
 def require_csrf(request: Request, session: AuthSession) -> None:
@@ -89,23 +143,108 @@ def require_csrf(request: Request, session: AuthSession) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF validation failed.")
 
 
+def _session_expired_message(reason: str) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail=f"Session expired: {reason}.",
+        headers={"X-Session-Expired": reason},
+    )
+
+
 def get_current_session(db: Session, request: Request) -> AuthSession:
     raw_token = request.cookies.get(SESSION_COOKIE)
     if not raw_token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
     token_hash = hash_token(raw_token)
     session = db.query(AuthSession).filter(AuthSession.token_hash == token_hash).first()
-    if not session or session.revoked_at or session.expires_at <= datetime.now(timezone.utc):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired.")
+    if not session or session.revoked_at:
+        raise _session_expired_message("not_found_or_revoked")
+
+    now = datetime.now(timezone.utc)
+    created_at = ensure_utc(session.created_at)
+    expires_at = ensure_utc(session.expires_at)
+
+    # Absolute timeout from creation (max session lifetime)
+    absolute_deadline = created_at + timedelta(hours=SESSION_ABSOLUTE_TIMEOUT_HOURS)
+    if absolute_deadline <= now:
+        session.revoked_at = now
+        db.add(session)
+        db.flush()
+        raise _session_expired_message("absolute_timeout")
+
+    # Expires_at check (legacy absolute expiry from SESSION_TTL_MINUTES)
+    if expires_at <= now:
+        session.revoked_at = now
+        db.add(session)
+        db.flush()
+        raise _session_expired_message("expired")
+
+    # Idle timeout check — if last_used_at is older than threshold
+    if session.last_used_at is not None:
+        last_used = ensure_utc(session.last_used_at)
+        idle_deadline = last_used + timedelta(minutes=SESSION_IDLE_TIMEOUT_MINUTES)
+        if idle_deadline <= now:
+            session.revoked_at = now
+            db.add(session)
+            db.flush()
+            raise _session_expired_message("idle_timeout")
+
+    # Touch session — update last_used_at on every successful auth check
+    touch_session(db, session)
+    db.flush()
     return session
 
 
-def get_current_user(db: Session, session: AuthSession) -> AuthUser:
-    user = db.query(AuthUser).filter(AuthUser.id == session.auth_user_id, AuthUser.is_active.is_(True)).first()
+def get_current_user(db: Session, session: AuthSession) -> User:
+    """Return the User associated with this session.
+
+    Prefers the direct FK (session.user_id) when available (auth consolidation
+    Phase 2+). Falls back to the email bridge via AuthUser for sessions created
+    before the migration (Phase 1 transition period).
+    """
+    if session.user_id is not None:
+        user = db.query(User).filter(
+            User.id == session.user_id,
+            User.is_active.is_(True),
+        ).first()
+        if user:
+            # Normalize both sides to offset-aware UTC before comparing.
+            # session.created_at and user.password_changed_at may arrive
+            # naive (SQLite / some driver reads) or aware (Postgres
+            # timestamptz); comparing a naive and an aware datetime raises
+            # TypeError and surfaces as a 500 on every authenticated request.
+            session_created = ensure_utc(session.created_at)
+            pwd_changed = ensure_utc(user.password_changed_at) or datetime.min.replace(tzinfo=timezone.utc)
+            if session_created is not None and session_created < pwd_changed:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Session invalidated.",
+                )
+            return user
+
+    # Fallback: resolve via AuthUser email bridge (transition period)
+    from backend.models.auth_user import AuthUser
+    auth_user = db.query(AuthUser).filter(
+        AuthUser.id == session.auth_user_id,
+        AuthUser.is_active.is_(True),
+    ).first()
+    if not auth_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
+    # Same naive/aware normalization as the direct-FK path above.
+    session_created = ensure_utc(session.created_at)
+    auth_pwd_changed = ensure_utc(auth_user.password_changed_at)
+    if (
+        session_created is not None
+        and auth_pwd_changed is not None
+        and session_created < auth_pwd_changed
+    ):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated.")
+    user = db.query(User).filter(
+        User.email == auth_user.email,
+        User.is_active.is_(True),
+    ).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-    if session.created_at < user.password_changed_at:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated.")
     return user
 
 

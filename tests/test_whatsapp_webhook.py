@@ -114,7 +114,7 @@ def _fetch_rows(*, ref_id: str) -> tuple[OpsAlertEvent, OpsAlertEvent]:
 def test_webhook_verification_success(monkeypatch):
     monkeypatch.setenv("META_WA_WEBHOOK_VERIFY_TOKEN", "verify-token")
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Response-Envelope": "0"}) as client:
         response = client.get(
             "/webhooks/whatsapp",
             params={"hub.mode": "subscribe", "hub.verify_token": "verify-token", "hub.challenge": "12345"},
@@ -127,7 +127,7 @@ def test_webhook_verification_success(monkeypatch):
 def test_webhook_verification_failure(monkeypatch):
     monkeypatch.setenv("META_WA_WEBHOOK_VERIFY_TOKEN", "verify-token")
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Response-Envelope": "0"}) as client:
         response = client.get(
             "/webhooks/whatsapp",
             params={"hub.mode": "subscribe", "hub.verify_token": "wrong-token", "hub.challenge": "12345"},
@@ -139,7 +139,7 @@ def test_webhook_verification_failure(monkeypatch):
 def test_webhook_verification_missing_verify_token(monkeypatch):
     monkeypatch.delenv("META_WA_WEBHOOK_VERIFY_TOKEN", raising=False)
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Response-Envelope": "0"}) as client:
         response = client.get(
             "/webhooks/whatsapp",
             params={"hub.mode": "subscribe", "hub.verify_token": "anything", "hub.challenge": "12345"},
@@ -162,7 +162,7 @@ def test_webhook_valid_signature_updates_delivered(monkeypatch):
     )
     body = json.dumps(payload_dict, separators=(",", ":")).encode("utf-8")
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Response-Envelope": "0"}) as client:
         response = client.post(
             "/webhooks/whatsapp",
             content=body,
@@ -189,7 +189,7 @@ def test_webhook_invalid_signature_rejected(monkeypatch):
     )
     body = json.dumps(payload_dict, separators=(",", ":")).encode("utf-8")
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Response-Envelope": "0"}) as client:
         response = client.post(
             "/webhooks/whatsapp",
             content=body,
@@ -206,7 +206,7 @@ def test_webhook_malformed_json_returns_safe_400(monkeypatch):
     monkeypatch.setenv("META_WA_APP_SECRET", secret)
     body = b"{bad-json"
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Response-Envelope": "0"}) as client:
         response = client.post(
             "/webhooks/whatsapp",
             content=body,
@@ -231,7 +231,7 @@ def test_webhook_duplicate_events_are_suppressed(monkeypatch):
     body = json.dumps(payload_dict, separators=(",", ":")).encode("utf-8")
     signature = _sign_payload(body, secret=secret)
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Response-Envelope": "0"}) as client:
         first = client.post("/webhooks/whatsapp", content=body, headers={"X-Hub-Signature-256": signature})
         second = client.post("/webhooks/whatsapp", content=body, headers={"X-Hub-Signature-256": signature})
 
@@ -288,7 +288,7 @@ def test_webhook_failed_transition_preserves_failure_metadata(monkeypatch):
     )
     body = json.dumps(payload_dict, separators=(",", ":")).encode("utf-8")
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Response-Envelope": "0"}) as client:
         response = client.post(
             "/webhooks/whatsapp",
             content=body,
@@ -356,7 +356,7 @@ def test_webhook_ignores_unknown_payload_shapes_without_crashing(monkeypatch):
         separators=(",", ":"),
     ).encode("utf-8")
 
-    with TestClient(app) as client:
+    with TestClient(app, headers={"X-Response-Envelope": "0"}) as client:
         response = client.post(
             "/webhooks/whatsapp",
             content=body,

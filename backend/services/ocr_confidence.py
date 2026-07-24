@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from backend.services.ocr_cross_validator import CrossValidationResult
+
 
 _WEIGHTS = {
     "empty_cell_ratio": 0.20,
@@ -67,6 +69,39 @@ def calculate_structural_confidence(extracted_data: dict[str, Any] | None) -> di
             "columns_count": len(headers) if isinstance(headers, list) else 0,
             "total_cells": total_cells,
         },
+    }
+
+
+def calculate_factual_confidence(
+    result: CrossValidationResult, structural_confidence: float
+) -> dict[str, Any]:
+    """
+    Factual confidence is a blended score:
+    Starts at structural_confidence.
+    Penalized by cross-validation discrepancies.
+    Capped at 50% if no cross-validation ran.
+    Floored at 10% if any discrepancy >30%
+    """
+    score = structural_confidence
+
+    if result.status == "unvalidated":
+        score *= 0.5  # Can't trust unvalidated data
+    elif result.status == "blocked":
+        score = 10.0  # Digital corruption detected
+    elif result.status == "needs_review":
+        discrepancies = result.discrepancies
+        if discrepancies:
+            penalty = sum(d.percentage_diff for d in discrepancies) / len(discrepancies)
+            score = max(10.0, score * (1.0 - penalty))
+        else:
+            # If status is needs_review but no discrepancies (shouldn't happen), penalize slightly
+            score *= 0.9
+
+    return {
+        "score": round(score, 1),
+        "status": result.status,
+        "discrepancies": len(result.discrepancies),
+        "explanation": result.explanation,
     }
 
 

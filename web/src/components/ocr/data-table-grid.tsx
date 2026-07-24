@@ -43,16 +43,50 @@ function normalizeLength(row: OcrCell[], columns: number): OcrCell[] {
   return Array.from({ length: columns }, (_, index) => row[index] || "");
 }
 
+// Strips common accounting/currency decoration (₹, Rs., commas, trailing
+// Dr/Cr indicators, parenthesised negatives, % signs) so a column of real
+// amounts like "45,231.00 Cr" or "₹1,200" is still recognised as numeric
+// instead of falling back to plain text alignment.
+function cleanNumericToken(value: string): string {
+  return value
+    .trim()
+    .replace(/^(?:rs\.?|inr|₹|\$)\s*/i, "")
+    .replace(/\s*(?:dr|cr)\.?$/i, "")
+    .replace(/%$/, "")
+    .replace(/^\((.+)\)$/, "-$1")
+    .replace(/,/g, "")
+    .trim();
+}
+
+function isNumericToken(value: string): boolean {
+  const cleaned = cleanNumericToken(value);
+  return cleaned.length > 0 && /^-?\d+(?:\.\d+)?$/.test(cleaned);
+}
+
 function inferColumnType(values: OcrCell[]): OcrColumnType {
   const filled = values
     .map((cell) => normalizeCell(cell).value.trim())
     .filter(Boolean);
   if (!filled.length) return "text";
-  const numberLike = filled.every((value) => /^-?\d[\d,]*(?:\.\d+)?$/.test(value));
-  if (numberLike) return "number";
+  // Section headers, blank separators, and the occasional stray label mean
+  // a genuinely numeric ledger/amount column will rarely be 100% clean —
+  // treat it as numeric once a clear majority of the filled cells parse.
+  const numericCount = filled.filter((value) => isNumericToken(value)).length;
+  if (numericCount / filled.length >= 0.6) return "number";
   const dateLike = filled.every((value) => !Number.isNaN(Date.parse(value)));
   if (dateLike) return "date";
   return "text";
+}
+
+// A row is treated as a "total" row when its first meaningful cell reads
+// like a summary label. These rows should stand out from ordinary line
+// items instead of blending in as just another record.
+const TOTAL_ROW_PATTERN = /(grand\s+)?(sub[- ]?)?total|balance\s*(b\/?f|c\/?f|forward|carried|brought)?|amount\s+due|net\s+(payable|amount)/i;
+
+function isTotalRow(row: OcrCell[]): boolean {
+  const firstFilled = row.map((cell) => normalizeCell(cell).value.trim()).find(Boolean);
+  if (!firstFilled) return false;
+  return TOTAL_ROW_PATTERN.test(firstFilled);
 }
 
 function getConfidenceClass(tier: "high" | "medium" | "review_required"): string {
@@ -185,7 +219,7 @@ export function DataTableGrid({
   return (
     <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
       <div className="border-b border-[#edf1f5] px-5 py-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+        <div className="text-[11px] font-semibold uppercase tracking-label text-[#667085]">
           Preview & edit
         </div>
         <div className="mt-1 text-sm text-[#667085]">Inline edits only. No popups.</div>
@@ -233,7 +267,7 @@ export function DataTableGrid({
                     value={header}
                     readOnly={readOnly}
                     onChange={(event) => updateHeader(columnIndex, event.target.value)}
-                    className="h-10 w-full rounded-[14px] border border-[#d9e1e8] bg-[#fbfcfd] px-3 text-sm font-medium text-[#101828] outline-none transition focus:border-[#185FA5] focus:bg-white"
+                    className="h-10 w-full rounded-[14px] border border-[#d9e1e8] bg-[#fbfcfd] px-3 text-sm font-medium text-[#101828] outline-none transition focus:border-[#8c4218] focus:bg-white"
                   />
                   {!readOnly ? (
                     <select
@@ -243,7 +277,7 @@ export function DataTableGrid({
                         next[columnIndex] = event.target.value as OcrColumnType;
                         onChangeColumnTypes(next);
                       }}
-                      className="mt-2 h-9 w-full rounded-[12px] border border-[#e0e7ef] bg-white px-3 text-xs text-[#667085] outline-none transition focus:border-[#185FA5]"
+                      className="mt-2 h-9 w-full rounded-[12px] border border-[#e0e7ef] bg-white px-3 text-xs text-[#667085] outline-none transition focus:border-[#8c4218]"
                     >
                       <option value="text">Text</option>
                       <option value="number">Number</option>
@@ -255,8 +289,13 @@ export function DataTableGrid({
             </tr>
           </thead>
           <tbody>
-            {normalizedRows.map((row, rowIndex) => (
-              <tr key={`row-${rowIndex}`}>
+            {normalizedRows.map((row, rowIndex) => {
+              const totalRow = isTotalRow(row);
+              return (
+              <tr
+                key={`row-${rowIndex}`}
+                className={cn(totalRow && "border-t-2 border-t-[#8c4218]/30 bg-[#f8fafc] font-semibold")}
+              >
                 {row.map((currentCell, columnIndex) => {
                   const cellData = normalizeCell(currentCell);
                   const isSelected =
@@ -269,6 +308,13 @@ export function DataTableGrid({
                     ? currentCell.confidence
                     : confidenceMatrix?.[rowIndex]?.[columnIndex];
                   const confidenceTier = getOcrConfidenceTier(confidenceRaw ?? undefined);
+                  const needsAttention = confidenceTier !== "high";
+                  // Only flag cells that actually need a second look. Tinting
+                  // and badging every single high-confidence cell (the
+                  // previous behaviour) buried real issues in a wall of
+                  // identical "Verified" pills instead of drawing the eye to
+                  // what matters.
+                  const showIndicator = showLowConfidence && needsAttention;
                   const title = `${getConfidenceLabel(confidenceTier)}${raw && raw !== cellData.value ? ` | Original: ${raw}` : ""}`;
 
                   return (
@@ -276,7 +322,7 @@ export function DataTableGrid({
                       key={`cell-${rowIndex}-${columnIndex}`}
                       className={cn(
                         "border-b border-[#f0f3f7] px-3 py-3 align-top",
-                        showLowConfidence || confidenceTier === "high" ? getConfidenceClass(confidenceTier) : "",
+                        showIndicator ? getConfidenceClass(confidenceTier) : "",
                       )}
                     >
                       {isEditing ? (
@@ -302,7 +348,7 @@ export function DataTableGrid({
                             }
                           }}
                           className={cn(
-                            "h-10 w-full rounded-[14px] border border-[#185FA5] bg-white px-3 text-sm text-[#101828] outline-none",
+                            "h-10 w-full rounded-[14px] border border-[#8c4218] bg-white px-3 text-sm text-[#101828] outline-none",
                             alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                           )}
                         />
@@ -314,7 +360,7 @@ export function DataTableGrid({
                             "flex h-10 w-full items-center gap-2 rounded-[14px] border px-3 text-sm text-[#101828] outline-none transition duration-150",
                             alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                             isSelected
-                              ? "border-[#185FA5] bg-[#f4f9ff] shadow-[inset_0_0_0_1px_rgba(24,95,165,0.12)]"
+                              ? "border-[#8c4218] bg-[#f9f4ef] shadow-[inset_0_0_0_1px_rgba(140,66,24,0.12)]"
                               : "border-[#eef2f6] bg-[#fbfcfd] hover:border-[#d8e1ea] hover:bg-white",
                           )}
                           onClick={() => {
@@ -324,16 +370,19 @@ export function DataTableGrid({
                           onDoubleClick={() => beginEdit({ row: rowIndex, column: columnIndex })}
                         >
                           <span className="truncate">{cellData.value || "\u00A0"}</span>
-                          <span className={cn("ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]", getConfidenceBadgeClass(confidenceTier))}>
-                            {getConfidenceLabel(confidenceTier)}
-                          </span>
+                          {showIndicator ? (
+                            <span className={cn("ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]", getConfidenceBadgeClass(confidenceTier))}>
+                              {getConfidenceLabel(confidenceTier)}
+                            </span>
+                          ) : null}
                         </button>
                       )}
                     </td>
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

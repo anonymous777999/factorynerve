@@ -1,0 +1,19 @@
+
+> web@0.1.0 dev
+> next dev --webpack --hostname 127.0.0.1
+
+⚠ Port 3000 is in use by process 5896, using available port 3001 instead.
+▲ Next.js 16.2.1 (webpack)
+- Local:         http://127.0.0.1:3001
+- Network:       http://127.0.0.1:3001
+- Environments: .env.local
+✓ Ready in 575ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          5896
+- Dir:          D:\DPR APP\DPR.ai\web
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 5896 /F to stop it.
+[?25h

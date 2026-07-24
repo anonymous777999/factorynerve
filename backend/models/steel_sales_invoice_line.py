@@ -26,6 +26,12 @@ class SteelSalesInvoiceLine(Base):
     weight_kg: Mapped[float] = mapped_column(Numeric(14, 3), nullable=False, default=0)
     rate_per_kg: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0)
     line_total: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0)
+    # P1-8: GST auto-calculation fields
+    hsn_code: Mapped[str | None] = mapped_column(String(12), nullable=True, default=None)
+    gst_rate: Mapped[float] = mapped_column(Numeric(5, 2), nullable=False, default=18.0)
+    cgst_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0.0)
+    sgst_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0.0)
+    igst_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0.0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )

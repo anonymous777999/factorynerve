@@ -4,7 +4,7 @@ from tests.utils import register_user
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def test_demo_loader_requires_admin_role(http_client):

@@ -1,0 +1,5 @@
+# Render compatibility shim:
+# If Render root directory is set to backend/, this keeps
+# `pip install -r requirements.txt` working by deferring to
+# the repository-root dependency lock list.
+-r ../requirements.txt

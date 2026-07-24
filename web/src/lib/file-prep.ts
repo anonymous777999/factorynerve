@@ -81,13 +81,6 @@ export async function prepareOcrUploadFile(input: File): Promise<PreparedOcrFile
   // regardless of HEIC conversion, compression, or other processing
   const sha256 = await computeSha256(input);
   steps.push("Hashed original file");
-  console.log(
-    "[CACHE-DEBUG] Original file hash | hash=%s | size=%d | type=%s",
-    sha256,
-    input.size,
-    input.type,
-  );
-
   let workingFile = input;
 
   if (HEIC_TYPES.has(input.type) || hasHeicExtension(input)) {

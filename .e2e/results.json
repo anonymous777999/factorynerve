@@ -1,0 +1,222 @@
+{
+  "pass": 36,
+  "warn": 7,
+  "fail": 0,
+  "results": [
+    {
+      "status": "PASS",
+      "name": "01 register new org",
+      "detail": "email=e2e_owner_1784482395@example.com"
+    },
+    {
+      "status": "PASS",
+      "name": "02 verify email",
+      "detail": "Email verified successfully. Your account is now created and ready to sign in."
+    },
+    {
+      "status": "PASS",
+      "name": "03 login owner",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "04 auth/me identity+perms",
+      "detail": "role=owner factory=E2E Nerve Plant 1784482395"
+    },
+    {
+      "status": "PASS",
+      "name": "05 get factory settings",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "06 update factory settings",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "07 create defect reason",
+      "detail": "id=6 code=201"
+    },
+    {
+      "status": "PASS",
+      "name": "08 list users",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "09 invite supervisor",
+      "detail": "code=201"
+    },
+    {
+      "status": "PASS",
+      "name": "09 invite operator",
+      "detail": "code=201"
+    },
+    {
+      "status": "WARN",
+      "name": "09 invite accountant",
+      "detail": "code=403 {'success': False, 'error': {'code': 'error', 'message': 'Accountant role is not available on the Pilot plan. Upgrade to"
+    },
+    {
+      "status": "PASS",
+      "name": "10 create raw item",
+      "detail": "id=11 code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "11 create finished item",
+      "detail": "id=12 code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "12 inventory inward txn",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "13 read inventory stock",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "14 create DPR entry",
+      "detail": "id=19 code=201"
+    },
+    {
+      "status": "PASS",
+      "name": "15 create steel batch",
+      "detail": "id=5 code=200"
+    },
+    {
+      "status": "WARN",
+      "name": "16 approve entry",
+      "detail": "code=403 {'success': False, 'error': {'code': 'error', 'message': 'Self-approval is not allowed. A different user must review thi"
+    },
+    {
+      "status": "PASS",
+      "name": "17 attendance punch in",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "18 attendance today",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "19 attendance review queue",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "20 attendance live",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "21 ocr status",
+      "detail": "code=200"
+    },
+    {
+      "status": "WARN",
+      "name": "22 ocr templates",
+      "detail": "code=402"
+    },
+    {
+      "status": "PASS",
+      "name": "23 ocr verifications",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "24 ocr verif-summary",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "25 create invoice",
+      "detail": "id=3 line=3"
+    },
+    {
+      "status": "PASS",
+      "name": "26 create dispatch",
+      "detail": "id=2 code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "27 report weekly",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "27 report monthly",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "27 report insights",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "28 analytics manager",
+      "detail": "code=200"
+    },
+    {
+      "status": "WARN",
+      "name": "28 analytics weekly",
+      "detail": "code=402"
+    },
+    {
+      "status": "WARN",
+      "name": "28 analytics monthly",
+      "detail": "code=402"
+    },
+    {
+      "status": "WARN",
+      "name": "28 analytics trends",
+      "detail": "code=402"
+    },
+    {
+      "status": "PASS",
+      "name": "29 notifications list",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "30 unread-count",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "31 mark-read-all",
+      "detail": "code=200"
+    },
+    {
+      "status": "PASS",
+      "name": "32 re-login fresh session",
+      "detail": "ok"
+    },
+    {
+      "status": "PASS",
+      "name": "33 persistence entry survives",
+      "detail": "entry_id=19 found=True"
+    },
+    {
+      "status": "PASS",
+      "name": "34 persistence item survives",
+      "detail": "raw_id=11 found=True"
+    },
+    {
+      "status": "PASS",
+      "name": "35 RBAC anon blocked",
+      "detail": "code=401"
+    },
+    {
+      "status": "WARN",
+      "name": "36 CSRF POST w/o token rejected",
+      "detail": "code=200"
+    }
+  ]
+}

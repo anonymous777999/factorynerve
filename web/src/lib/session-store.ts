@@ -122,13 +122,19 @@ export function hydrateSessionFromStorage() {
   if (!persisted?.user) {
     return;
   }
+  // Keep loading: true so components (e.g. HomeRoute) wait for the
+  // server-side session verification in ensureSessionLoaded before
+  // making redirect decisions. Setting loading: false here would cause
+  // HomeRoute to immediately redirect based on potentially stale data
+  // (e.g. old factory list, expired role), which then hits middleware
+  // and redirects the user to /access as if they were unauthenticated.
   setSessionState({
     user: persisted.user ?? null,
     factories: persisted.factories ?? [],
     activeFactoryId: persisted.activeFactoryId ?? null,
     activeFactory: persisted.activeFactory ?? null,
     organization: persisted.organization ?? null,
-    loading: false,
+    loading: true,
     error: "",
     loadedAt: persisted.loadedAt ?? Date.now(),
   });

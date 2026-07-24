@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 from datetime import date, datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
@@ -33,8 +34,12 @@ from backend.models.organization import Organization
 from backend.security import get_current_user, hash_password
 from backend.utils import sanitize_text
 from backend.ocr_limits import get_usage_summary, get_org_usage_summary
-from backend.email_service import send_email
-from backend.rbac import is_admin_or_owner, require_role, role_rank
+from backend.email_utils import queue_and_send_email
+from backend.models.user import role_rank
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
+from backend.models.defect_reason import DefectReason
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.plans import (
     ALLOWED_PLANS,
     DEFAULT_PLAN,
@@ -58,12 +63,17 @@ from backend.services.user_code_service import (
     next_user_code,
 )
 from backend.services.email_verification_service import build_verification_link, create_verification_token
-from backend.services.password_reset_service import build_reset_link, create_reset_token
+from backend.auth_security.tokens import build_reset_token as sign_reset_token, expires_at as reset_expires_at, generate_token as generate_reset_token, hash_token as hash_reset_token
+from backend.models.auth_password_reset import AuthPasswordReset
+from backend.models.auth_user import AuthUser
+from backend.services.password_reset_service import build_reset_link
+from backend.auth_security.passwords import hash_password as hash_password_argon2
 from backend.services.user_service import validate_factory_role_assignment
 from backend.utils import generate_company_code
 
 
 router = APIRouter(tags=["Settings"])
+logger = logging.getLogger(__name__)
 EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
 PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "30"))
 INVITE_EMAIL_SUBJECT = os.getenv("INVITE_EMAIL_SUBJECT", "You're invited to FactoryNerve")
@@ -443,7 +453,19 @@ def _serialize_factory_summaries(
     summaries: list[dict] = []
     for factory in factories:
         profile = get_factory_profile(factory.industry_type)
-        template_key = normalize_workflow_template_key(factory.industry_type, factory.workflow_template_key)
+        try:
+            template_key = normalize_workflow_template_key(factory.industry_type, factory.workflow_template_key)
+        except ValueError:
+            # Defensive: a factory row whose stored workflow_template_key drifted out
+            # of sync with its industry_type must not 500 the whole factory list.
+            logger.warning(
+                "Factory %s has an inconsistent workflow_template_key=%r for industry_type=%r; "
+                "falling back to the default template.",
+                getattr(factory, "factory_id", None),
+                factory.workflow_template_key,
+                factory.industry_type,
+            )
+            template_key = default_workflow_template_key(factory.industry_type)
         template = get_workflow_template(template_key)
         summaries.append(
             {
@@ -471,6 +493,7 @@ def _serialize_factory_summaries(
 def get_factory_profiles(
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
+    # factory-profiles is a public lookup — no PDP needed, just auth
     del current_user
     return [
         {
@@ -488,7 +511,7 @@ def get_factory_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.profile.manage")
     factory = _active_factory(db, current_user)
     factory_name = _active_factory_name(db, current_user)
     settings = db.query(FactorySettings).filter(FactorySettings.factory_name == factory_name).first()
@@ -532,7 +555,7 @@ def get_factory_templates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.profile.manage")
     factory = _active_factory(db, current_user)
     if industry_type:
         profile = get_factory_profile(industry_type)
@@ -555,7 +578,7 @@ def list_factories(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.profile.manage")
     return _serialize_factory_summaries(db, factories=_org_factories(db, current_user), current_user=current_user)
 
 
@@ -566,8 +589,16 @@ def create_factory(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
     org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="factory.create",
+        resource=ResourceContext(org_id=org_id),
+        request_context=build_request_context(request),
+    )
+
     if not org_id:
         raise HTTPException(status_code=400, detail="Organization not found for current user.")
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
@@ -575,6 +606,34 @@ def create_factory(
         enforce_factory_limit(db, org_id=org_id, plan=plan)
     except ValueError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=None,
+        workflow_key="factory.create",
+        action_key="factory.create",
+        resource_type="Factory",
+        resource_id="new",
+        org_id=org_id,
+        current_workflow_state=None,
+        requested_change={"name": payload.name},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        db.commit()
+        return {
+            "status": "pending_approval",
+            "approval_instance_id": approval_decision.instance_id,
+            "message": "Submitted for approval. The factory will be created once approved.",
+        }
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
 
     name = sanitize_text(payload.name, max_length=255, preserve_newlines=False) or payload.name.strip()
     existing = (
@@ -649,6 +708,11 @@ def create_factory(
         request=request,
     )
     db.commit()
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {
         "message": "Factory created.",
         "factory": {
@@ -670,7 +734,7 @@ def get_control_tower(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="analytics.operations.view")
     org_id = resolve_org_id(current_user)
     factories = _org_factories(db, current_user)
     summaries = _serialize_factory_summaries(db, factories=factories, current_user=current_user)
@@ -701,7 +765,7 @@ def update_factory_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.profile.manage")
     try:
         factory = _active_factory(db, current_user)
         factory_id = factory.factory_id if factory else None
@@ -796,7 +860,7 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="user.directory.view")
     users = _scoped_users_query(db, current_user).all()
     plan_rows = db.query(UserPlan).filter(UserPlan.user_id.in_([u.id for u in users])).all() if users else []
     plan_map = {row.user_id: row.plan for row in plan_rows}
@@ -836,7 +900,15 @@ def invite_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.invite",
+        resource=ResourceContext(org_id=org_id),
+        request_context=build_request_context(request),
+    )
     _assert_role_assignment_allowed(db, current_user=current_user, target_role=payload.role)
     factory = _active_factory(db, current_user)
     factory_name = factory.name if factory else _active_factory_name(db, current_user)
@@ -942,12 +1014,40 @@ def invite_user(
             )
         )
     verification_token = create_verification_token(db, user=user, ttl_hours=EMAIL_VERIFICATION_TTL_HOURS)
-    reset_token = create_reset_token(db, user=user, ttl_minutes=PASSWORD_RESET_TTL_MINUTES)
     verification_link = build_verification_link(verification_token)
-    reset_link = build_reset_link(reset_token)
+
+    # Generate password reset token using the consolidated auth system (AuthPasswordReset table)
+    # so the reset link works with auth_secure.py's /password/reset/validate endpoint.
+    raw = generate_reset_token(32)
+    token_hash = hash_reset_token(raw)
+    auth_user_record = db.query(AuthUser).filter(AuthUser.email == user.email).first()
+    if not auth_user_record:
+        now = datetime.now(timezone.utc)
+        auth_user_record = AuthUser(
+            id=str(user.id),
+            email=user.email,
+            password_hash=hash_password_argon2(secrets.token_urlsafe(32)),
+            is_active=True,
+            is_email_verified=True,
+            password_changed_at=now,
+            created_at=now,
+            updated_at=now,
+        )
+        db.add(auth_user_record)
+        db.flush()
+    reset_record = AuthPasswordReset(
+        auth_user_id=auth_user_record.id,
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=reset_expires_at(PASSWORD_RESET_TTL_MINUTES),
+    )
+    db.add(reset_record)
+    db.flush()
+    signed_token = sign_reset_token({"uid": str(user.id), "token": raw})
+    reset_link = build_reset_link(signed_token)
     if delivery_mode == "email":
         try:
-            send_email(
+            queue_and_send_email(
                 subject=INVITE_EMAIL_SUBJECT,
                 to_emails=[user.email],
                 body=(
@@ -957,6 +1057,8 @@ def invite_user(
                     f"2. Set your password within {PASSWORD_RESET_TTL_MINUTES} minutes:\n{reset_link}\n\n"
                     "Use the password setup link after verification. If you were not expecting this invite, ignore this email."
                 ),
+                user_id=user.id,
+                factory_name=factory_name,
             )
         except Exception as error:  # pylint: disable=broad-except
             db.rollback()
@@ -972,6 +1074,8 @@ def invite_user(
         response["temp_password"] = temp_password
         response["verification_link"] = verification_link
         response["reset_link"] = reset_link
+
+    # Approval service completion not needed for invite (no self-approval risk for creation)
     return response
 
 
@@ -981,7 +1085,7 @@ def get_user_factory_access(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.ADMIN)
+    PDP(db=db).require_permission(actor=current_user, permission_key="user.membership.assign")
     org_id = resolve_org_id(current_user)
     if not org_id:
         raise HTTPException(status_code=400, detail="Organization not found for current user.")
@@ -1007,8 +1111,16 @@ def update_user_factory_access(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.ADMIN)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
     org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.membership.assign",
+        resource=ResourceContext(org_id=org_id),
+        request_context=build_request_context(request),
+    )
+
     if not org_id:
         raise HTTPException(status_code=400, detail="Organization not found for current user.")
     user = (
@@ -1082,6 +1194,37 @@ def update_user_factory_access(
     user.factory_name = primary_factory.name
     user.factory_code = primary_factory.factory_code
 
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=user.id,
+        workflow_key="user.membership.assign",
+        action_key="user.membership.assign",
+        resource_type="User",
+        resource_id=str(user_id),
+        org_id=org_id,
+        current_workflow_state=None,
+        requested_change={
+            "added_factories": added_factory_ids,
+            "removed_factories": removed_factory_ids,
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        db.commit()
+        return {
+            "status": "pending_approval",
+            "approval_instance_id": approval_decision.instance_id,
+            "message": "Submitted for approval. Factory access changes will apply once approved.",
+        }
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     if added_factory_ids or removed_factory_ids:
         _write_admin_audit(
             db,
@@ -1099,6 +1242,11 @@ def update_user_factory_access(
         )
 
     db.commit()
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     response = _serialize_user_factory_access(db, current_user=current_user, target_user=user)
     response["message"] = "Factory access updated."
     return response
@@ -1112,7 +1260,20 @@ def update_user_role(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.role.assign",
+        resource=ResourceContext(org_id=org_id),
+        request_context=build_request_context(request),
+    )
+
+    # Self-role-change guard (defense-in-depth + PDP)
+    if user_id == current_user.id:
+        raise HTTPException(status_code=403, detail="You cannot change your own role.")
+
     role_order = {
         UserRole.ATTENDANCE: 0,
         UserRole.OPERATOR: 1,
@@ -1163,8 +1324,7 @@ def update_user_role(
     if role_rank(payload.role) < role_rank(user.role):
         if (payload.confirm_action or "").strip().upper() != "DOWNGRADE":
             raise HTTPException(status_code=400, detail="Type DOWNGRADE to confirm role downgrade.")
-    if user.id == current_user.id and payload.role != current_user.role and not is_admin_or_owner(current_user):
-        raise HTTPException(status_code=400, detail="You cannot change your own role.")
+
     if user.role in {UserRole.ADMIN, UserRole.OWNER} and payload.role != user.role:
         if not _has_other_privileged_user(db, org_id=org_id, exclude_user_id=user.id):
             raise HTTPException(status_code=400, detail="Cannot remove the last owner/admin account.")
@@ -1187,6 +1347,36 @@ def update_user_role(
     for membership in memberships:
         validate_factory_role_assignment(user.role, payload.role)
         membership.role = payload.role
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=user.id,
+        workflow_key="user.role.assign",
+        action_key="user.role.assign",
+        resource_type="User",
+        resource_id=str(user_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=old_role.value,
+        requested_change={"from_role": old_role.value, "to_role": payload.role.value},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        db.commit()
+        return {
+            "status": "pending_approval",
+            "approval_instance_id": approval_decision.instance_id,
+            "message": "Submitted for approval. The role change will apply once approved.",
+        }
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     if old_role != payload.role:
         _write_admin_audit(
             db,
@@ -1200,6 +1390,11 @@ def update_user_role(
             new_state={"role": payload.role.value, "role_revision": user.role_revision},
         )
     db.commit()
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {"message": "Role updated."}
 
 
@@ -1211,7 +1406,7 @@ def update_user_plan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.plan.change")
     plan = normalize_plan(payload.plan)
     if plan not in ALLOWED_PLANS:
         raise HTTPException(status_code=400, detail=f"Plan must be one of: {', '.join(sorted(ALLOWED_PLANS))}.")
@@ -1251,7 +1446,7 @@ def update_org_plan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.OWNER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.plan.change")
     if not _manual_plan_override_enabled():
         raise HTTPException(status_code=403, detail="Manual plan override is disabled.")
     plan = normalize_plan(payload.plan)
@@ -1289,8 +1484,16 @@ def deactivate_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
     org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.deactivate",
+        resource=ResourceContext(org_id=org_id),
+        request_context=build_request_context(request),
+    )
+
     factory_id = resolve_factory_id(db, current_user)
     user = _scoped_users_query(db, current_user).filter(User.id == user_id).first()
     if not user:
@@ -1300,6 +1503,37 @@ def deactivate_user(
     if user.role in {UserRole.ADMIN, UserRole.OWNER}:
         if not _has_other_privileged_user(db, org_id=org_id, exclude_user_id=user.id):
             raise HTTPException(status_code=400, detail="Cannot deactivate the last owner/admin account.")
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=user.id,
+        workflow_key="user.deactivate",
+        action_key="user.deactivate",
+        resource_type="User",
+        resource_id=str(user_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=user.role.value,
+        requested_change={"is_active": False},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {
+            "status": "pending_approval",
+            "approval_instance_id": approval_decision.instance_id,
+            "message": "Submitted for approval. The user will be deactivated once approved.",
+        }
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    old_profile_picture = user.profile_picture
+    user.profile_picture = None
     user.is_active = False
     _write_admin_audit(
         db,
@@ -1311,11 +1545,20 @@ def deactivate_user(
         request=request,
     )
     db.commit()
+
+    # Clean up profile photo on deactivation (after commit succeeds, Bug #35 fix)
+    _delete_local_profile_photo(old_profile_picture)
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {"message": "User deactivated."}
 
 
 @router.get("/users/lookup")
 def lookup_users(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> list[dict]:
+    PDP(db=db).require_permission(actor=current_user, permission_key="user.directory.view")
     query = _scoped_users_query(db, current_user)
     return [{"id": user.id, "user_code": user.user_code, "name": user.name} for user in query.all()]
 
@@ -1325,6 +1568,7 @@ def get_usage(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.status.view")
     org_id = resolve_org_id(current_user)
     if org_id:
         plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
@@ -1337,6 +1581,7 @@ def last_plan_upgrade(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.status.view")
     org_id = resolve_org_id(current_user)
     query = db.query(AuditLog).filter(AuditLog.action == "PLAN_UPGRADED")
     if org_id:
@@ -1361,7 +1606,7 @@ def reconcile_usage_endpoint(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.ADMIN)
+    PDP(db=db).require_permission(actor=current_user, permission_key="admin.billing.quota.reset")
     if payload.period and (len(payload.period) != 7 or payload.period[4] != "-"):
         raise HTTPException(status_code=400, detail="Period must be in YYYY-MM format.")
     allow_decrease = payload.allow_decrease
@@ -1378,7 +1623,7 @@ def reconcile_usage_endpoint(
 
 @router.post("/demo/load")
 def load_demo_data(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
-    require_role(current_user, UserRole.ADMIN)
+    PDP(db=db).require_permission(actor=current_user, permission_key="admin.billing.quota.reset")
     org_id = resolve_org_id(current_user)
     if not org_id:
         raise HTTPException(status_code=400, detail="Organization not found for current user.")
@@ -1535,3 +1780,163 @@ def load_demo_data(request: Request, db: Session = Depends(get_db), current_user
             "days": 7,
         },
     }
+
+
+# ── Defect Reasons CRUD ──────────────────────────────────────────────────────
+
+
+class DefectReasonCreateRequest(BaseModel):
+    code: str = Field(min_length=1, max_length=60)
+    label: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class DefectReasonUpdateRequest(BaseModel):
+    code: str | None = Field(default=None, min_length=1, max_length=60)
+    label: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=1000)
+
+
+@router.get("/defect-reasons")
+def list_defect_reasons(
+    include_inactive: bool = Query(default=False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> list[dict]:
+    """List defect reasons. Optionally include inactive ones."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.master_data.manage")
+    query = db.query(DefectReason)
+    if not include_inactive:
+        query = query.filter(DefectReason.is_active.is_(True))
+    reasons = query.order_by(DefectReason.code.asc()).all()
+    return [
+        {
+            "id": r.id,
+            "code": r.code,
+            "label": r.label,
+            "description": r.description,
+            "is_active": r.is_active,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+        for r in reasons
+    ]
+
+
+@router.post("/defect-reasons", status_code=status.HTTP_201_CREATED)
+def create_defect_reason(
+    payload: DefectReasonCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Create a new defect reason."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.master_data.manage")
+    existing = db.query(DefectReason).filter(
+        func.lower(DefectReason.code) == payload.code.strip().lower()
+    ).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="A defect reason with this code already exists.")
+    reason = DefectReason(
+        code=sanitize_text(payload.code, max_length=60, preserve_newlines=False) or payload.code.strip(),
+        label=sanitize_text(payload.label, max_length=120, preserve_newlines=False) or payload.label.strip(),
+        description=sanitize_text(payload.description, max_length=1000) if payload.description else None,
+    )
+    db.add(reason)
+    _write_admin_audit(
+        db,
+        actor_id=current_user.id,
+        org_id=resolve_org_id(current_user),
+        factory_id=resolve_factory_id(db, current_user),
+        action="DEFECT_REASON_CREATED",
+        details=f"code={payload.code} label={payload.label}",
+        request=request,
+    )
+    db.commit()
+    db.refresh(reason)
+    return {
+        "message": "Defect reason created.",
+        "id": reason.id,
+        "code": reason.code,
+        "label": reason.label,
+        "description": reason.description,
+        "is_active": reason.is_active,
+        "created_at": reason.created_at.isoformat() if reason.created_at else None,
+    }
+
+
+@router.put("/defect-reasons/{reason_id}")
+def update_defect_reason(
+    reason_id: int,
+    payload: DefectReasonUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Update a defect reason's code, label, or description."""
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.master_data.manage")
+    reason = db.query(DefectReason).filter(DefectReason.id == reason_id).first()
+    if not reason:
+        raise HTTPException(status_code=404, detail="Defect reason not found.")
+    if payload.code is not None:
+        code_trimmed = payload.code.strip()
+        existing = db.query(DefectReason).filter(
+            func.lower(DefectReason.code) == code_trimmed.lower(),
+            DefectReason.id != reason_id,
+        ).first()
+        if existing:
+            raise HTTPException(status_code=409, detail="Another defect reason with this code already exists.")
+        reason.code = sanitize_text(code_trimmed, max_length=60, preserve_newlines=False) or code_trimmed
+    if payload.label is not None:
+        reason.label = sanitize_text(payload.label, max_length=120, preserve_newlines=False) or payload.label.strip()
+    if payload.description is not None:
+        reason.description = sanitize_text(payload.description, max_length=1000) or None
+    _write_admin_audit(
+        db,
+        actor_id=current_user.id,
+        org_id=resolve_org_id(current_user),
+        factory_id=resolve_factory_id(db, current_user),
+        action="DEFECT_REASON_UPDATED",
+        details=f"id={reason_id} code={reason.code}",
+        request=request,
+    )
+    db.commit()
+    db.refresh(reason)
+    return {
+        "message": "Defect reason updated.",
+        "id": reason.id,
+        "code": reason.code,
+        "label": reason.label,
+        "description": reason.description,
+        "is_active": reason.is_active,
+    }
+
+
+@router.delete("/defect-reasons/{reason_id}")
+def deactivate_defect_reason(
+    reason_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Deactivate a defect reason (soft delete — sets is_active = False).
+
+    Entries referencing this reason are preserved — the FK is not cascade-deleted.
+    """
+    PDP(db=db).require_permission(actor=current_user, permission_key="factory.master_data.manage")
+    reason = db.query(DefectReason).filter(DefectReason.id == reason_id).first()
+    if not reason:
+        raise HTTPException(status_code=404, detail="Defect reason not found.")
+    if not reason.is_active:
+        raise HTTPException(status_code=400, detail="Defect reason is already inactive.")
+    reason.is_active = False
+    _write_admin_audit(
+        db,
+        actor_id=current_user.id,
+        org_id=resolve_org_id(current_user),
+        factory_id=resolve_factory_id(db, current_user),
+        action="DEFECT_REASON_DEACTIVATED",
+        details=f"id={reason_id} code={reason.code}",
+        request=request,
+    )
+    db.commit()
+    return {"message": "Defect reason deactivated."}

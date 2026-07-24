@@ -23,7 +23,7 @@ from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.security import get_current_user
 from backend.plans import has_plan_feature, min_plan_for_feature, get_org_plan
-from backend.rbac import require_any_role
+from backend.authorization import PDP, ResourceContext
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_org_scope, apply_role_scope, can_view_entry, factory_user_ids_query
 from backend.services.background_jobs import (
@@ -753,7 +753,7 @@ def report_insights(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.insights.view")
     start = start_date or (date.today() - timedelta(days=27))
     end = end_date or date.today()
     if start > end:
@@ -811,10 +811,7 @@ def download_pdf(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "pdf"):
@@ -838,10 +835,7 @@ def download_pdf_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "pdf"):
@@ -864,7 +858,11 @@ def download_pdf_job(
 
 
 @router.get("/sample-pdf")
-def sample_pdf() -> Response:
+def sample_pdf(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> Response:
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     sample = Entry(
         id=0,
         user_id=0,
@@ -896,10 +894,7 @@ def download_excel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "excel"):
@@ -950,10 +945,7 @@ def weekly_export(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     start = date.today() - timedelta(days=6)
     end = date.today()
 
@@ -986,10 +978,7 @@ def monthly_export(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     start = date.today() - timedelta(days=29)
     end = date.today()
 
@@ -1024,10 +1013,7 @@ def export_factory_excel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "excel"):
@@ -1054,10 +1040,7 @@ def export_factory_excel_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "excel"):
@@ -1081,8 +1064,10 @@ def export_factory_excel_job(
 @router.get("/export-jobs/{job_id}")
 def get_report_job(
     job_id: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     job = get_job(job_id, owner_id=current_user.id)
     if not job or not str(job.get("kind", "")).startswith("reports_"):
         raise HTTPException(status_code=404, detail="Export job not found.")
@@ -1092,8 +1077,10 @@ def get_report_job(
 @router.get("/export-jobs/{job_id}/download")
 def download_report_job(
     job_id: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     job = get_job(job_id, owner_id=current_user.id)
     if not job or not str(job.get("kind", "")).startswith("reports_"):
         raise HTTPException(status_code=404, detail="Export job not found.")

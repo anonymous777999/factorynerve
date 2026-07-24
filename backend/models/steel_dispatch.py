@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -18,6 +18,7 @@ class SteelDispatch(Base):
         Index("ix_steel_dispatches_gate_pass_number", "gate_pass_number", unique=True),
         Index("ix_steel_dispatches_invoice_id", "invoice_id"),
         Index("ix_steel_dispatches_dispatch_date", "dispatch_date"),
+        Index("ix_steel_dispatches_client_request_id", "client_request_id"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -26,6 +27,9 @@ class SteelDispatch(Base):
     invoice_id: Mapped[int] = mapped_column(ForeignKey("steel_sales_invoices.id"), nullable=False)
     dispatch_number: Mapped[str] = mapped_column(String(40), nullable=False)
     gate_pass_number: Mapped[str] = mapped_column(String(40), nullable=False)
+    gate_pass_qr_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    gate_pass_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    gate_pass_verified_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     dispatch_date: Mapped[date] = mapped_column(Date, nullable=False)
     truck_number: Mapped[str] = mapped_column(String(40), nullable=False)
     transporter_name: Mapped[str | None] = mapped_column(String(160), nullable=True)
@@ -45,6 +49,7 @@ class SteelDispatch(Base):
     delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivered_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    client_request_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )

@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "org.chromium.webapk.a7a756704a0605559_v2",
+      "sha256_cert_fingerprints": [
+        "AD:82:79:2D:F7:AB:AC:D7:F8:7C:11:B5:99:EF:37:AC:D2:7C:89:D7:3C:DA:FC:9C:79:01:DA:A5:0D:B5:B8:AB"
+      ]
+    }
+  }
+]

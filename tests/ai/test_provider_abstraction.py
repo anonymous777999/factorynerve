@@ -95,7 +95,14 @@ def test_complete_with_retry_retries_exactly_three_times_on_429():
     assert response.retry_count == 3
 
 
-def test_complete_with_retry_does_not_retry_on_400():
+def test_complete_with_retry_does_not_retry_on_400(monkeypatch):
+    # Bypass AI governance global state that may suppress the provider
+    # after previous tests' repeated failures.
+    import backend.ai.providers.base as provider_base
+    monkeypatch.setattr(provider_base, "allow_provider", lambda provider, system: True)
+    monkeypatch.setattr(provider_base, "cap_retry_attempts", lambda max_retries, mode: max_retries)
+    monkeypatch.setattr(provider_base, "record_provider_attempt", lambda **kwargs: None)
+
     class FakeProvider(GeminiProvider):
         def __init__(self):
             self.calls = 0

@@ -32,6 +32,18 @@
   "nav.section.account": "Account",
   "nav.profile.label": "Profile",
   "nav.profile.description": "Your identity, access, password, and account details",
+  "nav.steel_inventory_intelligence.label": "சரக்கு நுண்ணறிவு",
+  "nav.steel_inventory_intelligence.description": "குறைந்த இருப்பு எச்சரிக்கைகள், இறந்த இருப்பு கண்டறிதல் மற்றும் விற்றுமுதல் பகுப்பாய்வு",
+  "nav.steel_quality.label": "தர கண்காணிப்பு",
+  "nav.steel_quality.description": "தொகுதி தர மதிப்பெண், தீவிரத்தன்மை விநியோகம் மற்றும் ஆபரேட்டர் செயல்திறன்",
+  "nav.steel_anomalies.label": "முரண்பாடு கண்டறிதல்",
+  "nav.steel_anomalies.description": "நிதி, சரக்கு மற்றும் அனுப்புதல் மோசடி எச்சரிக்கைகள்",
+  "nav.steel_sales_intelligence.label": "விற்பனை நுண்ணறிவு",
+  "nav.steel_sales_intelligence.description": "விற்பனை போக்குகள், வாடிக்கையாளர் பகுப்பாய்வு மற்றும் நிறைவேற்ற புனல்",
+  "nav.steel_financial_intelligence.label": "நிதி நுண்ணறிவு",
+  "nav.steel_financial_intelligence.description": "வருவாய், விளிம்புகள், வரவுகள் மற்றும் பணப் போக்கு",
+  "nav.steel_production_intelligence.label": "உற்பத்தி நுண்ணறிவு",
+  "nav.steel_production_intelligence.description": "ஷிப்ட் செயல்திறன், தொகுதி தரம் மற்றும் ஆபரேட்டர் செயல்திறன்",
   "role.team_member": "Team member",
   "role.attendance": "Attendance user"
 }

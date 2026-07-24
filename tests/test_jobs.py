@@ -5,7 +5,7 @@ from tests.utils import create_entry_payload, register_user
 
 
 def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
+    return {"Authorization": f"Bearer {token}", "Cookie": f"auth_session={token}"}
 
 
 def _wait_for_job(http_client, path: str, headers: dict[str, str], attempts: int = 60):

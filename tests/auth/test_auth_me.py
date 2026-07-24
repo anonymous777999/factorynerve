@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 
 from backend.models.user import UserRole
-from backend.routers.auth import get_me
+from backend.routers.auth_secure import _build_me_permissions as get_me
 
 
 def _make_user(role: UserRole):
@@ -34,23 +34,23 @@ def _make_user(role: UserRole):
 
 
 def test_owner_role_returns_can_manage_billing_true():
-    response = get_me(_make_user(UserRole.OWNER))
-    assert response.permissions.can_manage_billing is True
+    permissions = get_me(_make_user(UserRole.OWNER))
+    assert permissions.can_manage_billing is True
 
 
 def test_manager_role_returns_can_manage_billing_false():
-    response = get_me(_make_user(UserRole.MANAGER))
-    assert response.permissions.can_manage_billing is False
+    permissions = get_me(_make_user(UserRole.MANAGER))
+    assert permissions.can_manage_billing is False
 
 
 def test_operator_role_returns_can_view_analytics_false():
-    response = get_me(_make_user(UserRole.OPERATOR))
-    assert response.permissions.can_view_analytics is False
+    permissions = get_me(_make_user(UserRole.OPERATOR))
+    assert permissions.can_view_analytics is False
 
 
 def test_supervisor_role_returns_can_approve_entries_true():
-    response = get_me(_make_user(UserRole.SUPERVISOR))
-    assert response.permissions.can_approve_entries is True
+    permissions = get_me(_make_user(UserRole.SUPERVISOR))
+    assert permissions.can_approve_entries is True
 
 
 def test_permissions_dict_keys_are_consistent_across_all_7_roles():
@@ -64,5 +64,5 @@ def test_permissions_dict_keys_are_consistent_across_all_7_roles():
         "can_view_admin_panel",
     }
     for role in UserRole:
-        response = get_me(_make_user(role))
-        assert set(response.model_dump()["permissions"].keys()) == expected_keys
+        permissions = get_me(_make_user(role))
+        assert set(permissions.model_dump().keys()) == expected_keys

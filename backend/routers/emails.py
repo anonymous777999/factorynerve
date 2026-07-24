@@ -22,7 +22,7 @@ from backend.ai_rate_limit import check_rate_limit, RateLimitError
 from backend.database import get_db
 from backend.dependencies.quota import consume_ai_quota
 from backend.security import get_current_user
-from backend.rbac import require_any_role
+from backend.authorization import PDP, ResourceContext
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_org_scope, apply_role_scope, factory_user_ids_query
 
@@ -191,7 +191,7 @@ def get_email_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EmailSummaryResponse:
-    require_any_role(current_user, {UserRole.ACCOUNTANT, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.email.summary.view")
     summary = _build_summary(db, current_user, start_date, end_date)
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
@@ -223,7 +223,7 @@ def generate_summary_email(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EmailGenerateResponse:
-    require_any_role(current_user, {UserRole.ACCOUNTANT, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.email.summary.generate")
     if not has_any_ai_key():
         raise HTTPException(
             status_code=400,
@@ -238,7 +238,7 @@ def generate_summary_email(
             detail=f"Email summaries are not available on the {plan.title()} plan. Upgrade to {_summary_min_plan().title()} or higher to unlock this.",
         )
     try:
-        check_rate_limit(current_user.id, feature="email")
+        check_rate_limit(current_user.id, feature="email", db=db)
     except RateLimitError as error:
         raise HTTPException(status_code=429, detail=error.detail) from error
     if org_id:

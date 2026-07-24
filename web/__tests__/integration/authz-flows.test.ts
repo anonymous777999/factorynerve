@@ -4,8 +4,8 @@ import test from "node:test";
 import type { NextRequest } from "next/server";
 
 import { middleware } from "../../middleware";
-import { getVisibleNavSections } from "../../src/components/app-shell";
-import { resolveApiError } from "../../src/components/api-error-boundary";
+import { getVisibleNavSections } from "../../src/components/layout/app-shell";
+import { resolveApiError } from "../../src/components/shared/api-error-boundary";
 import { resolveAccessReasonMessage } from "../../src/lib/access-reason";
 import { resolveWorkspaceRecoveryPlan, type Permissions, DEFAULT_PERMISSIONS } from "../../src/lib/auth";
 
@@ -79,7 +79,20 @@ test("Flow 3 - factory removed mid-session auto-switches to the next workspace",
   });
 });
 
-test("Flow 4 - manager does not receive admin-only panel navigation affordances", () => {
+test("Flow 4 - active workspace context does not force onboarding redirect on transient auth errors", () => {
+  const plan = resolveWorkspaceRecoveryPlan(
+    {
+      activeFactoryId: "factory-a",
+      factories: [
+        { factory_id: "factory-a", name: "Factory A", role: "manager" },
+      ],
+    },
+    404,
+  );
+  assert.deepEqual(plan, { action: "ignore" });
+});
+
+test("Flow 5 - manager does not receive admin-only panel navigation affordances", () => {
   const labels = getVisibleNavSections(
     new Set(["/dashboard", "/settings", "/plans", "/billing", "/profile"]),
     makePermissions({

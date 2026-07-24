@@ -22,7 +22,7 @@ from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
 from backend.premium_access import premium_required, require_premium_plan
 from backend.query_helpers import apply_org_scope, apply_role_scope, factory_user_ids_query
-from backend.rbac import require_any_role
+from backend.authorization import PDP, ResourceContext
 from backend.security import get_current_user
 from backend.tenancy import resolve_factory_id, resolve_org_id
 
@@ -478,7 +478,7 @@ def premium_dashboard(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> PremiumDashboardResponse:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="analytics.premium.view")
     return _build_dashboard_payload(
         db,
         current_user,
@@ -499,7 +499,7 @@ def premium_audit_trail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> PremiumAuditTrailResponse:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="audit.log.view")
     allowed_factories = _allowed_factories(db, current_user)
     allowed_ids = {factory.factory_id for factory in allowed_factories}
     if factory_id and allowed_ids and factory_id not in allowed_ids:
@@ -546,7 +546,7 @@ def premium_executive_pdf(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.executive.export")
     payload = _build_dashboard_payload(
         db,
         current_user,

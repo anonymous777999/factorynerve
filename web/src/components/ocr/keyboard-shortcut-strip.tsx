@@ -21,7 +21,7 @@ export function KeyboardShortcutStrip({ lowConfidenceCount, totalCells, editedCo
           </span>
         )}
         {editedCount > 0 && (
-          <span className="text-blue-700">
+          <span className="text-[var(--accent)]">
             ✎ {editedCount} edited
           </span>
         )}

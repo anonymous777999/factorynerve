@@ -26,7 +26,7 @@ export type AddonBreakdown = {
   requiredAddonIds: string[];
 };
 
-const PLAN_ORDER = ["free", "starter", "growth", "factory", "business", "enterprise"];
+const PLAN_ORDER = ["pilot", "operator", "factory", "operations", "group", "enterprise"];
 
 function safeLimit(limit: number) {
   return Number(limit || 0);
@@ -108,9 +108,8 @@ export function planSupportsSelection(
   selection: PricingSelection,
 ) {
   const requiredFeatures = selection.requiredFeatures || [];
-  if (safeLimit(plan.user_limit) > 0 && selection.users > safeLimit(plan.user_limit)) {
-    return false;
-  }
+  // Users are NOT hard-capped — overage is priced via extra_user_price.
+  // Only factories are hard-capped because there is no factory overage pricing yet.
   if (safeLimit(plan.factory_limit) > 0 && selection.factories > safeLimit(plan.factory_limit)) {
     return false;
   }
@@ -182,7 +181,8 @@ export function calculatePlanEstimate(
     plan.user_limit > 0 ? Math.max(0, selection.users - plan.user_limit) : 0;
   const extraFactories =
     plan.factory_limit > 0 ? Math.max(0, selection.factories - plan.factory_limit) : 0;
-  const extraUserCost = 0;
+  const extraUserPrice = plan.extra_user_price || 0;
+  const extraUserCost = extraUsers * extraUserPrice;
   const extraFactoryCost = 0;
   const addonBreakdown = resolveAddonBreakdown(plan, addons, selection);
   const addonMonthlyCost = addonBreakdown.chargeableAddons.reduce(

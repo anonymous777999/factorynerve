@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import json
 import logging
 import os
@@ -17,6 +18,8 @@ import secrets
 import string
 
 from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import rsa
 from dotenv import load_dotenv
 
 
@@ -43,6 +46,7 @@ class AppConfig:
     openai_api_key: str
     ai_provider: str
     jwt_secret_key: str
+    jwt_rsa_private_key: str
     jwt_expire_hours: int
     app_name: str
     app_env: str
@@ -104,6 +108,44 @@ def _validate_required_values(raw_values: dict[str, str | None]) -> None:
         raise ValueError("Invalid DATA_ENCRYPTION_KEY. Use a valid Fernet key.") from error
 
 
+# Cached RSA private key for JWT signing (RS256)
+_JWT_RSA_PRIVATE_KEY: rsa.RSAPrivateKey | None = None
+
+
+def load_jwt_rsa_private_key(pem: str) -> rsa.RSAPrivateKey | None:
+    """Load and cache an RSA private key from a PEM string for JWT RS256 signing.
+
+    On first call, deserializes the PEM and caches the key object.
+    If JWT_RSA_PRIVATE_KEY is empty (development), returns None so callers
+    can fall back to HS256 for backward compatibility.
+    """
+    global _JWT_RSA_PRIVATE_KEY
+    if _JWT_RSA_PRIVATE_KEY is not None:
+        return _JWT_RSA_PRIVATE_KEY
+    pem_stripped = pem.strip()
+    if not pem_stripped:
+        return None  # No RSA key configured — fall back to HS256
+    try:
+        key = serialization.load_pem_private_key(
+            pem_stripped.encode("utf-8"),
+            password=None,
+        )
+        if not isinstance(key, rsa.RSAPrivateKey):
+            raise ValueError("JWT_RSA_PRIVATE_KEY must be an RSA private key.")
+        _JWT_RSA_PRIVATE_KEY = key
+        return key
+    except Exception as error:
+        raise ValueError(f"Invalid JWT_RSA_PRIVATE_KEY: {error}") from error
+
+
+def get_jwt_rsa_public_key() -> rsa.RSAPublicKey | None:
+    """Derive and return the RSA public key from the configured private key."""
+    private_key = load_jwt_rsa_private_key(get_config().jwt_rsa_private_key)
+    if private_key is None:
+        return None
+    return private_key.public_key()
+
+
 def _normalize_database_url(database_url: str) -> str:
     if database_url.startswith("sqlite:///"):
         path = database_url.replace("sqlite:///", "", 1)
@@ -115,46 +157,11 @@ def _normalize_database_url(database_url: str) -> str:
 
 @lru_cache(maxsize=1)
 def get_config() -> AppConfig:
-    load_dotenv(ENV_PATH)
-    raw = {
-        "GROQ_API_KEY": os.getenv("GROQ_API_KEY"),
-        "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
-        "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
-        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        "AI_PROVIDER": os.getenv("AI_PROVIDER"),
-        "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY"),
-        "JWT_EXPIRE_HOURS": os.getenv("JWT_EXPIRE_HOURS"),
-        "APP_NAME": os.getenv("APP_NAME"),
-        "APP_ENV": os.getenv("APP_ENV", "development"),
-        "DEBUG": os.getenv("DEBUG"),
-        "LOG_LEVEL": os.getenv("LOG_LEVEL"),
-        "LOG_FORMAT": os.getenv("LOG_FORMAT", "text"),
-        "FASTAPI_PORT": os.getenv("FASTAPI_PORT"),
-        "STREAMLIT_PORT": os.getenv("STREAMLIT_PORT"),
-        "DATA_ENCRYPTION_KEY": os.getenv("DATA_ENCRYPTION_KEY"),
-        "DATABASE_URL": os.getenv(
-            "DATABASE_URL", f"sqlite:///{(PROJECT_ROOT / 'dpr_ai.db').as_posix()}"
-        ),
-    }
-    _validate_required_values(raw)
-    return AppConfig(
-        groq_api_key=str(raw.get("GROQ_API_KEY") or ""),
-        anthropic_api_key=str(raw.get("ANTHROPIC_API_KEY") or ""),
-        gemini_api_key=str(raw.get("GEMINI_API_KEY") or ""),
-        openai_api_key=str(raw.get("OPENAI_API_KEY") or ""),
-        ai_provider=str(raw["AI_PROVIDER"]),
-        jwt_secret_key=str(raw["JWT_SECRET_KEY"]),
-        jwt_expire_hours=_to_int(raw["JWT_EXPIRE_HOURS"], 24),
-        app_name=str(raw["APP_NAME"]),
-        app_env=str(raw.get("APP_ENV") or "development").strip().lower(),
-        debug=_to_bool(raw["DEBUG"], False),
-        log_level=str(raw.get("LOG_LEVEL") or "INFO").upper(),
-        log_format=str(raw.get("LOG_FORMAT") or "text").strip().lower(),
-        fastapi_port=_to_int(raw["FASTAPI_PORT"], 8765),
-        streamlit_port=_to_int(raw["STREAMLIT_PORT"], 8502),
-        data_encryption_key=str(raw["DATA_ENCRYPTION_KEY"]),
-        database_url=_normalize_database_url(str(raw["DATABASE_URL"])),
-    )
+    # Delegate to the new Pydantic‑based configuration.
+    from .config import config as cfg  # noqa: WPS433
+
+    # The cfg object exposes the same attributes as AppConfig.
+    return cfg  # type: ignore[return-value]
 
 
 def setup_logging() -> None:
@@ -280,6 +287,9 @@ def sanitize_text(value: str | None, *, max_length: int | None = None, preserve_
         return None
     cleaned = value.replace("\r\n", "\n").replace("\r", "\n")
     cleaned = _CONTROL_CHARS_RE.sub("", cleaned).strip()
+    # FIX (SEC-02): HTML-escape user input to prevent stored XSS when this
+    # text is rendered in audit logs, OCR review pages, or any frontend view.
+    cleaned = html.escape(cleaned)
     if not preserve_newlines:
         cleaned = re.sub(r"\s+", " ", cleaned)
     if max_length is not None and len(cleaned) > max_length:
@@ -414,6 +424,40 @@ def check_entry_alerts(entry: Any) -> list[dict[str, str]]:
             {"type": "MANPOWER_SHORTAGE", "message": f"Absenteeism at {percent_absent}% (above 20%).", "severity": "high"}
         )
     return alerts
+def number_to_words(value: float) -> str:
+    """Convert a numeric amount to Indian Rupees words (e.g., 1250.50 -> 'One Thousand Two Hundred Fifty Rupees and Fifty Paise')."""
+    if value < 0:
+        return "Minus " + number_to_words(-value)
+    if value == 0:
+        return "Zero Rupees"
+    amount = int(value)
+    paise = int(round((value - amount) * 100))
+    below_twenty = [
+        "", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine",
+        "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen",
+        "Seventeen", "Eighteen", "Nineteen"
+    ]
+    tens = [
+        "", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"
+    ]
+
+    def _words(n: int) -> str:
+        if n < 20:
+            return below_twenty[n]
+        if n < 100:
+            return tens[n // 10] + (" " + below_twenty[n % 10] if n % 10 else "")
+        if n < 1000:
+            return below_twenty[n // 100] + " Hundred" + (" " + _words(n % 100) if n % 100 else "")
+        if n < 100000:  # up to 99,999
+            return _words(n // 1000) + " Thousand" + (" " + _words(n % 1000) if n % 1000 else "")
+        if n < 10000000:  # up to 99,99,999
+            return _words(n // 100000) + " Lakh" + (" " + _words(n % 100000) if n % 100000 else "")
+        return _words(n // 10000000) + " Crore" + (" " + _words(n % 10000000) if n % 10000000 else "")
+
+    result = _words(abs(amount)) + " Rupees"
+    if paise > 0:
+        result += " and " + _words(paise) + " Paise"
+    return result
 
 
 LOW_CONFIDENCE_THRESHOLD = 60

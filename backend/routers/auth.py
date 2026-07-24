@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import io
 import logging
 import os
@@ -17,23 +16,21 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from PIL import Image, ImageOps, UnidentifiedImageError
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.database import get_db, hash_ip_address
-from backend.models.report import AuditLog, TokenBlacklist
+from backend.models.report import AuditLog
 from backend.models.email_verification_token import EmailVerificationToken
 from backend.models.pending_registration import PendingRegistration
-from backend.models.refresh_token import RefreshToken
-from backend.models.user import User, UserReadSchema, UserRole
+from backend.models.user import User, UserReadSchema, UserRole, role_rank
 from backend.models.factory import Factory
 from backend.models.organization import Organization
 from backend.models.user_factory_role import UserFactoryRole
-from backend.schemas.auth import AuthMeResponse, PermissionsSchema
+from backend.authorization import PermissionCatalog, ResourceContext
+from backend.authorization.permission_catalog import ScopeLevel
 from backend.security import (
-    create_access_token,
-    decode_access_token,
     get_current_user,
     hash_password,
     is_admin,
@@ -68,24 +65,23 @@ from backend.services.user_code_service import (
     next_user_code,
 )
 from backend.services.user_service import validate_factory_role_assignment
-from backend.email_service import send_email
+from backend.email_utils import queue_and_send_email
 from backend.services.registration_service import resolve_registration_context
-from backend.auth_cookies import (
-    clear_auth_cookies,
-    get_access_cookie,
-    get_refresh_cookie,
-    require_csrf,
-    set_auth_cookies,
-    wants_cookie_auth,
+from backend.auth_security.sessions import (
+    get_current_session as get_v2_session,
+    require_csrf as require_v2_csrf,
+    revoke_all_sessions as revoke_all_v2_sessions,
+    revoke_session as revoke_v2_session,
+    SESSION_COOKIE,
+    CSRF_COOKIE,
 )
 
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Authentication"])
 
-LOGIN_ATTEMPT_LIMIT = 5
-LOGIN_ATTEMPT_WINDOW_SECONDS = 60
-REFRESH_TOKEN_DAYS = int(os.getenv("REFRESH_TOKEN_DAYS", "30"))
+REGISTER_RATE_LIMIT = int(os.getenv("AUTH_REGISTER_RATE_LIMIT", "5"))
+REGISTER_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("AUTH_REGISTER_RATE_LIMIT_WINDOW", "60"))
 PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "30"))
 PASSWORD_RESET_EMAIL_SUBJECT = os.getenv("PASSWORD_RESET_EMAIL_SUBJECT", "Reset your DPR.ai password")
 EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
@@ -97,12 +93,12 @@ PROFILE_PHOTO_MAX_BYTES = int(os.getenv("PROFILE_PHOTO_MAX_BYTES", str(5 * 1024 
 PROFILE_PHOTO_SIZE = max(256, int(os.getenv("PROFILE_PHOTO_SIZE", "512")))
 PROFILE_PHOTO_DIR = Path(__file__).resolve().parents[2] / "var" / "profile_photos"
 _rate_limit_lock = threading.Lock()
-_login_attempts: dict[str, deque[float]] = defaultdict(deque)
+_register_attempts: dict[str, deque[float]] = defaultdict(deque)
 
 
 @router.on_event("startup")
 def log_deprecated_auth_route_warning() -> None:
-    logger.warning("DEPRECATED_AUTH_ROUTE_ACTIVE: /auth/login will be removed 2025-09-01")
+    logger.warning("AUTH_CONSOLIDATION: /auth router is now at /auth-secure (canonical: /auth). Legacy auth router moved to /auth-legacy.")
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -231,32 +227,43 @@ def _send_auth_email(
     to_email: str,
     body: str,
     context: str,
+    user_id: int | None = None,
+    factory_name: str | None = None,
 ) -> bool:
     try:
-        send_email(subject=subject, to_emails=[to_email], body=body)
-        return True
+        result = queue_and_send_email(
+            to_emails=[to_email],
+            subject=subject,
+            body=body,
+            user_id=user_id or 0,
+            factory_name=factory_name or "FactoryNerve",
+        )
+        return result.get("sent", False)
     except Exception:  # pylint: disable=broad-except
         logger.exception("Auth email delivery failed for %s.", context)
         return False
 
 
-def _check_rate_limit(ip_address: str) -> bool:
+def _check_register_rate_limit(ip_address: str) -> bool:
+    """Return True if the IP has exceeded the registration rate limit."""
     with _rate_limit_lock:
         now = time.time()
-        attempts = _login_attempts[ip_address]
-        while attempts and now - attempts[0] > LOGIN_ATTEMPT_WINDOW_SECONDS:
+        attempts = _register_attempts[ip_address]
+        while attempts and now - attempts[0] > REGISTER_RATE_LIMIT_WINDOW_SECONDS:
             attempts.popleft()
-        return len(attempts) >= LOGIN_ATTEMPT_LIMIT
+        return len(attempts) >= REGISTER_RATE_LIMIT
 
 
-def _register_failed_attempt(ip_address: str) -> None:
+def _record_register_attempt(ip_address: str) -> None:
+    """Record a registration attempt for this IP."""
     with _rate_limit_lock:
-        _login_attempts[ip_address].append(time.time())
+        _register_attempts[ip_address].append(time.time())
 
 
-def _clear_attempts(ip_address: str) -> None:
+def _clear_register_attempts(ip_address: str) -> None:
+    """Clear all registration attempts for this IP (on successful registration)."""
     with _rate_limit_lock:
-        _login_attempts.pop(ip_address, None)
+        _register_attempts.pop(ip_address, None)
 
 
 def _log_auth_event(
@@ -344,21 +351,6 @@ class OrganizationContext(BaseModel):
     accessible_factories: int
 
 
-class AuthContextResponse(BaseModel):
-    user: UserReadSchema
-    active_factory_id: str | None = None
-    active_factory: FactoryAccess | None = None
-    factories: list[FactoryAccess] = Field(default_factory=list)
-    organization: OrganizationContext | None = None
-    model_config = ConfigDict(from_attributes=True)
-
-
-class AuthResponse(AuthContextResponse):
-    access_token: str
-    refresh_token: str | None = None
-    token_type: str = "bearer"
-
-
 class ActiveWorkflowTemplateResponse(BaseModel):
     factory_id: str | None = None
     factory_name: str | None = None
@@ -369,15 +361,6 @@ class ActiveWorkflowTemplateResponse(BaseModel):
     workflow_template_label: str
     starter_modules: list[str] = Field(default_factory=list)
     template: dict[str, object]
-
-
-class SessionSummaryResponse(BaseModel):
-    active_devices: int
-    last_activity: datetime | None = None
-
-
-class RefreshRequest(BaseModel):
-    refresh_token: str | None = Field(default=None, min_length=32, max_length=2048)
 
 
 class PasswordForgotRequest(BaseModel):
@@ -395,6 +378,50 @@ class EmailVerificationRequest(BaseModel):
 
 class EmailVerificationTokenRequest(BaseModel):
     token: str
+
+
+class UserDeactivateRequest(BaseModel):
+    reason: str | None = Field(default=None, max_length=500)
+
+
+class UserDeactivateResponse(BaseModel):
+    message: str
+    user_id: int
+    user_name: str
+    user_email: str
+    status: str  # "deactivated" or "pending_approval"
+    approval_instance_id: str | None = None
+
+
+class UserReactivateResponse(BaseModel):
+    message: str
+    user_id: int
+    user_name: str
+    user_email: str
+    status: str  # "reactivated" or "pending_approval"
+    approval_instance_id: str | None = None
+
+
+class UserInviteRequest(BaseModel):
+    email: EmailStr
+    name: str = Field(min_length=2, max_length=120)
+    role: UserRole
+    factory_id: str | None = None
+    phone_number: str | None = Field(default=None, max_length=32)
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone_number(cls, value: str | None) -> str | None:
+        return normalize_phone_number(value)
+
+
+class UserInviteResponse(BaseModel):
+    message: str
+    email: EmailStr
+    invited_role: str
+    factory_name: str
+    status: str  # "created" or "pending_approval"
+    approval_instance_id: str | None = None
 
 
 class RegisterResponse(BaseModel):
@@ -433,48 +460,6 @@ class SelectFactoryRequest(BaseModel):
     factory_id: str = Field(min_length=4, max_length=36)
 
 
-class LogoutRequest(BaseModel):
-    refresh_token: str | None = None
-
-
-class FactoryListResponse(BaseModel):
-    user_id: int
-    user_code: int | None = None
-    active_factory_id: str | None = None
-    active_factory: FactoryAccess | None = None
-    factories: list[FactoryAccess] = Field(default_factory=list)
-    organization: OrganizationContext | None = None
-
-
-def _hash_refresh_token(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
-
-
-_ROLE_ORDER = {
-    UserRole.ATTENDANCE: 0,
-    UserRole.OPERATOR: 1,
-    UserRole.SUPERVISOR: 2,
-    UserRole.ACCOUNTANT: 2,
-    UserRole.MANAGER: 3,
-    UserRole.ADMIN: 4,
-    UserRole.OWNER: 5,
-}
-
-
-def _build_permissions(user: User) -> PermissionsSchema:
-    role_value = user.role.value if isinstance(user.role, UserRole) else str(user.role)
-    role = user.role if isinstance(user.role, UserRole) else None
-    return PermissionsSchema(
-        can_view_billing=role in {UserRole.ADMIN, UserRole.OWNER},
-        can_manage_users=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.MANAGER]),
-        can_view_analytics=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
-        can_approve_entries=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
-        can_export_data=role not in {UserRole.ATTENDANCE, UserRole.OPERATOR},
-        can_manage_billing=role == UserRole.OWNER,
-        can_view_admin_panel=role_value == "superadmin",
-    )
-
-
 def _persist_user_with_user_code(db: Session, user: User) -> User:
     last_error: IntegrityError | None = None
     for _ in range(MAX_USER_CODE_ATTEMPTS):
@@ -492,25 +477,6 @@ def _persist_user_with_user_code(db: Session, user: User) -> User:
         status_code=500,
         detail="Could not generate a unique user ID. Please try again.",
     ) from last_error
-
-
-def _issue_refresh_token(
-    db: Session, *, user: User, org_id: str | None, factory_id: str | None
-) -> str:
-    token = secrets.token_urlsafe(48)
-    now = datetime.now(timezone.utc)
-    expires_at = now + timedelta(days=REFRESH_TOKEN_DAYS)
-    db.add(
-        RefreshToken(
-            token_hash=_hash_refresh_token(token),
-            user_id=user.id,
-            org_id=org_id,
-            factory_id=factory_id,
-            created_at=now,
-            expires_at=expires_at,
-        )
-    )
-    return token
 
 
 def _get_factory_access(db: Session, *, user_id: int) -> list[FactoryAccess]:
@@ -636,14 +602,6 @@ def _build_active_template_context(
     )
 
 
-def _revoke_refresh_token(db: Session, *, token: str, user_id: int) -> None:
-    token_hash = _hash_refresh_token(token)
-    record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
-    if record and record.user_id == user_id and record.revoked_at is None:
-        record.revoked_at = datetime.now(timezone.utc)
-        db.add(record)
-
-
 def _resolve_active_factory_id(
     db: Session, *, user_id: int, preferred_factory_id: str | None
 ) -> str | None:
@@ -686,7 +644,7 @@ def _preview_public_registration(
         )
         if factory:
             if factory.name.strip().lower() != normalized_factory.lower():
-                raise HTTPException(status_code=400, detail="Company code does not match factory name.")
+                raise HTTPException(status_code=400, detail="Invalid factory name or company code.")
             org_id = factory.org_id
             normalized_factory = factory.name
         else:
@@ -696,19 +654,32 @@ def _preview_public_registration(
                 .first()
             )
             if not legacy:
-                raise HTTPException(status_code=400, detail="Invalid company code.")
+                raise HTTPException(status_code=400, detail="Invalid factory name or company code.")
             if legacy.factory_name.strip().lower() != normalized_factory.lower():
-                raise HTTPException(status_code=400, detail="Company code does not match factory name.")
+                raise HTTPException(status_code=400, detail="Invalid factory name or company code.")
             org_id = legacy.org_id
             normalized_factory = legacy.factory_name
     else:
+        # P0-09: Without a company_code, the lookup falls back to factory name
+        # matching alone.  This is unsafe in a multi-tenant system because
+        # two factories in different orgs can share the same name, causing
+        # cross-org pollution (the first user registering "Acme Factory"
+        # creates the org, and the second registration silently joins it).
+        # Raise a clear error asking for a company code to disambiguate.
         existing_factory_user = (
             db.query(User)
             .filter(User.factory_name == normalized_factory, User.is_active.is_(True))
             .first()
         )
         if existing_factory_user:
-            org_id = existing_factory_user.org_id
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "A factory with this name already exists. "
+                    "Please provide a company code to verify you belong to this factory. "
+                    "Contact your factory admin if you don't have a company code."
+                ),
+            )
 
     has_existing_org_user = False
     if org_id:
@@ -734,9 +705,23 @@ def _activate_pending_registration(
     pending: PendingRegistration,
     request: Request,
 ) -> None:
-    existing_user = db.query(User).filter(User.email == pending.email.lower()).first()
+    # P0-08 / AUTH-03: Constant-time response — never reveal whether or not
+    # the email is already registered through error messages or timing.
+    # Silently ignore activation requests that don't match a valid pending
+    # registration (already verified, already used, already superseded).
+    email = pending.email.lower()
+    existing_user = db.query(User).filter(User.email == email).first()
     if existing_user:
-        raise HTTPException(status_code=409, detail="Email is already registered.")
+        # The token was valid, but the email is now registered.
+        # Do NOT raise 409 — just silently succeed so the caller sees
+        # the same "verified" response regardless of whether the email
+        # was already taken. The activation link is single-use; a second
+        # attempt will hit the "used or expired" path anyway.
+        logger.info(
+            "Silently ignored activation for %s — email already registered.",
+            email,
+        )
+        return
 
     requested_factory = (
         sanitize_text(pending.factory_name, max_length=255, preserve_newlines=False)
@@ -789,7 +774,7 @@ def _activate_pending_registration(
     )
 
     if not db.query(Subscription).filter(Subscription.org_id == organization.org_id).first():
-        trial_days = int(os.getenv("TRIAL_DAYS", "7"))
+        trial_days = int(os.getenv("TRIAL_DAYS", "30"))
         now = datetime.now(timezone.utc)
         db.add(
             Subscription(
@@ -823,13 +808,25 @@ def register_user(
     request: Request,
     db: Session = Depends(get_db),
 ) -> RegisterResponse:
+    # IP-based rate limiting to prevent registration floods (Bug Block C)
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_register_rate_limit(client_ip):
+        logger.warning("Registration rate limit exceeded for IP %s", client_ip)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many registration attempts from this IP. Please try again later.",
+        )
+    _record_register_attempt(client_ip)
+
     try:
         if payload.role == UserRole.OWNER:
             raise HTTPException(status_code=403, detail="Owner accounts cannot be created from public registration.")
         validate_password_strength(payload.password)
-        existing_user = db.query(User).filter(User.email == payload.email.lower()).first()
-        if existing_user:
-            raise HTTPException(status_code=409, detail="Email is already registered.")
+        # P0-08: Constant-time response — always return the same message
+        # regardless of whether the email already exists, to prevent
+        # account enumeration via timing or error message differences.
+        _ = db.query(User).filter(User.email == payload.email.lower()).first()
+
 
         requested_factory = (
             sanitize_text(payload.factory_name, max_length=255, preserve_newlines=False)
@@ -869,6 +866,8 @@ def register_user(
                     "If you did not create this account, you can ignore this email."
                 ),
                 context="registration_verification",
+                user_id=None,
+                factory_name=requested_factory,
             )
             if not sent:
                 delivery_mode = "email_failed"
@@ -893,6 +892,8 @@ def register_user(
                 request,
             )
         db.commit()
+        # On successful registration, clear IP attempts so retry is not penalised
+        _clear_register_attempts(client_ip)
         return RegisterResponse(
             message=message,
             email=payload.email.lower(),
@@ -913,13 +914,511 @@ def register_user(
         raise HTTPException(status_code=500, detail="Could not complete registration.") from error
 
 
-@router.post("/login", response_model=AuthResponse)
+INVITE_RATE_LIMIT = int(os.getenv("AUTH_INVITE_RATE_LIMIT", "10"))
+INVITE_RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("AUTH_INVITE_RATE_LIMIT_WINDOW", "3600"))
+_invite_attempts: dict[str, deque[float]] = defaultdict(deque)
+
+
+def _check_invite_rate_limit(ip_address: str) -> bool:
+    with _rate_limit_lock:
+        now = time.time()
+        attempts = _invite_attempts[ip_address]
+        while attempts and now - attempts[0] > INVITE_RATE_LIMIT_WINDOW_SECONDS:
+            attempts.popleft()
+        return len(attempts) >= INVITE_RATE_LIMIT
+
+
+def _record_invite_attempt(ip_address: str) -> None:
+    with _rate_limit_lock:
+        _invite_attempts[ip_address].append(time.time())
+
+
+@router.post("/users/invite", response_model=UserInviteResponse)
+def invite_user(
+    payload: UserInviteRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserInviteResponse:
+    """Invite a new user to join a factory (manager+ only, IP-3 maker-checker)."""
+    from backend.authorization import PDP, ResourceContext
+    from backend.authorization.pdp import build_request_context
+    from backend.services.approval_service import approval_service as APPROVAL_SERVICE
+    from backend.plans import enforce_user_limit, get_effective_factory_plan
+
+    client_ip = request.client.host if request.client else "unknown"
+    if _check_invite_rate_limit(client_ip):
+        logger.warning("Invite rate limit exceeded for IP %s", client_ip)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Too many invitations from this IP. Please try again later.",
+        )
+    _record_invite_attempt(client_ip)
+
+    # Permission check: only manager+ can invite
+    allowed_roles = {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER}
+    if current_user.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Only managers, admins, and owners can invite users.")
+
+    # Self-invite guard: the inviting user cannot invite themselves (P1-21)
+    if payload.email.lower().strip() == current_user.email.lower().strip():
+        raise HTTPException(status_code=422, detail="You cannot invite yourself. Ask another manager to create your account.")
+
+    # Check if email is already registered or pending
+    email_norm = payload.email.lower().strip()
+    existing_user = db.query(User).filter(User.email == email_norm).first()
+    if existing_user and existing_user.is_active:
+        raise HTTPException(status_code=409, detail="User with this email already exists.")
+
+    # Validate role: invited role must not exceed inviter's role rank
+    from backend.models.user import role_rank
+    if role_rank(payload.role) > role_rank(current_user.role):
+        raise HTTPException(
+            status_code=422,
+            detail=f"Cannot invite a user with role '{payload.role.value}' because it exceeds your own role rank.",
+        )
+
+    # Resolve factory
+    from backend.models.factory import Factory
+    from backend.tenancy import resolve_org_id, resolve_factory_id
+    org_id = resolve_org_id(current_user)
+    factory_id = payload.factory_id or resolve_factory_id(db, current_user)
+    if not factory_id:
+        raise HTTPException(status_code=400, detail="Could not resolve factory. Specify a factory_id or ensure you have a default factory.")
+    factory = db.query(Factory).filter(Factory.factory_id == factory_id, Factory.is_active.is_(True)).first()
+    if not factory:
+        raise HTTPException(status_code=404, detail="Factory not found.")
+
+    # Enforce user limit for the plan
+    plan = get_effective_factory_plan(db, factory.name, org_id=factory.org_id, factory_id=factory.factory_id)
+    try:
+        enforce_user_limit(db, factory.name, plan, org_id=factory.org_id, factory_id=factory.factory_id)
+    except ValueError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+    # PDP scope check
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.invite",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
+    # Initiate approval (IP-3: sequential two-stage maker-checker)
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=None,  # Invited user doesn't have an ID yet
+        workflow_key="user.invite",
+        action_key="user.invite",
+        resource_type="User",
+        resource_id=f"invite-{email_norm}-{now_ts}",
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state="active",
+        requested_change={
+            "email": email_norm,
+            "name": sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name.strip(),
+            "role": payload.role.value,
+        },
+        attributes={
+            "is_high_value": payload.role.value in ("admin", "owner"),
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        _log_auth_event(db, "USER_INVITE_PENDING_APPROVAL",
+            f"Invitation for {email_norm} (role={payload.role.value}) submitted for approval.",
+            current_user.id, request, org_id=org_id, factory_id=factory_id,
+        )
+        db.commit()
+        return UserInviteResponse(
+            message="Invitation submitted for approval. A second reviewer must approve it.",
+            email=email_norm,
+            invited_role=payload.role.value,
+            factory_name=factory.name,
+            status="pending_approval",
+            approval_instance_id=approval_decision.instance_id,
+        )
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # ── Approval bypassed or approved — create user now ──────────────────
+    from backend.security import hash_password
+    from backend.models.user_factory_role import UserFactoryRole
+    from backend.services.user_code_service import next_user_code, is_user_code_collision, MAX_USER_CODE_ATTEMPTS
+    import secrets
+
+    temp_password = secrets.token_urlsafe(16)  # 24 char temp password
+    name_clean = sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name.strip()
+
+    # Check user limit one more time before creating
+    try:
+        enforce_user_limit(db, factory.name, plan, org_id=factory.org_id, factory_id=factory.factory_id)
+    except ValueError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
+    user = User(
+        org_id=org_id,
+        name=name_clean,
+        email=email_norm,
+        password_hash=hash_password(temp_password),
+        role=payload.role,
+        factory_name=factory.name,
+        factory_code=factory.factory_code,
+        phone_number=payload.phone_number if payload.phone_number else None,
+        phone_e164=normalize_phone_e164(payload.phone_number) if payload.phone_number else None,
+        is_active=True,
+        email_verified_at=datetime.now(timezone.utc),
+    )
+
+    # Generate unique user_code
+    last_error: IntegrityError | None = None
+    for _ in range(MAX_USER_CODE_ATTEMPTS):
+        user.user_code = next_user_code(db, org_id=org_id)
+        try:
+            with db.begin_nested():
+                db.add(user)
+                db.flush()
+            break
+        except IntegrityError as error:
+            last_error = error
+            if not is_user_code_collision(error):
+                raise
+    else:
+        raise HTTPException(status_code=500, detail="Could not generate a unique user code. Please try again.") from last_error
+
+    # Assign factory role
+    db.add(UserFactoryRole(
+        user_id=user.id,
+        factory_id=factory_id,
+        org_id=org_id,
+        role=payload.role,
+    ))
+
+    # Audit log
+    _log_auth_event(db, "USER_INVITED",
+        f"User {name_clean} ({email_norm}) invited with role={payload.role.value}",
+        user.id, request, org_id=org_id, factory_id=factory_id,
+    )
+
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        if "email" in str(error).lower():
+            raise HTTPException(status_code=409, detail="Email already registered.") from error
+        raise HTTPException(status_code=500, detail="Could not create user. Please try again.") from error
+
+    db.refresh(user)
+
+    # Complete approval if instance was created
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
+    # Send invitation email with temp password
+    try:
+        from backend.email_utils import queue_and_send_email
+        queue_and_send_email(
+            to_emails=[email_norm],
+            subject="You've been invited to join FactoryNerve",
+            body=(
+                f"You've been invited to join {factory.name} on FactoryNerve.\n\n"
+                f"Your account has been created with the role: {payload.role.value}.\n\n"
+                f"Temporary password: {temp_password}\n\n"
+                "Please log in and change your password immediately.\n\n"
+                f"Login page: {os.getenv('FRONTEND_URL', 'https://dpr.ai')}/login\n"
+            ),
+            user_id=user.id,
+            factory_name=factory.name,
+        )
+    except Exception:
+        logger.exception("Failed to send invitation email to %s", email_norm)
+
+    return UserInviteResponse(
+        message=f"User invited successfully. An invitation email has been sent.",
+        email=email_norm,
+        invited_role=payload.role.value,
+        factory_name=factory.name,
+        status="created",
+    )
+
+
+@router.post("/users/{user_id}/deactivate", response_model=UserDeactivateResponse)
+def deactivate_user(
+    user_id: int,
+    payload: UserDeactivateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserDeactivateResponse:
+    """Deactivate a user account (admin+ only, IP-3 maker-checker)."""
+    from backend.authorization import PDP, ResourceContext
+    from backend.authorization.pdp import build_request_context
+    from backend.services.approval_service import approval_service as APPROVAL_SERVICE
+    from backend.tenancy import resolve_org_id
+
+    # Permission check: only admin+ can deactivate
+    allowed_roles = {UserRole.ADMIN, UserRole.OWNER}
+    if current_user.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Only admins and owners can deactivate users.")
+
+    # Self-deactivation guard
+    if user_id == current_user.id:
+        raise HTTPException(status_code=422, detail="You cannot deactivate yourself. Ask another admin to deactivate your account.")
+
+    # Find target user
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if not target_user.is_active:
+        raise HTTPException(status_code=400, detail="User is already deactivated.")
+
+    # Must be same org
+    org_id = resolve_org_id(current_user)
+    if target_user.org_id != org_id:
+        raise HTTPException(status_code=403, detail="You can only deactivate users in your own organization.")
+
+    # PDP scope check
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.deactivate",
+        resource=ResourceContext(factory_id=None),
+        request_context=build_request_context(request),
+    )
+
+    reason = sanitize_text(payload.reason, max_length=500, preserve_newlines=False) if payload.reason else None
+
+    # Initiate approval (IP-3: sequential two-stage maker-checker)
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=user_id,
+        workflow_key="user.deactivate",
+        action_key="user.deactivate",
+        resource_type="User",
+        resource_id=str(user_id),
+        org_id=org_id,
+        factory_id=None,
+        current_workflow_state="active",
+        requested_change={
+            "new_status": "deactivated",
+            "reason": reason or "No reason provided",
+            "target_email": target_user.email,
+            "target_role": target_user.role.value,
+        },
+        attributes={
+            "is_high_value": target_user.role.value in ("admin", "owner"),
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        _log_auth_event(db, "USER_DEACTIVATE_PENDING_APPROVAL",
+            f"Deactivation of user {target_user.id} ({target_user.email}) submitted for approval.",
+            current_user.id, request, org_id=org_id, factory_id=None,
+        )
+        db.commit()
+        return UserDeactivateResponse(
+            message="Deactivation submitted for approval. A second reviewer must approve it.",
+            user_id=target_user.id,
+            user_name=target_user.name,
+            user_email=target_user.email,
+            status="pending_approval",
+            approval_instance_id=approval_decision.instance_id,
+        )
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # ── Approval bypassed or approved — deactivate now ───────────────────
+    target_user.is_active = False
+    target_user.profile_picture = None
+
+    # Revoke all v2 sessions so the user is immediately logged out
+    # User model now has lockout fields directly — use user.id for session revocation.
+    try:
+        revoke_all_v2_sessions(db, user_id=target_user.id)
+    except Exception:
+        logger.exception("Failed to revoke sessions for deactivated user %s", target_user.id)
+
+    _log_auth_event(db, "USER_DEACTIVATED",
+        f"User {target_user.name} ({target_user.email}) deactivated by {current_user.name}."
+        + (f" Reason: {reason}" if reason else ""),
+        target_user.id, request, org_id=org_id, factory_id=None,
+    )
+    db.commit()
+
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
+    # Send notification email (best-effort)
+    try:
+        from backend.email_utils import queue_and_send_email
+        queue_and_send_email(
+            to_emails=[target_user.email],
+            subject="Your FactoryNerve account has been deactivated",
+            body=(
+                f"Hi {target_user.name},\n\n"
+                f"Your FactoryNerve account has been deactivated by {current_user.name}.\n"
+                + (f"\nReason: {reason}\n\n" if reason else "\n")
+                + "If you believe this was done in error, please contact your factory admin or owner.\n"
+            ),
+            user_id=target_user.id,
+            factory_name=target_user.factory_name,
+        )
+    except Exception:
+        logger.exception("Failed to send deactivation notification email to %s", target_user.email)
+
+    return UserDeactivateResponse(
+        message=f"User {target_user.name} has been deactivated.",
+        user_id=target_user.id,
+        user_name=target_user.name,
+        user_email=target_user.email,
+        status="deactivated",
+    )
+
+
+@router.post("/users/{user_id}/reactivate", response_model=UserReactivateResponse)
+def reactivate_user(
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> UserReactivateResponse:
+    """Reactivate a deactivated user account (admin+ only, IP-2 maker-checker)."""
+    from backend.authorization import PDP, ResourceContext
+    from backend.authorization.pdp import build_request_context
+    from backend.services.approval_service import approval_service as APPROVAL_SERVICE
+    from backend.tenancy import resolve_org_id
+
+    # Permission check: only admin+ can reactivate
+    allowed_roles = {UserRole.ADMIN, UserRole.OWNER}
+    if current_user.role not in allowed_roles:
+        raise HTTPException(status_code=403, detail="Only admins and owners can reactivate users.")
+
+    # Find target user
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if target_user.is_active:
+        raise HTTPException(status_code=400, detail="User is already active.")
+
+    # Must be same org
+    org_id = resolve_org_id(current_user)
+    if target_user.org_id != org_id:
+        raise HTTPException(status_code=403, detail="You can only reactivate users in your own organization.")
+
+    # PDP scope check
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="user.reactivate",
+        resource=ResourceContext(factory_id=None),
+        request_context=build_request_context(request),
+    )
+
+    # Initiate approval (IP-2: single stage maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=user_id,
+        workflow_key="user.reactivate",
+        action_key="user.reactivate",
+        resource_type="User",
+        resource_id=str(user_id),
+        org_id=org_id,
+        factory_id=None,
+        current_workflow_state="inactive",
+        requested_change={
+            "new_status": "active",
+            "target_email": target_user.email,
+            "target_role": target_user.role.value,
+        },
+        attributes={
+            "is_high_value": target_user.role.value in ("admin", "owner"),
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        _log_auth_event(db, "USER_REACTIVATE_PENDING_APPROVAL",
+            f"Reactivation of user {target_user.id} ({target_user.email}) submitted for approval.",
+            current_user.id, request, org_id=org_id, factory_id=None,
+        )
+        db.commit()
+        return UserReactivateResponse(
+            message="Reactivation submitted for approval. A reviewer must approve it.",
+            user_id=target_user.id,
+            user_name=target_user.name,
+            user_email=target_user.email,
+            status="pending_approval",
+            approval_instance_id=approval_decision.instance_id,
+        )
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # ── Approval bypassed or approved — reactivate now ─────────────────
+    target_user.is_active = True
+
+    _log_auth_event(db, "USER_REACTIVATED",
+        f"User {target_user.name} ({target_user.email}) reactivated by {current_user.name}.",
+        target_user.id, request, org_id=org_id, factory_id=None,
+    )
+    db.commit()
+
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
+    # Send notification email (best-effort)
+    try:
+        from backend.email_utils import queue_and_send_email
+        queue_and_send_email(
+            to_emails=[target_user.email],
+            subject="Your FactoryNerve account has been reactivated",
+            body=(
+                f"Hi {target_user.name},\n\n"
+                f"Your FactoryNerve account has been reactivated by {current_user.name}.\n\n"
+                "You can now log in with your existing credentials.\n\n"
+                f"Login page: {os.getenv('FRONTEND_URL', 'https://dpr.ai')}/login\n"
+            ),
+            user_id=target_user.id,
+            factory_name=target_user.factory_name,
+        )
+    except Exception:
+        logger.exception("Failed to send reactivation notification email to %s", target_user.email)
+
+    return UserReactivateResponse(
+        message=f"User {target_user.name} has been reactivated.",
+        user_id=target_user.id,
+        user_name=target_user.name,
+        user_email=target_user.email,
+        status="reactivated",
+    )
+
+
+@router.post("/login")
 def login_user(
     payload: LoginRequest,
     request: Request,
     response: Response,
     db: Session = Depends(get_db),
-) -> AuthResponse:
+) -> dict:
     del payload, request, response, db
     raise HTTPException(
         status_code=410,
@@ -935,29 +1434,35 @@ def login_user(
 def logout_user(
     request: Request,
     response: Response,
-    payload: LogoutRequest | None = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    token = str(getattr(current_user, "current_token", "") or "")
-    if not token:
-        token = get_access_cookie(request) or ""
-        if token:
-            require_csrf(request)
-    if token:
-        jti = str(getattr(current_user, "current_token_jti", "") or "")
-        exp = getattr(current_user, "current_token_expires_at", None)
+    session_revoked = False
+    try:
+        session = get_v2_session(db, request)
+        # Attempt to revoke the session even if CSRF validation fails — a
+        # failed CSRF suggests the session may be compromised, so revoking
+        # it is the safest course of action.
+        try:
+            require_v2_csrf(request, session)
+        except HTTPException:
+            logger.warning(
+                "CSRF validation failed during logout for user %s — session will be revoked anyway.",
+                current_user.id,
+            )
+        # revoke_v2_session handles cookie deletion (response.delete_cookie)
+        # internally, so no explicit cookie cleanup is needed here.
+        revoke_v2_session(db, session=session, response=response)
+        session_revoked = True
+    except HTTPException:
+        pass
 
-        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first() if jti else None
-        if jti and exp and not existing:
-            db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
-
-    refresh_token = payload.refresh_token if payload and payload.refresh_token else None
-    if not refresh_token:
-        refresh_token = get_refresh_cookie(request)
-    if refresh_token:
-        _revoke_refresh_token(db, token=refresh_token, user_id=current_user.id)
-    clear_auth_cookies(response=response)
+    if not session_revoked:
+        # Fallback: session lookup failed, so manually clear cookies to
+        # ensure the user is signed out on this device even though the
+        # session couldn't be revoked server-side.
+        response.delete_cookie(SESSION_COOKIE, path="/")
+        response.delete_cookie(CSRF_COOKIE, path="/")
 
     _log_auth_event(db, "USER_LOGOUT", "User logged out.", current_user.id, request)
     db.commit()
@@ -971,31 +1476,53 @@ def logout_all_devices(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    if get_access_cookie(request) or get_refresh_cookie(request):
-        require_csrf(request)
+    session_revoked = False
+    # Attempt to revoke all sessions for this user.
+    # Prefers session.user_id (direct FK) when available, falls back to
+    # the session's auth_user_id for pre-migration sessions.
+    try:
+        session = get_v2_session(db, request)
+        user_id_for_revoke = session.user_id if session.user_id is not None else session.auth_user_id
+        revoke_all_v2_sessions(db, user_id=user_id_for_revoke)
+        session_revoked = True
+        # Attempt CSRF validation — log a warning on failure but don't block
+        # the logout since we already revoked all sessions.
+        try:
+            require_v2_csrf(request, session)
+        except HTTPException:
+            logger.warning(
+                "CSRF validation failed during logout-all for user %s — sessions already revoked.",
+                current_user.id,
+            )
+    except HTTPException:
+        # Fallback: revoke sessions by user.id (direct FK).
+        # This handles the case where the session cookie is expired or
+        # missing entirely.
+        try:
+            revoke_all_v2_sessions(db, user_id=current_user.id)
+            session_revoked = True
+            logger.info(
+                "Fallback logout-all for user %s — revoked sessions via user.id.",
+                current_user.id,
+            )
+        except Exception as fallback_error:
+            logger.exception(
+                "Fallback session revocation failed during logout-all for user %s.",
+                current_user.id,
+            )
 
-    token = str(getattr(current_user, "current_token", "") or "")
-    if not token:
-        token = get_access_cookie(request) or ""
-    if token:
-        jti = str(getattr(current_user, "current_token_jti", "") or "")
-        exp = getattr(current_user, "current_token_expires_at", None)
-        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first() if jti else None
-        if jti and exp and not existing:
-            db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
+    response.delete_cookie(SESSION_COOKIE, path="/")
+    response.delete_cookie(CSRF_COOKIE, path="/")
 
-    now = datetime.now(timezone.utc)
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == current_user.id,
-        RefreshToken.revoked_at.is_(None),
-        RefreshToken.expires_at > now,
-    ).update({"revoked_at": now}, synchronize_session=False)
-    clear_auth_cookies(response=response)
-
+    audit_detail = (
+        "User logged out from all devices (sessions revoked)."
+        if session_revoked
+        else "User logged out from all devices (cookies cleared, session revocation failed)."
+    )
     _log_auth_event(
         db,
         "USER_LOGOUT_ALL",
-        "User logged out from all devices.",
+        audit_detail,
         current_user.id,
         request,
         org_id=current_user.org_id,
@@ -1005,89 +1532,22 @@ def logout_all_devices(
     return {"message": "Logged out from all devices successfully."}
 
 
-@router.post("/refresh", response_model=AuthResponse)
+@router.post("/refresh")
 def refresh_access_token(
     request: Request,
     response: Response,
-    payload: RefreshRequest | None = None,
     db: Session = Depends(get_db),
-) -> AuthResponse:
-    refresh_token = payload.refresh_token if payload else None
-    if not refresh_token:
-        refresh_token = get_refresh_cookie(request)
-    if not refresh_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing.")
-    now = datetime.now(timezone.utc)
-    token_hash = _hash_refresh_token(refresh_token)
-    record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
-    if not record or record.revoked_at or record.expires_at <= now:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired.")
-
-    user = db.query(User).filter(User.id == record.user_id, User.is_active.is_(True)).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-
-    role_row: UserFactoryRole | None = None
-    factory_id = record.factory_id
-    if factory_id:
-        role_row = (
-            db.query(UserFactoryRole)
-            .filter(UserFactoryRole.user_id == user.id, UserFactoryRole.factory_id == factory_id)
-            .first()
-        )
-        if not role_row:
-            factory_id = None
-
-    if not role_row:
-        role_row = (
-            db.query(UserFactoryRole)
-            .filter(UserFactoryRole.user_id == user.id)
-            .order_by(UserFactoryRole.assigned_at.asc())
-            .first()
-        )
-        factory_id = role_row.factory_id if role_row else None
-
-    org_id = role_row.org_id if role_row else user.org_id
-    active_role = role_row.role.value if role_row else user.role.value
-
-    access_token = create_access_token(
-        user_id=user.id,
-        role=active_role,
-        email=user.email,
-        org_id=org_id,
-        factory_id=factory_id,
+) -> dict[str, str]:
+    # v2 sessions handle their own refresh via idle/absolute timeout checks in
+    # get_current_session().  The legacy JWT refresh endpoint is deprecated.
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "DEPRECATED",
+            "migrate_to": "/auth-secure/me",
+            "message": "JWT refresh is no longer supported. Use v2 session cookies.",
+        },
     )
-
-    record.revoked_at = now
-    record.last_used_at = now
-    refresh_token = _issue_refresh_token(db, user=user, org_id=org_id, factory_id=factory_id)
-
-    _log_auth_event(
-        db,
-        "TOKEN_REFRESH",
-        "Access token refreshed.",
-        user.id,
-        request,
-        org_id=org_id,
-        factory_id=factory_id,
-    )
-
-    db.commit()
-    auth_context = _build_auth_context(db, user=user, active_factory_id=factory_id)
-    auth_response = AuthResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        **auth_context,
-    )
-    if wants_cookie_auth(request) or get_refresh_cookie(request) or get_access_cookie(request):
-        csrf_token = set_auth_cookies(
-            response=response,
-            access_token=access_token,
-            refresh_token=refresh_token,
-            request=request,
-        )
-        response.headers["X-CSRF-Token"] = csrf_token
-    return auth_response
 
 
 @router.post("/email/verification/resend", response_model=EmailVerificationResponse)
@@ -1135,6 +1595,8 @@ def resend_email_verification(
                     "If you did not request this, you can ignore this email."
                 ),
                 context="resend_verification",
+                user_id=None,
+                factory_name=pending.factory_name,
             )
         if delivered:
             _log_auth_event(
@@ -1166,6 +1628,8 @@ def resend_email_verification(
                     "If you did not request this, you can ignore this email."
                 ),
                 context="resend_verification",
+                user_id=user.id,
+                factory_name=user.factory_name,
             )
         if delivered:
             _log_auth_event(
@@ -1280,7 +1744,25 @@ def password_forgot(
     user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
     delivery_mode = "preview" if _should_expose_reset_link() else "email"
     reset_link: str | None = None
+
+    # Lockout check: the User model now has lockout fields directly
+    # (auth consolidation Phase 2+), so no AuthUser lookup is needed.
     if user:
+        from backend.auth_security.lockout import check_account_locked
+        if check_account_locked(user):
+            logger.info(
+                "Password reset requested for locked account %s — silently ignored.",
+                email,
+            )
+            db.add(user)
+            db.commit()
+            return PasswordForgotResponse(
+                message="If an account exists for this email, you will receive a reset link.",
+                reset_link=None,
+                delivery_mode=delivery_mode,
+            )
+
+
         token = create_reset_token(db, user=user, ttl_minutes=PASSWORD_RESET_TTL_MINUTES)
         reset_link = _frontend_reset_link_from_request(request, token) or build_reset_link(token)
         delivered = True
@@ -1294,6 +1776,8 @@ def password_forgot(
                 ),
                 to_email=user.email,
                 context="password_reset",
+                user_id=user.id,
+                factory_name=user.factory_name,
             )
         if delivered:
             _log_auth_event(
@@ -1341,14 +1825,45 @@ def password_reset(
     if not user:
         raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
 
+    # Lockout check: prevent resetting password for locked accounts.
+    # User model now has lockout fields directly (auth consolidation Phase 2+).
+    from backend.auth_security.lockout import check_account_locked
+    if check_account_locked(user):
+        logger.info(
+            "Password reset blocked for locked account %s (user_id=%s).",
+            user.email,
+            user.id,
+        )
+        db.add(user)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Account temporarily locked due to too many failed login attempts. Try again later.",
+        )
+
+    from backend.auth_security.passwords import hash_password as argon2_hash_password
     now = datetime.now(timezone.utc)
-    user.password_hash = hash_password(payload.new_password)
+    user.password_hash = argon2_hash_password(payload.new_password)
+    user.password_hash_version = "argon2"
+    user.password_changed_at = now
+    user.updated_at = now
     record.used_at = now
 
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == user.id,
-        RefreshToken.revoked_at.is_(None),
-    ).update({"revoked_at": now}, synchronize_session=False)
+    # Invalidate all other pending reset tokens for this user
+    from backend.models.password_reset_token import PasswordResetToken
+    db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user.id,
+        PasswordResetToken.used_at.is_(None),
+        PasswordResetToken.id != record.id,
+    ).update({"used_at": now}, synchronize_session=False)
+
+    # P0-02: Token rotation — revoke all v2 sessions so attacker-held
+    # session cookies are immediately invalidated after password reset.
+    # User model now has direct user_id FK, so use user.id directly.
+    try:
+        revoke_all_v2_sessions(db, user_id=user.id)
+    except Exception:
+        logger.exception("Failed to revoke v2 sessions on password reset for %s", user.email)
 
     _log_auth_event(
         db,
@@ -1363,44 +1878,28 @@ def password_reset(
     return {"message": "Password reset successful. Please log in again."}
 
 
-@router.post("/factories", response_model=FactoryListResponse)
-def list_factories(
-    payload: RefreshRequest, db: Session = Depends(get_db)
-) -> FactoryListResponse:
-    now = datetime.now(timezone.utc)
-    token_hash = _hash_refresh_token(payload.refresh_token)
-    record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
-    if not record or record.revoked_at or record.expires_at <= now:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired.")
-
-    user = db.query(User).filter(User.id == record.user_id, User.is_active.is_(True)).first()
-    if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-
-    active_factory_id = _resolve_active_factory_id(
-        db, user_id=user.id, preferred_factory_id=record.factory_id
-    )
-    record.last_used_at = now
-    db.commit()
-    auth_context = _build_auth_context(db, user=user, active_factory_id=active_factory_id)
-    return FactoryListResponse(
-        user_id=user.id,
-        user_code=user.user_code,
-        active_factory_id=active_factory_id,
-        active_factory=auth_context["active_factory"],  # type: ignore[index]
-        factories=auth_context["factories"],  # type: ignore[index]
-        organization=auth_context["organization"],  # type: ignore[index]
+@router.post("/factories")
+def list_factories(db: Session = Depends(get_db)) -> dict:
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "DEPRECATED",
+            "migrate_to": "/auth/v2/context",
+            "message": "Legacy refresh-token based factory listing is no longer supported. Use GET /auth/v2/context.",
+        },
     )
 
 
-@router.post("/select-factory", response_model=AuthResponse)
+@router.post("/select-factory")
 def select_factory(
     payload: SelectFactoryRequest,
     request: Request,
     response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> AuthResponse:
+) -> dict:
+    session = get_v2_session(db, request)
+    require_v2_csrf(request, session)
     role_row = (
         db.query(UserFactoryRole)
         .filter(
@@ -1411,33 +1910,6 @@ def select_factory(
     )
     if not role_row:
         raise HTTPException(status_code=403, detail="Access denied.")
-
-    access_token = create_access_token(
-        user_id=current_user.id,
-        role=role_row.role.value,
-        email=current_user.email,
-        org_id=role_row.org_id,
-        factory_id=payload.factory_id,
-    )
-
-    refresh_token: str | None = None
-    if get_refresh_cookie(request) or get_access_cookie(request) or wants_cookie_auth(request):
-        existing_refresh_token = get_refresh_cookie(request)
-        if existing_refresh_token:
-            _revoke_refresh_token(db, token=existing_refresh_token, user_id=current_user.id)
-        refresh_token = _issue_refresh_token(
-            db,
-            user=current_user,
-            org_id=role_row.org_id,
-            factory_id=payload.factory_id,
-        )
-        csrf_token = set_auth_cookies(
-            response=response,
-            access_token=access_token,
-            refresh_token=refresh_token,
-            request=request,
-        )
-        response.headers["X-CSRF-Token"] = csrf_token
 
     _log_auth_event(
         db,
@@ -1450,20 +1922,11 @@ def select_factory(
     )
     db.commit()
     auth_context = _build_auth_context(db, user=current_user, active_factory_id=payload.factory_id)
-    return AuthResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
+    return {
+        "message": "Factory switched successfully.",
+        "active_factory_id": payload.factory_id,
         **auth_context,
-    )
-
-
-@router.get("/me", response_model=AuthMeResponse)
-def get_me(current_user: User = Depends(get_current_user)) -> AuthMeResponse:
-    user_payload = UserReadSchema.model_validate(current_user)
-    return AuthMeResponse(
-        **user_payload.model_dump(),
-        permissions=_build_permissions(current_user),
-    )
+    }
 
 
 @router.get("/profile-photo/{photo_name}")
@@ -1485,43 +1948,22 @@ def get_profile_photo(
     )
 
 
-@router.get("/session-summary", response_model=SessionSummaryResponse)
+@router.get("/session-summary")
 def get_session_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> SessionSummaryResponse:
+) -> dict:
+    from backend.models.auth_session import AuthSession
     now = datetime.now(timezone.utc)
-    active_tokens = (
-        db.query(RefreshToken)
-        .filter(
-            RefreshToken.user_id == current_user.id,
-            RefreshToken.revoked_at.is_(None),
-            RefreshToken.expires_at > now,
-        )
-        .all()
-    )
-
-    last_activity = current_user.last_login
-    for token in active_tokens:
-        candidate = token.last_used_at or token.created_at
-        if candidate and (last_activity is None or candidate > last_activity):
-            last_activity = candidate
-
-    return SessionSummaryResponse(
-        active_devices=len(active_tokens),
-        last_activity=last_activity,
-    )
-
-
-@router.get("/context", response_model=AuthContextResponse)
-def get_auth_context(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-) -> AuthContextResponse:
-    active_factory_id = getattr(current_user, "active_factory_id", None)
-    if not active_factory_id:
-        active_factory_id = _resolve_active_factory_id(db, user_id=current_user.id, preferred_factory_id=None)
-    return AuthContextResponse(**_build_auth_context(db, user=current_user, active_factory_id=active_factory_id))
+    active_devices = db.query(AuthSession).filter(
+        AuthSession.user_id == current_user.id,
+        AuthSession.revoked_at.is_(None),
+        AuthSession.expires_at > now,
+    ).count()
+    return {
+        "active_devices": active_devices,
+        "last_activity": current_user.last_login,
+    }
 
 
 @router.get("/active-workflow-template", response_model=ActiveWorkflowTemplateResponse)
@@ -1539,10 +1981,13 @@ def get_active_workflow_template(
 def update_profile(
     payload: ProfileUpdateRequest,
     request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserReadSchema:
     try:
+        session = get_v2_session(db, request)
+        require_v2_csrf(request, session)
         if payload.name is not None:
             cleaned_name = sanitize_text(payload.name, max_length=120, preserve_newlines=False) or ""
             if len(cleaned_name) < 2:
@@ -1572,6 +2017,8 @@ async def upload_profile_photo(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserReadSchema:
+    session = get_v2_session(db, request)
+    require_v2_csrf(request, session)
     if not file.filename:
         raise HTTPException(status_code=400, detail="Upload a profile photo to continue.")
     content_type = (file.content_type or "").lower()
@@ -1625,9 +2072,12 @@ async def upload_profile_photo(
 @router.delete("/profile-photo", response_model=UserReadSchema)
 def delete_profile_photo(
     request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> UserReadSchema:
+    session = get_v2_session(db, request)
+    require_v2_csrf(request, session)
     previous_photo_path = current_user.profile_picture
     try:
         current_user.profile_picture = None
@@ -1655,17 +2105,57 @@ def delete_profile_photo(
 def change_password(
     payload: ChangePasswordRequest,
     request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
+    session = get_v2_session(db, request)
+    require_v2_csrf(request, session)
     if not verify_password(payload.old_password, current_user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials.")
+
+    # Lockout check: prevent password change for locked accounts.
+    # User model now has lockout fields directly (auth consolidation Phase 2+).
+    from backend.auth_security.lockout import check_account_locked
+    if check_account_locked(current_user):
+        logger.info(
+            "Password change blocked for locked account %s (user_id=%s).",
+            current_user.email,
+            current_user.id,
+        )
+        db.add(current_user)
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_423_LOCKED,
+            detail="Account temporarily locked due to too many failed login attempts. Try again later.",
+        )
+
     try:
+        from backend.auth_security.passwords import hash_password as argon2_hash_password
         validate_password_strength(payload.new_password)
-        current_user.password_hash = hash_password(payload.new_password)
+        current_user.password_hash = argon2_hash_password(payload.new_password)
+        current_user.password_hash_version = "argon2"
+        current_user.password_changed_at = datetime.now(timezone.utc)
+        current_user.updated_at = datetime.now(timezone.utc)
+        # Invalidate any pending password reset tokens
+        from backend.models.password_reset_token import PasswordResetToken
+        now = datetime.now(timezone.utc)
+        db.query(PasswordResetToken).filter(
+            PasswordResetToken.user_id == current_user.id,
+            PasswordResetToken.used_at.is_(None),
+        ).update({"used_at": now}, synchronize_session=False)
+
+        # P0-02: Token rotation — revoke all v2 sessions so any session
+        # cookies held by an attacker are immediately invalidated.
+        # User model now has direct user_id FK in sessions.
+        try:
+            revoke_all_v2_sessions(db, user_id=current_user.id)
+        except Exception:
+            logger.exception("Failed to revoke v2 sessions on password change for %s", current_user.email)
+
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
-        return {"message": "Password changed successfully."}
+        return {"message": "Password changed successfully. Please log in again."}
     except ValueError as error:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(error)) from error
@@ -1676,7 +2166,10 @@ def change_password(
 
 
 @router.get("/admin-only")
-def admin_only_route(current_user: User = Depends(get_current_user)) -> dict[str, str]:
-    if not is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Insufficient permissions.")
+def admin_only_route(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict[str, str]:
+    from backend.authorization import PDP
+    PDP(db=db).require_permission(actor=current_user, permission_key="system.admin")
     return {"message": "Admin access granted."}

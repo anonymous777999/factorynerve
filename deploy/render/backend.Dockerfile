@@ -35,8 +35,7 @@ COPY alembic.ini ./alembic.ini
 COPY backend ./backend
 COPY scripts ./scripts
 COPY README.md ./README.md
-COPY PROJECT_CONTEXT.md ./PROJECT_CONTEXT.md
 
 RUN mkdir -p /app/logs /app/exports/failed_payloads
 
-CMD ["python", "scripts/render_start.py"]
+CMD ["python3", "scripts/render_start.py"]

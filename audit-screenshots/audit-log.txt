@@ -1,0 +1,28 @@
+UI/UX AUDIT LOG - Factory Nerve Application
+Started: 2026-07-19
+Pages audited:
+1. Homepage (http://localhost:3000/) - PUBLIC
+   - Viewed: Landing page for logged-out users
+   - Screenshots taken: desktop and mobile
+   - Console issues: 1 error - Failed to load resource (500 Internal Server Error) [occurred 2 times]
+   - Observations:
+     * Clear value proposition: "Built for the Indian Factory Floor"
+     * Strong visual hierarchy with clear primary CTAs ("Start Free 14-Day Trial", "Talk to us")
+     * Good use of whitespace and section separation
+     * Mobile-first responsive design apparent
+     * Sections cover: Problem, Engines (7 engines), Personas (roles), Product preview, How it works, Pricing, FAQ, Final CTA
+     * Trust elements: SSL encryption, data ownership claims, no lock-in
+     * Social proof elements: Pilot program mentions, setup process visualization
+2. About page (http://localhost:3000/about) - PUBLIC
+   - Viewed: Placeholder page ("We're working on this page and it will be available soon")
+   - Screenshots taken: desktop and mobile
+   - Console issues:
+     * Multiple i18n warning messages about missing translations (shell.close_sidebar_overlay, shell.hide_sidebar, shell.pinned)
+     * Many 500 Internal Server Error failures (22 times total)
+     * Overflow audit showing 10 issues on the page (app-shell component overflow: scrollWidth 452px > clientWidth 405px by 47px)
+   - Observations:
+     * Page appears to be under construction for authenticated users
+     * Shows placeholder message when logged in
+     * Would need to check what unauthenticated users see
+     * Significant technical issues: missing translations, server errors, layout overflow problems
+     * Layout overflow causing potential horizontal scrolling or clipped content

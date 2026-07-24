@@ -11,7 +11,14 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy import update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+
+# ── Feature flag: OCR_QUOTA_ATOMIC_LOCKS ─────────────────────────────────────
+# When enabled, quota checks use SELECT FOR UPDATE to serialize concurrent
+# requests. The old code path (UPDATE with WHERE) is retained as a fallback.
+_OCR_QUOTA_ATOMIC_LOCKS = os.getenv("OCR_QUOTA_ATOMIC_LOCKS", "true").lower() in ("1", "true", "yes", "on")
 
 from backend.models.ocr_usage import OcrUsage
 from backend.models.org_ocr_usage import OrgOcrUsage
@@ -63,15 +70,6 @@ def _plan_limits(plan: str) -> dict[str, int]:
 
 
 def _effective_plan_limits(db: Session, *, org_id: str | None, plan: str) -> dict[str, int]:
-    if normalize_plan(plan) == "free":
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "error": "ocr_not_available",
-                "message": "OCR image scanning is not available on the Free plan. Upgrade to Starter or higher to add OCR packs.",
-                "upgrade_url": "/billing",
-            },
-        )
     limits = _plan_limits(plan)
     if plan_limit_is_unlimited(plan, "ocr"):
         return {"requests": 0, "credits": 0, "rate": limits["rate"]}
@@ -111,6 +109,111 @@ def check_rate_limit(user_id: int, *, plan: str) -> None:
         history.append(now)
 
 
+def _acquire_quota_lock(db: Session, *, user_id: int, period: str) -> OcrUsage:
+    """Acquire a row-level lock on the user's OCR usage row for this period.
+
+    Creates the row if it does not exist yet. Uses the unique constraint
+    (user_id, period) as the serialization point: the first concurrent
+    request inserts the row successfully; subsequent requests get
+    IntegrityError, roll back the failed insert, then lock the existing row.
+
+    This eliminates the race condition where two requests both see no row,
+    both create one, and both increment from 0.
+    """
+    try:
+        usage = OcrUsage(user_id=user_id, period=period, request_count=0, credit_count=0)
+        db.add(usage)
+        db.flush()
+    except IntegrityError:
+        db.rollback()  # Roll back the failed INSERT — row was created by another transaction
+        usage = (
+            db.query(OcrUsage)
+            .filter(OcrUsage.user_id == user_id, OcrUsage.period == period)
+            .with_for_update()
+            .first()
+        )
+        # IntegrityError guarantees the row exists (another transaction committed it).
+        # If it's somehow absent, fall through to create-and-lock as a safety net.
+        if not usage:
+            usage = OcrUsage(user_id=user_id, period=period, request_count=0, credit_count=0)
+            db.add(usage)
+            db.flush()
+            db.refresh(usage)
+    else:
+        # We created the row successfully — now lock it so the next request
+        # sees our increments rather than reading request_count=0.
+        db.refresh(usage)
+        usage = (
+            db.query(OcrUsage)
+            .filter(OcrUsage.id == usage.id)
+            .with_for_update()
+            .first()
+        )
+    return usage
+
+
+def _acquire_org_quota_lock(db: Session, *, org_id: str, period: str) -> OrgOcrUsage:
+    """Acquire a row-level lock on the org-level OCR usage row for this period."""
+    try:
+        usage = OrgOcrUsage(org_id=org_id, period=period, request_count=0, credit_count=0)
+        db.add(usage)
+        db.flush()
+    except IntegrityError:
+        db.rollback()
+        usage = (
+            db.query(OrgOcrUsage)
+            .filter(OrgOcrUsage.org_id == org_id, OrgOcrUsage.period == period)
+            .with_for_update()
+            .first()
+        )
+        # IntegrityError guarantees the row exists (another transaction committed it).
+        # If it's somehow absent, fall through to create-and-lock as a safety net.
+        if not usage:
+            usage = OrgOcrUsage(org_id=org_id, period=period, request_count=0, credit_count=0)
+            db.add(usage)
+            db.flush()
+            db.refresh(usage)
+    else:
+        # We created the row successfully — now lock it so the next request
+        # sees our increments rather than reading request_count=0.
+        db.refresh(usage)
+        usage = (
+            db.query(OrgOcrUsage)
+            .filter(OrgOcrUsage.id == usage.id)
+            .with_for_update()
+            .first()
+        )
+    return usage
+
+
+def _quota_exceeded_response(
+    *, usage: OcrUsage | OrgOcrUsage, max_requests: int, max_credits: int, credits: int
+) -> HTTPException:
+    """Build a consistent 429 response when quota is exhausted."""
+    current_requests = int(usage.request_count or 0)
+    if max_requests > 0 and (current_requests + 1) > max_requests:
+        return HTTPException(
+            status_code=429,
+            detail={
+                "message": f"You have used all {max_requests} OCR scans for this month. Upgrade your plan for more, or wait for your quota to reset on the 1st of next month.",
+                "used": current_requests,
+                "limit": int(max_requests),
+                "reset_date": _next_reset_date(),
+                "upgrade_url": "/billing",
+            },
+        )
+    return HTTPException(
+        status_code=429,
+        detail={
+            "message": f"You have used all {max_credits} OCR credits for this month. Upgrade your plan for more, or wait for your quota to reset on the 1st of next month.",
+            "used": int(getattr(usage, "credit_count", 0) or 0),
+            "limit": int(max_credits),
+            "reset_date": _next_reset_date(),
+            "upgrade_url": "/billing",
+        },
+    )
+
+
 def check_and_record_usage(db: Session, *, user_id: int, image_bytes: int, plan: str) -> dict:
     credits = _compute_credits(image_bytes)
     period = _period_now()
@@ -129,6 +232,24 @@ def check_and_record_usage(db: Session, *, user_id: int, image_bytes: int, plan:
         )
     request_limit = max_requests if max_requests > 0 else 1_000_000_000
     credit_limit = max_credits if max_credits > 0 else 1_000_000_000
+
+    if _OCR_QUOTA_ATOMIC_LOCKS:
+        # ── Lock path: SELECT FOR UPDATE serializes concurrent requests ──
+        usage = _acquire_quota_lock(db, user_id=user_id, period=period)
+        if usage.request_count + 1 > request_limit:
+            db.rollback()
+            raise _quota_exceeded_response(usage=usage, max_requests=max_requests, max_credits=max_credits, credits=credits)
+        if usage.credit_count + credits > credit_limit:
+            db.rollback()
+            raise _quota_exceeded_response(usage=usage, max_requests=max_requests, max_credits=max_credits, credits=credits)
+        usage.request_count = usage.request_count + 1
+        usage.credit_count = usage.credit_count + credits
+        usage.last_request_at = now
+        usage.updated_at = now
+        db.commit()
+        return {"period": period, "requests": usage.request_count, "credits": usage.credit_count}
+
+    # ── Legacy path: UPDATE with WHERE (retained for fallback) ──
     result = db.execute(
         update(OcrUsage)
         .where(
@@ -225,6 +346,28 @@ def check_and_record_org_usage(
         )
     request_limit = max_requests if max_requests > 0 else 1_000_000_000
     credit_limit = max_credits if max_credits > 0 else 1_000_000_000
+
+    if _OCR_QUOTA_ATOMIC_LOCKS:
+        # ── Lock path: SELECT FOR UPDATE serializes concurrent requests ──
+        usage = _acquire_org_quota_lock(db, org_id=org_id, period=period)
+        if usage.request_count + 1 > request_limit:
+            db.rollback()
+            raise _quota_exceeded_response(usage=usage, max_requests=max_requests, max_credits=max_credits, credits=credits)
+        if usage.credit_count + credits > credit_limit:
+            db.rollback()
+            raise _quota_exceeded_response(usage=usage, max_requests=max_requests, max_credits=max_credits, credits=credits)
+        usage.request_count = usage.request_count + 1
+        usage.credit_count = usage.credit_count + credits
+        usage.last_request_at = now
+        usage.updated_at = now
+        db.commit()
+        return {
+            "period": period,
+            "requests": usage.request_count,
+            "credits": usage.credit_count,
+        }
+
+    # ── Legacy path: UPDATE with WHERE (retained for fallback) ──
     result = db.execute(
         update(OrgOcrUsage)
         .where(
